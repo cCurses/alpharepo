@@ -1,0 +1,294 @@
+#!/bin/bash
+#+ marker sof +#
+
+# concept:
+# - test rig to get running times of scanning directory hierarchies
+# - the nested find loops are fed by sorted lists using pipes or redirects
+# - the overall purpose of this test is to discover which is faster
+
+# results:
+# - counter to what I expected, the pipe form is *always* faster than the
+#   redirect form. sometimes the difference is quite small, other times the
+#   difference is quite large
+# - ergo, there's something going on that I don't fully grasp
+
+#+ setup here +#
+
+# - be explicit for clarity
+# - single dimension indexed array
+declare -a _ARRAY_PATHNAMES
+
+_OPTIONS_SORT_DIRECTORIES="sort --key=4"
+_OPTIONS_SORT_FILES="sort --key=11"
+
+export TZ=UTC
+
+#- setup here -#
+
+#+ function definitions here +#
+
+function _parse_parameters()
+{
+  #+ _parse_parameters +#
+
+  # variables:
+  # #
+  # 1
+  # 2
+  # @
+  # _ARRAY_PATHNAMES (single dimension indexed array)
+  # _FUNCTION
+
+  # binaries:
+  # find
+
+  #+ parameter defaults +#
+
+  unset _ARRAY_PATHNAMES
+  unset _FUNCTION
+
+  #- parameter defaults -#
+
+  while [[ $# -gt 0 ]]
+  do
+    case $1 in
+      ( -P \
+      | --pipe )
+        _FUNCTION=_pathnames_scan_pipe
+      ;;
+      ( -R \
+      | --redirect )
+        _FUNCTION=_pathnames_scan_redirect
+      ;;
+      ( -p \
+      | --pathname )
+        # - ${parameter:offset:length}
+        # - "-z string" = true if the length of string is zero
+        if [[ ${2:0:1} == - ]] \
+        || [[ -z $2 ]]
+        then
+          echo "pathname not specified"
+          exit 1
+        else
+          # - keep adding paths until another option is specified or until
+          #   we've reached the end of the commandline
+          # - globs are now supported. refer to bash(1) section
+          #   "Pattern Matching" for specifics
+          # - ${parameter:offset:length}
+          # - "-z string" = true if the length of string is zero
+          until [[ ${2:0:1} == - ]] \
+          || [[ -z $2 ]]
+          do
+            # - simplistic test to ensure only directories end up in the array
+            # - use the "find" binary rather than the bash "-d" conditional
+            #   expression since it's considerably more robust
+            # - "-n string" = true if the length of string is non-zero
+            if [[ -n "$(find "$2" -type d -maxdepth 0 2> /dev/null)" ]]
+            then
+              _ARRAY_PATHNAMES+=( "$2" )
+            else
+              echo "invalid pathname \"$2\" specified"
+              exit 1
+            fi
+            shift
+          done
+        fi
+      ;;
+      ( -* )
+        echo "invalid option \"$1\" specified"
+        exit 1
+      ;;
+      ( * )
+        echo "invalid parameter \"$1\" specified"
+        exit 1
+      ;;
+    esac
+    shift
+  done
+
+  echo "      \${#_ARRAY_PATHNAMES[@]}: \"${#_ARRAY_PATHNAMES[@]}\""
+  echo "       \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
+  echo "                   \$_FUNCTION: \"$_FUNCTION\""
+
+  #- _parse_parameters -#
+}
+
+function _pathnames_scan_pipe()
+{
+  #+ _pathnames_scan_pipe +#
+
+  # variables:
+  # _ARRAY_PATHNAMES (single dimension indexed array)
+  # _SD_MTIM_HMS
+  # _SD_MTIM_UTC
+  # _SD_MTIM_YMD
+  # _SD_NAME
+  # _OPTIONS_SORT_DIRECTORIES
+  # _OPTIONS_SORT_FILES
+  # _ST_DEV
+  # _ST_GID
+  # _ST_INO
+  # _ST_MODE
+  # _ST_MTIM_HMS
+  # _ST_MTIM_UTC
+  # _ST_MTIM_YMD
+  # _ST_NAME
+  # _ST_NLINK
+  # _ST_SIZE
+  # _ST_UID
+
+  # binaries:
+  # find
+
+  while read -r \
+  _SD_MTIM_YMD _SD_MTIM_HMS _SD_MTIM_UTC _SD_NAME
+  do
+    # - simplest method to remove microseconds from the report
+    _SD_MTIM_HMS=${_SD_MTIM_HMS/.*/}
+
+    # - $_SD_NAME absolutely *must* be enclosed within doublequotes to
+    #   preserve special characters
+    # - pretty-print the results
+    printf "%66s %s %s %s %s\n" \
+    $_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC "$_SD_NAME"
+
+    while read -r \
+    _ST_DEV _ST_INO _ST_MODE _ST_NLINK _ST_UID _ST_GID _ST_SIZE \
+    _ST_MTIM_YMD _ST_MTIM_HMS _ST_MTIM_UTC _ST_NAME
+    do
+
+      # - necessary for "non-empty" directories that contain neither
+      #   directories nor regular files (ie: symlinks, device specials, etc)
+      # - "-n string" = true if the length of string is non-zero
+      if [[ -n $_ST_NAME ]]
+      then
+        # - simplest method to remove microseconds from the report
+        _ST_MTIM_HMS=${_ST_MTIM_HMS/.*/}
+
+        # - $_ST_NAME absolutely *must* be enclosed within doublequotes to
+        #   preserve special characters
+        # - pretty-print the results
+        printf "%4s %10s %s %4s %4s %3s %14s %s %s %s %s\n" \
+        $_ST_DEV $_ST_INO $_ST_MODE $_ST_NLINK $_ST_UID $_ST_GID $_ST_SIZE \
+        $_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC "$_ST_NAME"
+      fi
+
+    done <<< \
+    "$(find "$_SD_NAME" \
+    -type f \
+    -maxdepth 1 \
+    -printf "%D %i %M %n %U %G %s %TY-%Tm-%Td %TH:%TM:%TS %TZ %p\n" 2> /dev/null \
+    | $_OPTIONS_SORT_FILES)"
+
+    # NOTE:
+    # - doublequotes around the commandline enclosed within $() are mandatory
+
+  done <<< \
+  "$(find "${_ARRAY_PATHNAMES[@]}" \
+  -type d \
+  ! -empty \
+  -printf "%TY-%Tm-%Td %TH:%TM:%TS %TZ %p\n" \
+  | $_OPTIONS_SORT_DIRECTORIES)"
+
+  # NOTE:
+  # - doublequotes around the commandline enclosed within $() are mandatory
+
+  #- _pathnames_scan_pipe -#
+}
+
+function _pathnames_scan_redirect()
+{
+  #+ _pathnames_scan_redirect +#
+
+  # variables:
+  # _ARRAY_PATHNAMES (single dimension indexed array)
+  # _SD_MTIM_HMS
+  # _SD_MTIM_UTC
+  # _SD_MTIM_YMD
+  # _SD_NAME
+  # _OPTIONS_SORT_DIRECTORIES
+  # _OPTIONS_SORT_FILES
+  # _ST_DEV
+  # _ST_GID
+  # _ST_INO
+  # _ST_MODE
+  # _ST_MTIM_HMS
+  # _ST_MTIM_UTC
+  # _ST_MTIM_YMD
+  # _ST_NAME
+  # _ST_NLINK
+  # _ST_SIZE
+  # _ST_UID
+
+  # binaries:
+  # find
+
+  while read -r \
+  _SD_MTIM_YMD _SD_MTIM_HMS _SD_MTIM_UTC _SD_NAME
+  do
+    # - simplest method to remove microseconds from the report
+    _SD_MTIM_HMS=${_SD_MTIM_HMS/.*/}
+
+    # - $_SD_NAME absolutely *must* be enclosed within doublequotes to
+    #   preserve special characters
+    # - pretty-print the results
+    printf "%66s %s %s %s %s\n" \
+    $_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC "$_SD_NAME"
+
+    while read -r \
+    _ST_DEV _ST_INO _ST_MODE _ST_NLINK _ST_UID _ST_GID _ST_SIZE \
+    _ST_MTIM_YMD _ST_MTIM_HMS _ST_MTIM_UTC _ST_NAME
+    do
+
+      # - necessary for "non-empty" directories that contain neither
+      #   directories nor regular files (ie: symlinks, device specials, etc)
+      # - "-n string" = true if the length of string is non-zero
+      if [[ -n $_ST_NAME ]]
+      then
+        # - simplest method to remove microseconds from the report
+        _ST_MTIM_HMS=${_ST_MTIM_HMS/.*/}
+
+        # - $_ST_NAME absolutely *must* be enclosed within doublequotes to
+        #   preserve special characters
+        # - pretty-print the results
+        printf "%4s %10s %s %4s %4s %3s %14s %s %s %s %s\n" \
+        $_ST_DEV $_ST_INO $_ST_MODE $_ST_NLINK $_ST_UID $_ST_GID $_ST_SIZE \
+        $_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC "$_ST_NAME"
+      fi
+
+    done <<< \
+    "$($_OPTIONS_SORT_FILES \
+    <(find "$_SD_NAME" \
+    -type f \
+    -maxdepth 1 \
+    -printf "%D %i %M %n %U %G %s %TY-%Tm-%Td %TH:%TM:%TS %TZ %p\n" 2> /dev/null))"
+
+    # NOTE:
+    # - doublequotes around the commandline enclosed within $() are mandatory
+
+  done <<< \
+  "$($_OPTIONS_SORT_DIRECTORIES \
+  <(find "${_ARRAY_PATHNAMES[@]}" \
+  -type d \
+  ! -empty \
+  -printf "%TY-%Tm-%Td %TH:%TM:%TS %TZ %p\n"))"
+
+  # NOTE:
+  # - doublequotes around the commandline enclosed within $() are mandatory
+
+  #- _pathnames_scan_redirect -#
+}
+
+#- function definitions here -#
+
+#+ start here +#
+
+_parse_parameters "$@"
+
+# - do the thing
+$_FUNCTION
+
+#- start here -#
+
+#- marker eof -#
+exit 0

@@ -1,0 +1,144 @@
+- results of simple tests on 2 machines
+- 1st test is with "find -type d" & "find -type f"
+- 2nd test is with "find -type d" & "exec find -type f"
+
+###
+
+- "boron" is:
+- from /proc/cpuinfo
+	model name      : Intel(R) Core(TM) i3 CPU         530  @ 2.93GHz
+- from smartctl
+	Device Model:     ST4000DM004-2CV104
+	User Capacity:    4,000,787,030,016 bytes [4.00 TB]
+	Rotation Rate:    5425 rpm
+	ATA Version is:   ACS-3 T13/2161-D revision 5
+	SATA Version is:  SATA 3.1, 6.0 Gb/s (current: 3.0 Gb/s)
+
+[stuff erik@boron ~]$ free
+              total        used        free      shared  buff/cache   available
+Mem:        8210472      240728     3203640        1336     4766104     7193772
+Swap:      16776188           0    16776188
+
+[stuff erik@boron ~]$ find /pub/mirrors/ -type d | wc -l
+59909
+
+[stuff erik@boron ~]$ find /pub/mirrors/ -type f | wc -l
+464861
+
+[stuff erik@boron ~]$ date ; for i in 1 2 3 ; do time scanfs -p /pub/mirrors/ > /dev/null ; done ; beeps ; for i in 1 2 3 ; do time scanfs.exec -p /pub/mirrors/ > /dev/null ; done ; beeps ; date
+Mon Jul  1 12:11:19 CEST 2019
+
+real    4m22.945s
+user    2m8.536s
+sys     2m28.625s
+
+real    4m7.341s
+user    2m8.011s
+sys     2m22.123s
+
+real    4m18.054s
+user    2m7.401s
+sys     2m31.000s
+
+real    4m20.027s
+user    2m7.861s
+sys     2m26.691s
+
+real    4m20.899s
+user    2m8.854s
+sys     2m26.892s
+
+real    4m5.749s
+user    2m13.864s
+sys     2m15.952s
+Mon Jul  1 12:36:56 CEST 2019
+
+###
+
+- "helium" is:
+- from /proc/cpuinfo
+	model name      : Intel(R) Atom(TM) CPU D525   @ 1.80GHz
+- from smartctl
+	Device Model:     ST2000LM003 HN-M201RAD
+	User Capacity:    2,000,398,934,016 bytes [2.00 TB]
+	Rotation Rate:    5400 rpm
+	ATA Version is:   ATA8-ACS T13/1699-D revision 6
+	SATA Version is:  SATA 3.0, 6.0 Gb/s (current: 3.0 Gb/s)
+
+[stuff erik@helium ~]$ free
+              total        used        free      shared  buff/cache   available
+Mem:        2055500      256456      658268       24460     1140776     1496216
+Swap:       4193276          56     4193220
+
+[stuff erik@helium ~]$ find /pub/mirrors/ -type d | wc -l
+59909
+
+[stuff erik@helium ~]$ find /pub/mirrors/ -type f | wc -l
+464861
+
+[stuff erik@helium ~]$ date ; for i in 1 2 3 ; do time scanfs -p /pub/mirrors/ > /dev/null ; done ; beeps ; for i in 1 2 3 ; do time scanfs.exec -p /pub/mirrors/ > /dev/null ; done ; beeps ; date
+Mon Jul  1 12:11:19 CEST 2019
+
+real    13m2.955s
+user    5m10.751s
+sys     11m19.365s
+
+real    11m49.125s
+user    5m12.894s
+sys     9m31.606s
+
+real    14m31.145s
+user    5m15.659s
+sys     13m50.549s
+
+real    15m8.116s
+user    5m17.121s
+sys     14m30.882s
+
+real    14m42.968s
+user    5m18.771s
+sys     13m47.805s
+
+real    15m18.346s
+user    5m17.491s
+sys     14m43.572s
+Mon Jul  1 13:35:53 CEST 2019
+
+###
+
+[erik@beryllium ~]$ for i in 1 2 3 ; do date ; time scanfs -p /pub/mirrors -l > ~/burst/testing/scanfs/stdout/mirrors.long ; date ; time scanfs -p /pub/mirrors/ -l -o > ~/burst/testing/scanfs/stdout/mirrors.long.ordered ; date ; beeps ; done ; find /pub/mirrors/ -type d | wc -l ; find /pub/mirrors/ -type f | wc -l
+Sat Jul 13 03:04:27 CEST 2019
+
+real	10m9.624s
+user	2m36.123s
+sys	2m30.749s
+Sat Jul 13 03:14:37 CEST 2019
+
+real	8m3.109s
+user	2m33.590s
+sys	2m35.047s
+Sat Jul 13 03:22:40 CEST 2019
+Sat Jul 13 03:22:41 CEST 2019
+
+real	6m34.656s
+user	2m31.658s
+sys	2m33.187s
+Sat Jul 13 03:29:16 CEST 2019
+
+real	6m22.786s
+user	2m34.005s
+sys	2m28.953s
+Sat Jul 13 03:35:39 CEST 2019
+Sat Jul 13 03:35:40 CEST 2019
+
+real	4m37.607s
+user	2m30.821s
+sys	2m28.586s
+Sat Jul 13 03:40:17 CEST 2019
+
+real	5m2.941s
+user	2m36.195s
+sys	3m24.612s
+Sat Jul 13 03:45:20 CEST 2019
+59939
+464997

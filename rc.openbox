@@ -1,0 +1,211 @@
+#!/bin/bash
+
+# Start/status/stop the desired X session (openbox via startx)
+
+# Written for Slackware Linux by Erik Jan Tromp
+
+# rc.openbox v2019.02.24
+
+# Copyright (C) 2019
+# Erik Jan Tromp <alphageek@slackware.com>
+# Licensed under the GPL v2
+
+# NOTES:
+# - the 3 actions supported by this script & who has permission to use them:
+# - '/etc/rc.d/rc.openbox start'  == root & $DESIRED_USER
+# - '/etc/rc.d/rc.openbox status' == root & $DESIRED_USER for full report,
+#                                 or anyone for partial report
+# - '/etc/rc.d/rc.openbox stop'   == root & $DESIRED_USER
+# - first & foremost: have a prepared & fully functional X setup that you
+#   would start by manually logging in as a non-root user & issuing 'startx'
+# - issue 'mv /usr/libexec/Xorg.wrap /usr/libexec/Xorg.wrap.bak'
+#   (if you know if/why this is a really bad idea, please explain in detail!)
+# - edit DESIRED_USER in the definitions portion of the script to set your
+#   desired non-root username
+# - test this script before editing any other files. as noted above, 'start'
+#   this script as root (& possibly as $DESIRED_USER, for completeness). once
+#   you have things working to your satisfaction, add '/etc/rc.d/rc.openbox
+#   start' to '/etc/rc.d/rc.local'. you can also optionally add
+#   '/etc/rc.d/rc.openbox stop' to '/etc/rc.d/rc.local_shutdown' for
+#   completeness' sake
+# - query startx & openbox status via '/etc/rc.d/rc.openbox status'
+# - an additional environment variable (named RC) has been defined in this
+#   script so the user will be able to tell if startx was started via this
+#   script or directly via commandline. this will be shown to authorized users
+#   in the status message from the above-quoted commandline options
+
+# WARNING:
+# - startx as started directly on the commandline vs started by this rc script
+#   are, as far as the system is concerned, essentially identical. so much so,
+#   that issuing '/etc/rc.d/rc.openbox stop' as an authorized user will
+#   cleanly exit openbox regardless how it was started. be careful with this
+#   (so far as I can see) unavoidable behaviour
+
+# 2019-03-01
+# - changed all references to throwaway variable from 'i' to 'x' for clarity
+# 2019-02-28
+# - cosmetic & functional edits in function _stop
+# - cosmetic: added usage of HERE_STRING & PATTERN variables for clarity
+# - functional: subtle changes to PATTERN for tighter matching criteria in
+#   both the unused & used patterns
+#   - was: "^xinit .* /usr/bin/X :.* -auth .*[.]serverauth[.].*$"
+#   -  is: "^xinit .*-- /usr/bin/X :[0-9]+ -auth .+/[.]serverauth[.][0-9]+$"
+#   - was: "^/usr/libexec/Xorg :.* -auth .*[.]serverauth[.].*$"
+#   -  is: "^/usr/libexec/Xorg :[0-9]+ -auth .+/[.]serverauth[.].[0-9]+$"
+# 2019-02-24
+# - before: script could only be started by root. now: root & $DESIRED_USER
+# - before: dug through /proc/ for everything. now: use pgrep whenever possible
+# 2019-02-23
+# - added RC environment variable to provide some more status information
+#   (specifically, how startx was started: directly via the commandline or via
+#   rc.openbox)
+# 2019-02-22
+# - first limited release
+
+#+ definitions here +#
+
+DESIRED_USER="erik"
+ACTUAL_USER="$(whoami)"
+
+#+ functions here +#
+
+function _get_process_count() {
+  STARTX_COUNT="$(pgrep -cf /usr/bin/startx)"
+  OPENBOX_COUNT="$(pgrep -cf /usr/bin/openbox)"
+}
+
+function _start() {
+  # - be a tiny bit fancy & large bit predictable. only run the desired
+  #   command if *both* startx & openbox are not running
+  _get_process_count
+  if [ $STARTX_COUNT -eq 0 ] \
+  && [ $OPENBOX_COUNT -eq 0 ]
+  then
+    if [ "$ACTUAL_USER" == "root" ]
+    then
+      echo "Starting X:  su - $DESIRED_USER -c \"RC=$0 startx\" 2> /dev/null &"
+
+      # - NOTE: there may be some initial (harmless) noise printed to stdout
+      #   as various X apps start. this appears to be unavoidable. attempts to
+      #   redirect everything via '&> /dev/null' cause the following command
+      #   to fail
+
+      # - we'll be needing RC elsewhere in the script. use all of $0
+      su - $DESIRED_USER -c "RC=$0 startx" 2> /dev/null &
+    elif [ "$ACTUAL_USER" == "$DESIRED_USER" ]
+    then
+      echo "Starting X:  \"RC=$0 startx\" 2> /dev/null &"
+
+      # - NOTE: there may be some initial (harmless) noise printed to stdout
+      #   as various X apps start. this appears to be unavoidable. attempts to
+      #   redirect everything via '&> /dev/null' cause the following command
+      #   to fail
+
+      # - we'll be needing RC elsewhere in the script. use all of $0
+      RC=$0 startx 2> /dev/null &
+    else
+      echo "this script can only be run as root & $DESIRED_USER"
+    fi
+  else
+    echo "startx &/or openbox are already running"
+  fi
+}
+
+function _status() {
+  _get_process_count
+
+  # this segment can only be run by selected users
+  if [[ " root $DESIRED_USER " =~ " $ACTUAL_USER " ]]
+  then
+    if [ $OPENBOX_COUNT -ne 0 ]
+    then
+      # poking through /proc/ seems unavoidable here
+      # NOTE: file is '-r-------- erik:users' == root & $DESIRED_USER
+      RC=$(grep -z ^RC= /proc/$(pgrep -f /usr/bin/openbox)/environ | sed 's,RC=,,')
+
+      # - $RC is the script as it was started. $0 is the script as it's now
+      #   being queried. the dirname segments may differ, but the basename
+      #   segments must match. compare & display only the basename segments
+      if [ "$(basename "$RC")" == "$(basename "$0")" ]
+      then
+        echo "started via $(basename "$RC")"
+      else
+        echo "started via commandline"
+      fi
+    fi
+  fi
+
+  # these segments can be run by anyone
+  if [ $STARTX_COUNT -ne 0 ]
+  then
+    echo "startx is running"
+  else
+    echo "startx is stopped"
+  fi
+  if [ $OPENBOX_COUNT -ne 0 ]
+  then
+    echo "openbox is running"
+  else
+    echo "openbox is stopped"
+  fi
+}
+
+function _stop() {
+  if [[ " root $DESIRED_USER " =~ " $ACTUAL_USER " ]]
+  then
+    # - be a tiny bit fancy & large bit predictable. only run the desired
+    #   command if *both* startx & openbox are running
+    _get_process_count
+    if [ $STARTX_COUNT -ne 0 ] \
+    && [ $OPENBOX_COUNT -ne 0 ]
+    then
+      # - process hierarchy as shown with 'ps -AH':
+      #   + startx
+      #     + xinit ($DESIRED_USER)
+      #       + Xorg (root)
+      #         + ck-launch-session
+      #           + openbox
+
+      # - match against the entire pgrep results. much better to be too strict
+      #   than to be too lax
+      # - both forms are possibly specific to slackware's /usr/bin/startx
+
+      # $DESIRED_USER's process (verified via 'ps aux')
+      # - 1st of 2 forms that work for me
+      # - pgrep: use '-U' for uid (use '-u' for euid aka effective uid)
+      #HERE_STRING="x x x x x DISPLAY x XAUTHORITY"
+      #PATTERN="^xinit .*-- /usr/bin/X :[0-9]+ -auth .+/[.]serverauth[.][0-9]+$"
+      #read -r $HERE_STRING <<< $(pgrep -a -U root,$DESIRED_USER -f "$PATTERN")
+
+      # root's process (verified via 'ps aux')
+      # - 2nd of 2 forms that work for me
+      # - pgrep: use '-U' for uid (use '-u' for euid aka effective uid)
+      HERE_STRING="x x DISPLAY x XAUTHORITY"
+      PATTERN="^/usr/libexec/Xorg :[0-9]+ -auth .+/[.]serverauth[.][0-9]+$"
+      read -r $HERE_STRING <<< $(pgrep -a -U root,$DESIRED_USER -f "$PATTERN")
+
+      # - exporting these variables doesn't seem to work, so.. do it this way
+      DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY openbox --exit
+    else
+      echo "not stopping openbox (one or both of startx & openbox are stopped)"
+    fi
+  else
+    echo "this script can only be run as root & $DESIRED_USER"
+  fi
+}
+
+#+ start here +#
+
+case "$1" in
+  start)
+    _start
+  ;;
+  status)
+    _status
+  ;;
+  stop)
+    _stop
+  ;;
+  *)
+    echo "usage: $0 start|status|stop"
+esac

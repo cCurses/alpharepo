@@ -1,0 +1,1702 @@
+#!/bin/bash
+#+ marker sof +#
+
+# volume v2019.08.27
+
+# Copyright (C) 2005 - 2019
+# Erik Jan Tromp <alphageek@slackware.com>
+# Licensed under the GPL v2
+
+# concept:
+# - get/set volume manually on hardware that supports it
+
+# NOTE:
+# - common calculations between scripts "brightness" & "volume"
+#+ marker get +# ("function _calculate_percent")
+# _PLAYBACK_PERCENT=$(( ( $1 * 100 + ( $2 / 2 ) ) / $2 ))
+
+#+ marker set +# ("function _volume_set")
+# _NEW_VOLUME=$_PARAMETER_NUMERIC
+# _NEW_VOLUME=$(( $_VOLUME_CURRENT $_PARAMETER_PLUSMINUS $_PARAMETER_NUMERIC ))
+## _NEW_VOLUME=$(( $1 $_PARAMETER_PLUSMINUS $_PARAMETER_NUMERIC ))
+# _NEW_VOLUME=$(( ( $_PLAYBACK_LIMITS_MAXIMUM * $_PARAMETER_NUMERIC + 50 ) / 100 ))
+# _NEW_VOLUME=$(( $_VOLUME_CURRENT $_PARAMETER_PLUSMINUS ( $_PLAYBACK_LIMITS_MAXIMUM * $_PARAMETER_NUMERIC + 50 ) / 100 ))
+## _NEW_VOLUME=$(( $1 $_PARAMETER_PLUSMINUS ( $_PLAYBACK_LIMITS_MAXIMUM * $_PARAMETER_NUMERIC + 50 ) / 100 ))
+
+# IDEA:
+# - keep it super simple:
+# - all channels set to the same value: single parameter, no commas
+# - individual channels: single parameter, comma separated. just like amixer
+#   expects
+
+# 2019-08-27
+# - "function _calculate_percent" completely reworked & tested the calculation
+#  was: _PLAYBACK_PERCENT=$(( ( $1 * 100 + 50 ) / $2 ))
+#   is: _PLAYBACK_PERCENT=$(( ( $1 * 100 + ( $2 / 2 ) ) / $2 ))
+# - "function _calculate_percent" added error handling in case either of the
+#   entry variables are unset
+# -  renamed variable globally:
+#  was: _PERCENT
+#   is: _PLAYBACK_PERCENT
+# - "function _parse_parameters" added test for /proc/asound/cards presence
+# - "function _process_numeric" unified this function between this script &
+#   "brightness" to simplify maintenance
+# -  renamed variables globally:
+#  was: _VOLUME_NUMERIC
+#  was: _VOLUME_PERCENT
+#  was: _VOLUME_PLUSMINUS
+#   is: _PARAMETER_NUMERIC
+#   is: _PARAMETER_PERCENT
+#   is: _PARAMETER_PLUSMINUS
+# 2019-08-26
+# - "function _amixer_sset_master_set" added
+#   "function _binary_validate_setup" added "--quiet" & "sset" tests to
+#   "amixer"
+# - removed everything related to option "-l, --list". reasoning: redundant
+# - "function _amixer_sget_master_get" added stdout dump when option
+#   "-g, --get" is specified
+# - assorted edits required for the changeover from "get/set" to "sget/sset"
+#   renamed variable globally:
+#  was: _AMIXER_GET_MASTER
+#   is: _AMIXER_SGET_MASTER
+#   renamed functions globally:
+#  was: _amixer_get_master_get
+#   is: _amixer_sget_master_get
+#  was: _parse_amixer_get_master
+#   is: _amixer_sget_master_parse
+#   "function _binary_validate_setup" altered calling syntax to "amixer"
+#  was: _BINARY_OPTION=get
+#   is: _BINARY_OPTION=sget
+# 2019-08-20
+# - cleanup & improvements including, but not limited to, the following:
+# - "function _eko_iod" added
+# - "function _eko_sd" & companion variable _BOOLEAN_SUBSET_D removed
+# - "function _eko_sv" & companion variable _BOOLEAN_SUBSET_V removed
+# - "function _parse_parameters" style changes & improvements
+# - "function _show_error" output to stderr, not stdout
+# - additional style changes:
+#   (my scripts are already bash specific, so backwards compatibility is not
+#   an issue. several ideas are from http://mywiki.wooledge.org/BashFAQ)
+#   - naming convention for functions
+#   - usage of "[]" vs "[[]]" to evaluate expressions
+#   - doublequote variable assignments only when absolutely necessary to avoid
+#     typecasting
+# - "function _binary_validate_setup" added for "amixer"
+# 2019-04-25
+# - complete rewrite using amixer instead of rexima
+# 2005-11-21
+# - first limited release
+
+# NOTE:
+# - ALSA support is mandatory. no ALSA? do not pass Go, do not collect $200
+# - amixer is required to manipulate mixer settings. missing? problem
+# - only simple mixer control "Master" is used to get/set volume
+
+# NOTE: (to all. READ THIS!)
+# - when adjusting volume, this script accepts the following in any order:
+#   - numerics (mandatory)
+#   - %        (optional)
+#   - +/-      (optional)
+# - when adjusting volume, amixer requires the following in exactly this order:
+#   - numerics (mandatory)
+#   - %        (optional)
+#   - +/-      (optional)
+
+# NOTE: (to self) (& others, if you're bored. hi there!)
+# - look for anything with the following tags: EDIT FIXME IDEA NOTE ORDER TODO
+#   TRY
+# - use of bash builtins is often (but not always) preferred over shelling out
+#   to binaries
+# ^ reasons: speed, availability, simplicity, & predictability. fast is always
+#   preferred, no need to test if a binary even *exists*, no need to be
+#   concerned about changed syntax or output from one release to the next
+
+# NOTE: (binary/variable/function indentation)
+# - 2 spaces, hash, binary/variable/function name = in function
+# - 0 spaces, hash, binary/variable/function name = in main
+# NOTE: (system binary use & abuse)
+  # amixer
+# NOTE: (system & script variable use & abuse)
+# - system variables are always in the form "FOO"
+# - script variables are always in the form "_FOO"
+# - system variables referenced & modified. necessary & the whole point
+  # @
+# - system variables referenced but not modified
+  # #
+  # @
+  # 1
+  # FUNCNAME (single dimension indexed array)
+# @
+# - ephemeral variables. here today, gone tomorrow (keeping track for myself)
+# - better to have too many than too few
+  # _AMIXER_SGET_MASTER
+  # _BINARY_HELP
+  # _BINARY_NAME
+  # _BINARY_OPTION
+  # _BOOLEAN_DEBUG
+  # _BOOLEAN_GET
+  # _BOOLEAN_MUTE
+  # _BOOLEAN_QUIET
+  # _BOOLEAN_SET
+  # _BOOLEAN_STDOUT
+  # _BOOLEAN_TOGGLE
+  # _BOOLEAN_UNMUTE
+  # _BOOLEAN_VERBOSE
+  # _CHAR
+  # _LINE
+  # _NEW_VOLUME
+  # _OFFSET
+  # _PARAMETER_NUMERIC
+  # _PARAMETER_PERCENT
+  # _PARAMETER_PLUSMINUS
+  # _PLAYBACK_FRONT_CENTER
+  # _PLAYBACK_FRONT_LEFT
+  # _PLAYBACK_FRONT_RIGHT
+  # _PLAYBACK_LIMITS_MAXIMUM
+  # _PLAYBACK_LIMITS_MINIMUM
+  # _PLAYBACK_MONO
+  # _PLAYBACK_MUTE
+  # _PLAYBACK_PERCENT
+  # _PLAYBACK_REAR_CENTER
+  # _PLAYBACK_REAR_LEFT
+  # _PLAYBACK_REAR_RIGHT
+  # _PLAYBACK_SIDE_LEFT
+  # _PLAYBACK_SIDE_RIGHT
+  # _PLAYBACK_WOOFER
+  # _RAW_NUMERIC
+#  # _VOLUME_CURRENT  <  where does this come from? $_PLAYBACK_FRONT_LEFT & friends? yes
+  # _XX0
+# NOTE: (script function use & abuse)
+# - script functions are always in the form "_foo"
+  # _amixer_sget_master_get
+  # _amixer_sget_master_parse
+  # _amixer_sset_master_set
+  # _binary_validate_setup
+  # _calculate_percent
+  # _eko_S
+#  # _eko_S_en
+  # _eko_iod
+  # _eko_v
+#  # _eko_v_en
+  # _process_numeric
+  # _show_error
+  # _show_help
+# _parse_parameters
+
+#+ setup here +#
+
+# (none)
+
+#- setup here -#
+
+#+ function definitions here +#
+
+# ORDER:
+# - before calling _parse_parameters, but otherwise alphabetical
+
+function _amixer_sget_master_get()
+{
+  _eko_iod "#+ _amixer_sget_master_get +#"
+
+  # functions:
+  # _calculate_percent
+  # _eko_S
+  # _eko_iod
+  # _eko_v
+#  # _volume_set
+
+  # variables:
+#  # _NEW_VOLUME
+#  # _PARAMETER_NUMERIC
+  # _PLAYBACK_FRONT_CENTER
+  # _PLAYBACK_FRONT_LEFT
+  # _PLAYBACK_FRONT_RIGHT
+  # _PLAYBACK_LIMITS_MAXIMUM
+  # _PLAYBACK_LIMITS_MINIMUM
+  # _PLAYBACK_MONO
+  # _PLAYBACK_MUTE
+  # _PLAYBACK_PERCENT
+  # _PLAYBACK_REAR_CENTER
+  # _PLAYBACK_REAR_LEFT
+  # _PLAYBACK_REAR_RIGHT
+  # _PLAYBACK_SIDE_LEFT
+  # _PLAYBACK_SIDE_RIGHT
+  # _PLAYBACK_WOOFER
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_PLAYBACK_LIMITS_MINIMUM ]]
+  then
+    _eko_v " \$_PLAYBACK_LIMITS_MINIMUM: \"$_PLAYBACK_LIMITS_MINIMUM\""
+    _eko_S " Playback Limits Minimum: \"$_PLAYBACK_LIMITS_MINIMUM\""
+  fi
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_PLAYBACK_LIMITS_MAXIMUM ]]
+  then
+    _eko_v " \$_PLAYBACK_LIMITS_MAXIMUM: \"$_PLAYBACK_LIMITS_MAXIMUM\""
+    _eko_S " Playback Limits Maximum: \"$_PLAYBACK_LIMITS_MAXIMUM\""
+  fi
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_PLAYBACK_MONO ]]
+  then
+    _calculate_percent $_PLAYBACK_MONO $_PLAYBACK_LIMITS_MAXIMUM
+    _eko_v "           \$_PLAYBACK_MONO: \"$_PLAYBACK_MONO\" (${_PLAYBACK_PERCENT}%)"
+    _eko_S "           Playback Mono: \"$_PLAYBACK_MONO\" (${_PLAYBACK_PERCENT}%)"
+  fi
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_PLAYBACK_FRONT_LEFT ]]
+  then
+    _calculate_percent $_PLAYBACK_FRONT_LEFT $_PLAYBACK_LIMITS_MAXIMUM
+    _eko_v "     \$_PLAYBACK_FRONT_LEFT: \"$_PLAYBACK_FRONT_LEFT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_S "     Playback Front Left: \"$_PLAYBACK_FRONT_LEFT\" (${_PLAYBACK_PERCENT}%)"
+  fi
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_PLAYBACK_FRONT_CENTER ]]
+  then
+    _calculate_percent $_PLAYBACK_FRONT_CENTER $_PLAYBACK_LIMITS_MAXIMUM
+    _eko_v "   \$_PLAYBACK_FRONT_CENTER: \"$_PLAYBACK_FRONT_CENTER\" (${_PLAYBACK_PERCENT}%)"
+    _eko_S "   Playback Front Center: \"$_PLAYBACK_FRONT_CENTER\" (${_PLAYBACK_PERCENT}%)"
+  fi
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_PLAYBACK_FRONT_RIGHT ]]
+  then
+    _calculate_percent $_PLAYBACK_FRONT_RIGHT $_PLAYBACK_LIMITS_MAXIMUM
+    _eko_v "    \$_PLAYBACK_FRONT_RIGHT: \"$_PLAYBACK_FRONT_RIGHT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_S "    Playback Front Right: \"$_PLAYBACK_FRONT_RIGHT\" (${_PLAYBACK_PERCENT}%)"
+#    if [[ -n $_PARAMETER_NUMERIC ]]
+#    then
+##      _volume_set $_PLAYBACK_FRONT_RIGHT
+#      _volume_set 33
+#      _eko_v ">             \$_NEW_VOLUME: \"$_NEW_VOLUME\""
+#    fi
+  fi
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_PLAYBACK_SIDE_LEFT ]]
+  then
+    _calculate_percent $_PLAYBACK_SIDE_LEFT $_PLAYBACK_LIMITS_MAXIMUM
+    _eko_v "      \$_PLAYBACK_SIDE_LEFT: \"$_PLAYBACK_SIDE_LEFT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_S "      Playback Side Left: \"$_PLAYBACK_SIDE_LEFT\" (${_PLAYBACK_PERCENT}%)"
+  fi
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_PLAYBACK_SIDE_RIGHT ]]
+  then
+    _calculate_percent $_PLAYBACK_SIDE_RIGHT $_PLAYBACK_LIMITS_MAXIMUM
+    _eko_v "     \$_PLAYBACK_SIDE_RIGHT: \"$_PLAYBACK_SIDE_RIGHT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_S "     Playback Side Right: \"$_PLAYBACK_SIDE_RIGHT\" (${_PLAYBACK_PERCENT}%)"
+  fi
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_PLAYBACK_REAR_LEFT ]]
+  then
+    _calculate_percent $_PLAYBACK_REAR_LEFT $_PLAYBACK_LIMITS_MAXIMUM
+    _eko_v "      \$_PLAYBACK_REAR_LEFT: \"$_PLAYBACK_REAR_LEFT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_S "      Playback Rear Left: \"$_PLAYBACK_REAR_LEFT\" (${_PLAYBACK_PERCENT}%)"
+  fi
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_PLAYBACK_REAR_CENTER ]]
+  then
+    _calculate_percent $_PLAYBACK_REAR_CENTER $_PLAYBACK_LIMITS_MAXIMUM
+    _eko_v "    \$_PLAYBACK_REAR_CENTER: \"$_PLAYBACK_REAR_CENTER\" (${_PLAYBACK_PERCENT}%)"
+    _eko_S "    Playback Rear Center: \"$_PLAYBACK_REAR_CENTER\" (${_PLAYBACK_PERCENT}%)"
+  fi
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_PLAYBACK_REAR_RIGHT ]]
+  then
+    _calculate_percent $_PLAYBACK_REAR_RIGHT $_PLAYBACK_LIMITS_MAXIMUM
+    _eko_v "     \$_PLAYBACK_REAR_RIGHT: \"$_PLAYBACK_REAR_RIGHT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_S "     Playback Rear Right: \"$_PLAYBACK_REAR_RIGHT\" (${_PLAYBACK_PERCENT}%)"
+  fi
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_PLAYBACK_WOOFER ]]
+  then
+    _calculate_percent $_PLAYBACK_WOOFER $_PLAYBACK_LIMITS_MAXIMUM
+    _eko_v "         \$_PLAYBACK_WOOFER: \"$_PLAYBACK_WOOFER\" (${_PLAYBACK_PERCENT}%)"
+    _eko_S "         Playback Woofer: \"$_PLAYBACK_WOOFER\" (${_PLAYBACK_PERCENT}%)"
+  fi
+
+  # - assumption: this is global (ie: for all channels)
+  _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+  _eko_S "           Playback Mute: \"$_PLAYBACK_MUTE\""
+
+  _eko_iod "#- _amixer_sget_master_get -#"
+
+  exit 0
+}
+
+function _amixer_sget_master_parse()
+{
+  _eko_iod "#+ _amixer_sget_master_parse +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # _AMIXER_SGET_MASTER
+  # _LINE
+  # _PLAYBACK_FRONT_CENTER
+  # _PLAYBACK_FRONT_LEFT
+  # _PLAYBACK_FRONT_RIGHT
+  # _PLAYBACK_LIMITS_MAXIMUM
+  # _PLAYBACK_LIMITS_MINIMUM
+  # _PLAYBACK_MONO
+  # _PLAYBACK_MUTE
+  # _PLAYBACK_REAR_CENTER
+  # _PLAYBACK_REAR_LEFT
+  # _PLAYBACK_REAR_RIGHT
+  # _PLAYBACK_SIDE_LEFT
+  # _PLAYBACK_SIDE_RIGHT
+  # _PLAYBACK_WOOFER
+  # _XX0
+
+  # NOTE:
+  # - "$_AMIXER_SGET_MASTER" is reverenced while bounded by doublequotes to
+  #   preserve all printable & non-printable characters.
+  # - $_LINE is referenced *without* being bounded by doublequotes. result:
+  #   all non-printable characters & "space" are quietly dropped from both
+  #   ends of $_LINE, but preserved *within* $_LINE as long as they are
+  #   bounded by at least 1 printable character. use this!
+
+  # NOTE:
+  # - $_PLAYBACK_MUTE appears to be global
+  # - gathering state from all possible channels because there's no way of
+  #   knowing exactly which channels are available
+
+  # TODO:
+  # - create a fake "amixer sget Master" dump with all possible channels (&
+  #   presumably multiple "Limits" for mono & others) for testing
+
+  # NOTE:
+  # - below is a constructed example of "amixer sget Master"
+  # - lines prefixed with "#y" are from my systems & used in this script
+  # - lines prefixed with "#n" are from my systems & unused in this script
+  # - lines prefixed with "##y" are from others' systems & used in this script
+  # - lines prefixed with "##n" are from others' systems & unused in this script
+  # - additional audio channel names are derived from the sound samples found
+  #   in /usr/share/sounds/alsa/
+  # - "dB" settings are ignored as I honestly don't know how they work
+
+   #Simple mixer control 'Master',0
+  #n  Capabilities: pvolume pswitch pswitch-joined
+  #n  Playback channels: Front Left - Front Right
+ ##n  Playback channels: Front Left - Front Right - Rear Left - Rear Right - Front Center - Woofer
+  #y  Limits: Playback 0 - 65536
+  #n  Mono:
+ ##y  Mono: Playback 38 [44%] [-36.75dB] [on]
+ ##n  Mono: Playback [off]
+  #y  Front Left: Playback 16384 [25%] [on]
+  #y  Front Right: Playback 21627 [33%] [on]
+ ##y  Woofer: Playback 19565 [30%] [on]
+
+  while read -r \
+  _LINE
+  do
+    if [[ $_LINE =~ ^"Limits: Playback " ]]
+    then
+      read -r \
+      _XX0 \
+      _XX0 \
+      _PLAYBACK_LIMITS_MINIMUM \
+      _XX0 \
+      _PLAYBACK_LIMITS_MAXIMUM \
+      <<< \
+      $_LINE
+
+      _eko_v " \$_PLAYBACK_LIMITS_MINIMUM: \"$_PLAYBACK_LIMITS_MINIMUM\""
+      _eko_v " \$_PLAYBACK_LIMITS_MAXIMUM: \"$_PLAYBACK_LIMITS_MAXIMUM\""
+    fi
+
+    if [[ $_LINE =~ ^"Mono: Playback " ]]
+    then
+      read -r \
+      _XX0 \
+      _XX0 \
+      _PLAYBACK_MONO \
+      _XX0 \
+      <<< \
+      $_LINE
+
+      if [[ " $_LINE " =~ " [on] " ]]
+      then
+        _PLAYBACK_MUTE=false
+      else
+        _PLAYBACK_MUTE=true
+      fi
+
+      _eko_v "           \$_PLAYBACK_MONO: \"$_PLAYBACK_MONO\""
+      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+    fi
+
+    if [[ $_LINE =~ ^"Front Left: Playback " ]]
+    then
+      read -r \
+      _XX0 \
+      _XX0 \
+      _XX0 \
+      _PLAYBACK_FRONT_LEFT \
+      _XX0 \
+      <<< \
+      $_LINE
+
+      if [[ " $_LINE " =~ " [on] " ]]
+      then
+        _PLAYBACK_MUTE=false
+      else
+        _PLAYBACK_MUTE=true
+      fi
+
+      _eko_v "     \$_PLAYBACK_FRONT_LEFT: \"$_PLAYBACK_FRONT_LEFT\""
+      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+    fi
+
+    if [[ $_LINE =~ ^"Front Center: Playback " ]]
+    then
+      read -r \
+      _XX0 \
+      _XX0 \
+      _XX0 \
+      _PLAYBACK_FRONT_CENTER \
+      _XX0 \
+      <<< \
+      $_LINE
+
+      if [[ " $_LINE " =~ " [on] " ]]
+      then
+        _PLAYBACK_MUTE=false
+      else
+        _PLAYBACK_MUTE=true
+      fi
+
+      _eko_v "   \$_PLAYBACK_FRONT_CENTER: \"$_PLAYBACK_FRONT_CENTER\""
+      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+    fi
+
+    if [[ $_LINE =~ ^"Front Right: Playback " ]]
+    then
+      read -r \
+      _XX0 \
+      _XX0 \
+      _XX0 \
+      _PLAYBACK_FRONT_RIGHT \
+      _XX0 \
+      <<< \
+      $_LINE
+
+      if [[ " $_LINE " =~ " [on] " ]]
+      then
+        _PLAYBACK_MUTE=false
+      else
+        _PLAYBACK_MUTE=true
+      fi
+
+      _eko_v "    \$_PLAYBACK_FRONT_RIGHT: \"$_PLAYBACK_FRONT_RIGHT\""
+      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+    fi
+
+    if [[ $_LINE =~ ^"Side Left: Playback " ]]
+    then
+      read -r \
+      _XX0 \
+      _XX0 \
+      _XX0 \
+      _PLAYBACK_SIDE_LEFT \
+      _XX0 \
+      <<< \
+      $_LINE
+
+      if [[ " $_LINE " =~ " [on] " ]]
+      then
+        _PLAYBACK_MUTE=false
+      else
+        _PLAYBACK_MUTE=true
+      fi
+
+      _eko_v "      \$_PLAYBACK_SIDE_LEFT: \"$_PLAYBACK_SIDE_LEFT\""
+      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+    fi
+
+    if [[ $_LINE =~ ^"Side Right: Playback " ]]
+    then
+      read -r \
+      _XX0 \
+      _XX0 \
+      _XX0 \
+      _PLAYBACK_SIDE_RIGHT \
+      _XX0 \
+      <<< \
+      $_LINE
+
+      if [[ " $_LINE " =~ " [on] " ]]
+      then
+        _PLAYBACK_MUTE=false
+      else
+        _PLAYBACK_MUTE=true
+      fi
+
+      _eko_v "     \$_PLAYBACK_SIDE_RIGHT: \"$_PLAYBACK_SIDE_RIGHT\""
+      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+    fi
+
+    if [[ $_LINE =~ ^"Rear Left: Playback " ]]
+    then
+      read -r \
+      _XX0 \
+      _XX0 \
+      _XX0 \
+      _PLAYBACK_REAR_LEFT \
+      _XX0 \
+      <<< \
+      $_LINE
+
+      if [[ " $_LINE " =~ " [on] " ]]
+      then
+        _PLAYBACK_MUTE=false
+      else
+        _PLAYBACK_MUTE=true
+      fi
+
+      _eko_v "      \$_PLAYBACK_REAR_LEFT: \"$_PLAYBACK_REAR_LEFT\""
+      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+    fi
+
+    if [[ $_LINE =~ ^"Rear Center: Playback " ]]
+    then
+      read -r \
+      _XX0 \
+      _XX0 \
+      _XX0 \
+      _PLAYBACK_REAR_CENTER \
+      _XX0 \
+      <<< \
+      $_LINE
+
+      if [[ " $_LINE " =~ " [on] " ]]
+      then
+        _PLAYBACK_MUTE=false
+      else
+        _PLAYBACK_MUTE=true
+      fi
+
+      _eko_v "    \$_PLAYBACK_REAR_CENTER: \"$_PLAYBACK_REAR_CENTER\""
+      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+    fi
+
+    if [[ $_LINE =~ ^"Rear Right: Playback " ]]
+    then
+      read -r \
+      _XX0 \
+      _XX0 \
+      _XX0 \
+      _PLAYBACK_REAR_RIGHT \
+      _XX0 \
+      <<< \
+      $_LINE
+
+      if [[ " $_LINE " =~ " [on] " ]]
+      then
+        _PLAYBACK_MUTE=false
+      else
+        _PLAYBACK_MUTE=true
+      fi
+
+      _eko_v "     \$_PLAYBACK_REAR_RIGHT: \"$_PLAYBACK_REAR_RIGHT\""
+      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+    fi
+
+    if [[ $_LINE =~ ^"Woofer: Playback " ]]
+    then
+      read -r \
+      _XX0 \
+      _XX0 \
+      _PLAYBACK_WOOFER \
+      _XX0 \
+      <<< \
+      $_LINE
+
+      if [[ " $_LINE " =~ " [on] " ]]
+      then
+        _PLAYBACK_MUTE=false
+      else
+        _PLAYBACK_MUTE=true
+      fi
+
+      _eko_v "         \$_PLAYBACK_WOOFER: \"$_PLAYBACK_WOOFER\""
+      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+    fi
+  done \
+  <<< \
+  "$_AMIXER_SGET_MASTER"
+
+  _eko_iod "#- _amixer_sget_master_parse -#"
+}
+
+function _amixer_sset_master_set()
+{
+  _eko_iod "#+ _amixer_sset_master_set +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # _BOOLEAN_MUTE
+  # _BOOLEAN_TOGGLE
+  # _BOOLEAN_UNMUTE
+  # _PLAYBACK_MUTE
+
+  # binaries:
+  # amixer
+
+  # IDEA:
+  # - use this single function to selectively make all required changes
+
+  # NOTE:
+  # - there are at least 2 ways to change mute state:
+  #   #1: call amixer directly in each of the 3 if/then/fi statements below
+  #   #2: test $_PLAYBACK_MUTE itself *after* the 3 tests, then manually
+  #       mute or unmute as required.
+  # - when in doubt, try both. probably best if #1 is used. all 3 booleans
+  #   default to "false", so changing state would only happen if one of them
+  #   was explicitly selected
+
+  if $_BOOLEAN_MUTE
+  then
+    _PLAYBACK_MUTE=true
+#    echo "amixer --quiet sset Master mute"
+    amixer --quiet sset Master mute
+  fi
+
+  if $_BOOLEAN_TOGGLE
+  then
+    if $_PLAYBACK_MUTE
+    then
+      _PLAYBACK_MUTE=false
+    else
+      _PLAYBACK_MUTE=true
+    fi
+#    echo "amixer --quiet sset Master toggle"
+    amixer --quiet sset Master toggle
+  fi
+
+  if $_BOOLEAN_UNMUTE
+  then
+    _PLAYBACK_MUTE=false
+#    echo "amixer --quiet sset Master unmute"
+    amixer --quiet sset Master unmute
+  fi
+
+#  if $_PLAYBACK_MUTE
+#  then
+#    echo "amixer --quiet sset Master mute"
+#  else
+#    echo "amixer --quiet sset Master unmute"
+#  fi
+
+  _eko_v "            \$_BOOLEAN_MUTE: \"$_BOOLEAN_MUTE\""
+  _eko_v "          \$_BOOLEAN_TOGGLE: \"$_BOOLEAN_TOGGLE\""
+  _eko_v "          \$_BOOLEAN_UNMUTE: \"$_BOOLEAN_UNMUTE\""
+  _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+  _eko_S "           Playback Mute: \"$_PLAYBACK_MUTE\""
+
+  _eko_iod "#- _amixer_sset_master_set -#"
+}
+
+function _binary_validate_setup()
+{
+  _eko_iod "#+ _binary_validate_setup +#"
+
+  # functions:
+  # _eko_iod
+  # _show_error
+
+  # variables:
+  # _AMIXER_SGET_MASTER
+  # _BINARY_HELP
+  # _BINARY_NAME
+  # _BINARY_OPTION
+
+  # binaries:
+  # amixer
+
+  # NOTE:
+  # - rather than test a given binary's version in hopes of figuring out which
+  #   features it supports, test its supported feature set directly. not only
+  #   is this much simpler to do, it's possible to test only those features
+  #   that are explicitly used in the script
+  # - how? get the binary to dump its embedded help text & parse the result
+  # - this can be used as a dual test. no help text = no binary, otherwise
+  #   parse the help text for descriptions of specific features
+
+  # NOTE:
+  # - be explicit, use long form options when available
+
+  #+ amixer +#
+  # - "amixer --help". stdout
+  #   "--quiet"
+  #   "sget"
+  #   "sset"
+  # - called in "function _binary_validate_setup" (this function)
+  # - called in "function _amixer_sset_master_set"
+  # - _AMIXER_SGET_MASTER is set
+
+  _BINARY_NAME=amixer
+  _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+  _BINARY_HELP=${_BINARY_HELP//,/ }
+  if [[ $_BINARY_HELP =~ "command not found" ]]
+  then
+    _show_error "required binary \"$_BINARY_NAME\" not found"
+  else
+    _BINARY_OPTION=--quiet
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+
+    _BINARY_OPTION=sget
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _AMIXER_SGET_MASTER=$($_BINARY_NAME $_BINARY_OPTION Master 2>/dev/null)
+
+      # - "-z string" = true if the length of string is zero
+      if [[ -z $_AMIXER_SGET_MASTER ]]
+      then
+        _show_error "command \"$_BINARY_NAME $_BINARY_OPTION Master\" returned no results"
+      fi
+    else
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+
+    _BINARY_OPTION=sset
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+  fi
+  #- amixer -#
+
+  _eko_iod "#- _binary_validate_setup -#"
+}
+
+function _calculate_percent()
+{
+  _eko_iod "#+ _calculate_percent +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # 1
+  # 2
+  # _PLAYBACK_PERCENT
+
+  # NOTE:
+  # - $1 is the referenced channel (ie: $_PLAYBACK_FRONT_LEFT)
+  # - $2 is $_PLAYBACK_LIMITS_MAXIMUM
+
+#+ marker get +#
+
+  # NOTE:
+  # - these are the same calculations as used in script "brightness",
+  #   "function _backlight_types_display"
+  # - somewhat convoluted, but the end result appears to be 100% accurate
+  # - specifically, the whole number portions of the following:
+
+
+  # 0%/1%
+  # $ echo "( 327 * 100 + ( 65536 / 2 ) ) / 65536" | bc -l
+  # .99896240234375000000
+  # $ echo "( 328 * 100 + ( 65536 / 2 ) ) / 65536" | bc -l
+  # 1.00048828125000000000
+
+  # 24%/25%
+  # $ echo "( 16056 * 100 + ( 65536 / 2 ) ) / 65536" | bc -l
+  # 24.99951171875000000000
+  # $ echo "( 16057 * 100 + ( 65536 / 2 ) ) / 65536" | bc -l
+  # 25.00103759765625000000
+
+  # 32%/33%
+  # $ echo "( 21299 * 100 + ( 65536 / 2 ) ) / 65536" | bc -l
+  # 32.99969482421875000000
+  # $ echo "( 21300 * 100 + ( 65536 / 2 ) ) / 65536" | bc -l
+  # 33.00122070312500000000
+
+  # 49%/50%
+  # $ echo "( 32440 * 100 + ( 65536 / 2 ) ) / 65536" | bc -l
+  # 49.99951171875000000000
+  # $ echo "( 32441 * 100 + ( 65536 / 2 ) ) / 65536" | bc -l
+  # 50.00103759765625000000
+
+  # 65%/66%
+  # $ echo "( 42926 * 100 + ( 65536 / 2 ) ) / 65536" | bc -l
+  # 65.99987792968750000000
+  # $ echo "( 42927 * 100 + ( 65536 / 2 ) ) / 65536" | bc -l
+  # 66.00140380859375000000
+
+  # 74%/75%
+  # $ echo "( 48824 * 100 + ( 65536 / 2 ) ) / 65536" | bc -l
+  # 74.99951171875000000000
+  # $ echo "( 48825 * 100 + ( 65536 / 2 ) ) / 65536" | bc -l
+  # 75.00103759765625000000
+
+  # 99%/100%
+  # $ echo "( 65208 * 100 + ( 65536 / 2 ) ) / 65536" | bc -l
+  # 99.99951171875000000000
+  # $ echo "( 65209 * 100 + ( 65536 / 2 ) ) / 65536" | bc -l
+  # 100.00103759765625000000
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $1 ]] \
+  && [[ -n $2 ]]
+  then
+    # - this is more accurate
+    # - $((expression))
+    _PLAYBACK_PERCENT=$(( ( $1 * 100 + ( $2 / 2 ) ) / $2 ))
+  else
+    _PLAYBACK_PERCENT="?"
+  fi
+
+  # - this is incorrect/incomplete
+  #_PLAYBACK_PERCENT=$(( ( $1 * 100 + 50 ) / $2 ))
+
+  # - keeping this "just in case". this & the above form seem to work. almost
+  #_PLAYBACK_PERCENT=$(( $1 * 100 / $2 ))
+
+  _eko_v "                        \$1: \"$1\""
+  _eko_v "                        \$2: \"$2\""
+  _eko_v "        \$_PLAYBACK_PERCENT: \"${_PLAYBACK_PERCENT}%\""
+
+  _eko_iod "#- _calculate_percent -#"
+}
+
+function _eko_S()
+{
+  #+ _eko_S +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # @
+  # _BOOLEAN_STDOUT
+
+  if $_BOOLEAN_STDOUT
+  then
+    echo "$@"
+  fi
+
+  #- _eko_S -#
+}
+
+# - currently unused. keep it for future use
+function _eko_S_en()
+{
+  #+ _eko_S_en +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # @
+  # _BOOLEAN_STDOUT
+
+  if $_BOOLEAN_STDOUT
+  then
+    echo -en "$@"
+  fi
+
+  #- _eko_S_en -#
+}
+
+function _eko_iod()
+{
+  #+ _eko_iod +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # #
+  # @
+  # FUNCNAME (single dimension indexed array)
+  # _BOOLEAN_DEBUG
+
+  # NOTE:
+  # - why $(( ${#FUNCNAME[@]} - 3 ))? to account for main, parent, current
+  # - pay special attention to the "*" in "%*s". it's part of the magic
+
+  if $_BOOLEAN_DEBUG
+  then
+    # - fast & fancy indenting/"outdenting"
+    # - $((expression))
+    # - ${#parameter}
+    printf "%*s" $(( ${#FUNCNAME[@]} - 3 ))
+
+    echo "$@"
+  fi
+
+  #- _eko_iod -#
+}
+
+function _eko_v()
+{
+  #+ _eko_v +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # @
+  # _BOOLEAN_VERBOSE
+
+  if $_BOOLEAN_VERBOSE
+  then
+    echo "$@"
+  fi
+
+  #- _eko_v -#
+}
+
+# - currently unused. keep it for future use
+function _eko_v_en()
+{
+  #+ _eko_v_en +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # @
+  # _BOOLEAN_VERBOSE
+
+  if $_BOOLEAN_VERBOSE
+  then
+    echo -en "$@"
+  fi
+
+  #- _eko_v_en -#
+}
+
+function _parse_parameters()
+{
+  #+ _parse_parameters +#
+
+  # functions:
+  # _amixer_sget_master_get
+  # _amixer_sget_master_parse
+  # _amixer_sset_master_set
+  # _binary_validate_setup
+  # _eko_iod
+  # _eko_v
+  # _process_numeric
+  # _show_error
+  # _show_help
+#  # _volume_set
+
+  # variables:
+  # #
+  # 1
+  # _BOOLEAN_DEBUG
+  # _BOOLEAN_GET
+  # _BOOLEAN_MUTE
+  # _BOOLEAN_QUIET
+  # _BOOLEAN_SET
+  # _BOOLEAN_STDOUT
+  # _BOOLEAN_TOGGLE
+  # _BOOLEAN_UNMUTE
+  # _BOOLEAN_VERBOSE
+  # _RAW_NUMERIC
+
+  # NOTE:
+  # - boolean variables are proper toggles
+
+  # NOTE:
+  # - _BOOLEAN_QUIET
+  # - _BOOLEAN_STDOUT
+  # ^ are special. they're quite simple to set up initially
+
+  # - _BOOLEAN_STDOUT
+  # - companion functions: _eko_S/_eko_S_en
+  # - default: true
+  # - *not* toggled in while/do/done loop like the others
+
+  # - _BOOLEAN_QUIET
+  # - companion functions: none
+  # - default: false
+  # - toggled in while/do/done loop like the others
+  # - option "-q, --quiet"
+  # - immediately *after* while/do/done loop sets all _BOOLEAN_* if true
+
+  #+ parameter defaults +#
+
+  _BOOLEAN_DEBUG=false
+  _BOOLEAN_GET=false
+  _BOOLEAN_MUTE=false
+  _BOOLEAN_QUIET=false
+  _BOOLEAN_SET=false
+  _BOOLEAN_STDOUT=true
+  _BOOLEAN_TOGGLE=false
+  _BOOLEAN_UNMUTE=false
+  _BOOLEAN_VERBOSE=false
+  unset _RAW_NUMERIC
+
+  #- parameter defaults -#
+
+  while [[ $# -gt 0 ]]
+  do
+    case $1 in
+      ( -d \
+      | --debug )
+        if $_BOOLEAN_DEBUG
+        then
+          _BOOLEAN_DEBUG=false
+        else
+          _BOOLEAN_DEBUG=true
+        fi
+      ;;
+      ( -g \
+      | --get )
+        if $_BOOLEAN_GET
+        then
+          _BOOLEAN_GET=false
+        else
+          _BOOLEAN_GET=true
+        fi
+      ;;
+      ( -m \
+      | --mute )
+        if $_BOOLEAN_MUTE
+        then
+          _BOOLEAN_MUTE=false
+        else
+          _BOOLEAN_MUTE=true
+        fi
+      ;;
+      ( -q \
+      | --quiet )
+        if $_BOOLEAN_QUIET
+        then
+          _BOOLEAN_QUIET=false
+        else
+          _BOOLEAN_QUIET=true
+        fi
+      ;;
+      ( -s \
+      | --set )
+        if $_BOOLEAN_SET
+        then
+          _BOOLEAN_SET=false
+        else
+          _BOOLEAN_SET=true
+        fi
+      ;;
+      ( -t \
+      | --toggle )
+        if $_BOOLEAN_TOGGLE
+        then
+          _BOOLEAN_TOGGLE=false
+        else
+          _BOOLEAN_TOGGLE=true
+        fi
+      ;;
+      ( -u \
+      | --unmute )
+        if $_BOOLEAN_UNMUTE
+        then
+          _BOOLEAN_UNMUTE=false
+        else
+          _BOOLEAN_UNMUTE=true
+        fi
+      ;;
+      ( -v \
+      | --verbose )
+        if $_BOOLEAN_VERBOSE
+        then
+          _BOOLEAN_VERBOSE=false
+        else
+          _BOOLEAN_VERBOSE=true
+        fi
+      ;;
+      ( *[0-9]* )
+       _RAW_NUMERIC=$1
+      ;;
+      ( "-?" \
+      | -h \
+      | --help ) # -? must be "-?" or it matches "-<any single character>"
+        _show_help
+      ;;
+      ( -* )
+        _show_error "invalid option \"$1\" specified"
+      ;;
+      ( * )
+        _show_error "invalid parameter \"$1\" specified"
+      ;;
+    esac
+    shift
+  done
+
+  #- _parse_parameters -#
+
+  # - technically in the wrong spot, but it's a chicken or egg scenario
+  _eko_iod "#+ _parse_parameters +#"
+
+  # - "-r file" = true if file exists & is readable
+  if [[ ! -r /proc/asound/cards ]]
+  then
+    _show_error \""/proc/asound/cards\" not present. aborting"
+  fi
+
+  # - validate the existence & required options of system binaries
+  # - while we're at it, perform simplistic setup for amixer
+  _binary_validate_setup
+
+  #+ parameter settings (in (mostly) proper order of operation) +#
+
+  # NOTE:
+  # - the following blocks are *very* sensitive to order of operations
+
+  if $_BOOLEAN_DEBUG \
+  || $_BOOLEAN_VERBOSE
+  then
+    _BOOLEAN_STDOUT=false
+  fi
+
+  _eko_v "           \$_BOOLEAN_DEBUG: \"$_BOOLEAN_DEBUG\""
+  _eko_v "             \$_BOOLEAN_GET: \"$_BOOLEAN_GET\""
+  _eko_v "            \$_BOOLEAN_MUTE: \"$_BOOLEAN_MUTE\""
+  _eko_v "           \$_BOOLEAN_QUIET: \"$_BOOLEAN_QUIET\""
+  _eko_v "             \$_BOOLEAN_SET: \"$_BOOLEAN_SET\""
+  _eko_v "          \$_BOOLEAN_STDOUT: \"$_BOOLEAN_STDOUT\""
+  _eko_v "          \$_BOOLEAN_TOGGLE: \"$_BOOLEAN_TOGGLE\""
+  _eko_v "          \$_BOOLEAN_UNMUTE: \"$_BOOLEAN_UNMUTE\""
+  _eko_v "         \$_BOOLEAN_VERBOSE: \"$_BOOLEAN_VERBOSE\""
+  _eko_v "             \$_RAW_NUMERIC: \"$_RAW_NUMERIC\""
+
+  if $_BOOLEAN_QUIET
+  then
+    _BOOLEAN_DEBUG=false
+    #_BOOLEAN_GET=false
+    #_BOOLEAN_MUTE=false
+    #_BOOLEAN_QUIET=false
+    #_BOOLEAN_SET=false
+    _BOOLEAN_STDOUT=false
+    #_BOOLEAN_TOGGLE=false
+    #_BOOLEAN_UNMUTE=false
+    _BOOLEAN_VERBOSE=false
+  fi
+
+  # - get everything we need from $_AMIXER_SGET_MASTER
+  _amixer_sget_master_parse
+
+  # - display results of _amixer_sget_master_parse if desired
+  if $_BOOLEAN_GET
+  then
+    _amixer_sget_master_get
+  fi
+
+  # - (quietly) change mute state
+  if $_BOOLEAN_MUTE \
+  || $_BOOLEAN_TOGGLE \
+  || $_BOOLEAN_UNMUTE
+  then
+    _amixer_sset_master_set
+  fi
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_RAW_NUMERIC ]]
+  then
+    #_process_numeric $_RAW_NUMERIC
+    _process_numeric
+
+#+ testing +#
+#    _volume_set $_PLAYBACK_FRONT_LEFT
+#- testing -#
+  fi
+
+  #- parameter settings (in (mostly) proper order of operation) -#
+
+  _eko_iod "#- _parse_parameters -#"
+}
+
+function _process_numeric()
+{
+  _eko_iod "#+ _process_numeric +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+  # _show_error
+
+  # variables:
+  # #
+  # _CHAR
+  # _OFFSET
+  # _PARAMETER_NUMERIC
+  # _PARAMETER_PERCENT
+  # _PARAMETER_PLUSMINUS
+  # _RAW_NUMERIC
+
+  # NOTE:
+  # - to even *get* to this routine, at least one numeric is present
+
+  # - we start with this
+  _PARAMETER_NUMERIC=$_RAW_NUMERIC
+
+  _eko_v "       \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (raw)"
+
+  # - trim all non-numerics from both ends, starting with the left
+  _OFFSET=0
+  # - ${#parameter}
+  # - ${parameter:offset:length}
+  while [[ $_OFFSET -lt ${#_PARAMETER_NUMERIC} ]] \
+  && [[ ! ${_PARAMETER_NUMERIC:$_OFFSET:1} =~ [0-9] ]]
+  do
+    # - ((expression))
+    # - id++ = variable post-increment
+    ((_OFFSET++))
+  done
+  # - ${parameter:offset}
+  _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:$_OFFSET}
+  _eko_v "       \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim left)"
+
+  # - trim all non-numerics from both ends, & then the right
+  # - ${#parameter}
+  _OFFSET=${#_PARAMETER_NUMERIC}
+  # - ${parameter:offset:length}
+  # - $((expression))
+  while [[ $_OFFSET -gt 0 ]] \
+  && [[ ! ${_PARAMETER_NUMERIC:$(( $_OFFSET - 1 )):1} =~ [0-9] ]]
+  do
+    # - ((expression))
+    # - id-- = variable post-decrement
+    ((_OFFSET--))
+  done
+  # - ${parameter:offset:length}
+  _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0:$_OFFSET}
+  _eko_v "       \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim right)"
+
+  # - validate what remains
+  # - if there are non-numerics *within* $_PARAMETER_NUMERIC, that's a fail
+  if [[ $_PARAMETER_NUMERIC =~ ^[0-9]+$ ]]
+  then
+    _eko_v "                    status: pass"
+  else
+    _eko_v "                    status: fail"
+    _show_error "invalid parameter \"$_PARAMETER_NUMERIC\" specified"
+  fi
+
+  # - we've made it this far. scan $_RAW_NUMERIC looking for any of
+  #   "%+-0123456789" to build all 3 _PARAMETER_* below from scratch
+  # - anything else is an error
+  _OFFSET=0
+  unset _PARAMETER_NUMERIC
+  unset _PARAMETER_PERCENT
+  unset _PARAMETER_PLUSMINUS
+  # - ${#parameter}
+  while [[ $_OFFSET -lt ${#_RAW_NUMERIC} ]]
+  do
+    # - ${parameter:offset:length}
+    _CHAR=${_RAW_NUMERIC:$_OFFSET:1}
+
+    if [[ $_CHAR == % ]]
+    then
+      _PARAMETER_PERCENT=$_CHAR
+    elif [[ $_CHAR == [+-] ]]
+    then
+      _PARAMETER_PLUSMINUS=$_CHAR
+    elif [[ $_CHAR == [0-9] ]]
+    then
+      _PARAMETER_NUMERIC+=$_CHAR
+    else
+      _show_error "invalid character \"$_CHAR\" in \"$_RAW_NUMERIC\" specified"
+    fi
+
+    # - ((expression))
+    # - id++ = variable post-increment
+    ((_OFFSET++))
+  done
+
+  # - we finish with this
+  # - numerics (mandatory), percent (if present), plus/minus (if present) all
+  #   tucked safely away in separate variables for later use
+  _eko_v "       \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (finished)"
+  _eko_v "       \$_PARAMETER_PERCENT: \"$_PARAMETER_PERCENT\" (finished)"
+  _eko_v "     \$_PARAMETER_PLUSMINUS: \"$_PARAMETER_PLUSMINUS\" (finished)"
+  _eko_v "                   example: \"$_PARAMETER_NUMERIC$_PARAMETER_PERCENT$_PARAMETER_PLUSMINUS\""
+
+  _eko_iod "#- _process_numeric -#"
+}
+
+function _show_error()
+{
+  _eko_iod "#+ _show_error +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # @
+
+  # - output to stderr, not stdout
+  # - be explicit for clarity
+  echo "Error: $@" 1>&2
+
+  _eko_iod "#- _show_error -#"
+
+  exit 1
+}
+
+function _show_help()
+{
+  _eko_iod "#+ _show_help +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # (none)
+
+  echo "Provide 0 or more parameters
+
+Optional parameters:
+  -d, --debug        Display debugging information (function names/entry/exit)
+  -g, --get          Display pertinent information for group \"Master\"
+  -m, --mute         Mute output for group \"Master\"
+  -q, --quiet        Limit what's displayed to error messages & this help text
+  -s, --set          (TODO)
+  -t, --toggle       Toggle mute state for group \"Master\"
+  -u, --unmute       Unmute output for group \"Master\"
+  -v, --verbose      Display verbose information (variable names/contents)
+  -?, -h, --help     Display this help text, useful as it is
+  *[0-9]*[,*[0-9]*]  Desired volume. Details below
+
+The format parsed & used is [channel][,channel][,channel] for as many channels
+there are within group \"Master\". Note the use of commas
+
+Volume details:
+  Volume can be specified as an absolute or relative value, be it a raw
+  numeric or percentage. The specification is quite flexible. Out of range
+  values are silently restricted to the system's minimum & maximum. The
+  following examples are all valid: 1% -33 %2+ 45+
+  Numerics must be present. The modifiers \"%\" \"+\" \"-\" are optional & may be
+  present in any order.
+
+Note:
+  If an option is specified multiple times, the last invocation is used"
+
+  _eko_iod "#- _show_help -#"
+
+  exit 0
+}
+
+###+++
+
+function _volume_set()
+{
+  _eko_iod "#+ _volume_set +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # _NEW_VOLUME
+  # _PARAMETER_NUMERIC
+  # _PARAMETER_PERCENT
+  # _PARAMETER_PLUSMINUS
+  # _PLAYBACK_LIMITS_MAXIMUM
+  # _PLAYBACK_LIMITS_MINIMUM
+#  # _VOLUME_CURRENT  <  where does this come from? $_PLAYBACK_FRONT_LEFT & friends? yes
+
+#+ marker set +#
+
+#+
+#  # variables:
+#  # 1
+#  # 2
+#  # _PLAYBACK_PERCENT
+
+  # NOTE:
+  # - $1 is the referenced channel (ie: $_PLAYBACK_FRONT_LEFT)
+#  # - $2 is $_PLAYBACK_LIMITS_MAXIMUM
+#-
+
+#+ testing +#
+_VOLUME_CURRENT=$1
+#- testing -#
+
+  # starting point for all tests: 32768 (50%)
+
+  # goal:
+  # - start with *whatever*, finish with something suitable for amixer
+  # - also, quietly do range limiting
+
+  # entry values:
+  # - raw numeric: 33 (absolute)
+  # - numeric with +/-: 33+ (relative)
+  # - numeric with +/-: 33- (relative)
+  # - numeric with %: 33% (absolute)
+  # - numeric with %/+/-: 33%+ (relative)
+  # - numeric with %/+/-: 33%- (relative)
+
+  _eko_v " \$_PLAYBACK_LIMITS_MINIMUM: \"$_PLAYBACK_LIMITS_MINIMUM\""
+  _eko_v " \$_PLAYBACK_LIMITS_MAXIMUM: \"$_PLAYBACK_LIMITS_MAXIMUM\""
+
+  # test: 1/4 (correct)
+  # - raw numeric: 33 (absolute)
+
+  # $ echo "33" | bc
+  # 33
+  # $ echo "33" | bc -l
+  # 33
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_PARAMETER_PERCENT ]] \
+  && [[ -z $_PARAMETER_PLUSMINUS ]]
+  then
+    _eko_v "               raw numeric: \"$_PARAMETER_NUMERIC\" (absolute)"
+
+    _NEW_VOLUME=$_PARAMETER_NUMERIC
+
+    _eko_v "              \$_NEW_VOLUME: \"$_NEW_VOLUME\""
+  fi
+
+  # test: 2/4 (correct)
+  # - numeric with +/-: 33+ (relative)
+  # - numeric with +/-: 33- (relative)
+  # - example: 50% + 33
+  # - example: 50% - 33
+
+  # (0 - 65536)
+  # $ echo "32768 + 33" | bc
+  # 32801
+  # $ echo "32768 - 33" | bc
+  # 32735
+  # $ echo "32768 + 33" | bc -l
+  # 32801
+  # $ echo "32768 - 33" | bc -l
+  # 32735
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  # - "-z string" = true if the length of string is zero
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -z $_PARAMETER_PERCENT ]] \
+  && [[ -n $_PARAMETER_PLUSMINUS ]]
+  then
+    _eko_v "          numeric with +/-: \"$_PARAMETER_NUMERIC$_PARAMETER_PLUSMINUS\" (relative)"
+
+    # - $((expression))
+    _NEW_VOLUME=$(( $_VOLUME_CURRENT $_PARAMETER_PLUSMINUS $_PARAMETER_NUMERIC ))
+#    _NEW_VOLUME=$(( $1 $_PARAMETER_PLUSMINUS $_PARAMETER_NUMERIC ))
+
+    _eko_v "              \$_NEW_VOLUME: \"$_NEW_VOLUME\""
+  fi
+
+  # test: 3/4 (correct)
+  # - numeric with %: 33% (absolute)
+
+  # (0 - 65536)
+  # $ echo "( 65536 * 33 + 50 ) / 100" | bc
+  # 21627
+  # $ echo "( 65536 * 33 + 50 ) / 100" | bc -l
+  # 21627.38000000000000000000
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  # - "-n string" = true if the length of string is non-zero
+  # - "-z string" = true if the length of string is zero
+  if [[ -n $_PARAMETER_PERCENT ]] \
+  && [[ -z $_PARAMETER_PLUSMINUS ]]
+  then
+    _eko_v "            numeric with %: \"$_PARAMETER_NUMERIC$_PARAMETER_PERCENT\" (absolute)"
+
+    # - "+ 50" & "/ 100" is to handle rounding an integer *up* by .5
+    # - "+ 5" & "/ 10" doesn't work. rounds an integer *down* (truncates)
+    # - $((expression))
+    _NEW_VOLUME=$(( ( $_PLAYBACK_LIMITS_MAXIMUM * $_PARAMETER_NUMERIC + 50 ) / 100 ))
+
+    _eko_v "              \$_NEW_VOLUME: \"$_NEW_VOLUME\""
+  fi
+
+  # test: 4/4 (correct)
+  # - numeric with %/+/-: 33%+ (relative)
+  # - numeric with %/+/-: 33%- (relative)
+  # - example: 50% + 33%
+  # - example: 50% - 33%
+
+  # (0 - 65536)
+  # $ echo "32768 + ( 65536 * 33 + 50 ) / 100" | bc
+  # 54395
+  # $ echo "32768 - ( 65536 * 33 + 50 ) / 100" | bc
+  # 11141
+  # $ echo "32768 + ( 65536 * 33 + 50 ) / 100" | bc -l
+  # 54395.38000000000000000000
+  # $ echo "32768 - ( 65536 * 33 + 50 ) / 100" | bc -l
+  # 11140.62000000000000000000
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_PARAMETER_PERCENT ]] \
+  && [[ -n $_PARAMETER_PLUSMINUS ]]
+  then
+    _eko_v "        numeric with %/+/-: \"$_PARAMETER_NUMERIC$_PARAMETER_PERCENT$_PARAMETER_PLUSMINUS\" (relative)"
+
+    # - "+ 50" & "/ 100" is to handle rounding an integer *up* by .5
+    # - "+ 5" & "/ 10" doesn't work. rounds an integer *down* (truncates)
+    # - $((expression))
+    _NEW_VOLUME=$(( $_VOLUME_CURRENT $_PARAMETER_PLUSMINUS ( $_PLAYBACK_LIMITS_MAXIMUM * $_PARAMETER_NUMERIC + 50 ) / 100 ))
+#    _NEW_VOLUME=$(( $1 $_PARAMETER_PLUSMINUS ( $_PLAYBACK_LIMITS_MAXIMUM * $_PARAMETER_NUMERIC + 50 ) / 100 ))
+
+    _eko_v "              \$_NEW_VOLUME: \"$_NEW_VOLUME\""
+  fi
+
+  if [[ $_NEW_VOLUME -lt $_PLAYBACK_LIMITS_MINIMUM ]]
+  then
+    _NEW_VOLUME=$_PLAYBACK_LIMITS_MINIMUM
+    _eko_v "              \$_NEW_VOLUME: \"$_NEW_VOLUME\" (range limited: minimum)"
+  fi
+
+  if [[ $_NEW_VOLUME -gt $_PLAYBACK_LIMITS_MAXIMUM ]]
+  then
+    _NEW_VOLUME=$_PLAYBACK_LIMITS_MAXIMUM
+    _eko_v "              \$_NEW_VOLUME: \"$_NEW_VOLUME\" (range limited: maximum)"
+  fi
+
+#  if [[ $_NEW_VOLUME -ne $1 ]]
+  if [[ $_NEW_VOLUME -ne $_VOLUME_CURRENT ]]
+  then
+    true
+#    amixer sset Master $_NEW_VOLUME
+#    # can this be done in "function _amixer_sset_master_set"?
+  fi
+
+  _eko_iod "#- _volume_set -#"
+}
+
+###---
+
+#- function definitions here -#
+
+#+ start here +#
+
+# functions:
+# _parse_parameters
+
+# variables:
+# @
+
+_parse_parameters "$@"
+
+#- start here -#
+
+#- marker eof -#
+exit 0

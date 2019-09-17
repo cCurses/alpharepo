@@ -32,31 +32,31 @@
 #  add: _BINARY_HELP=${_BINARY_HELP//=/ }
 #  was: _BINARY_OPTION=--date=STRING
 #   is: _BINARY_OPTION=--date
-# - added "--" to all invocations of "basename", "cd", "cp", "dirname", "mv",
-#   "pwd", "realpath", & "rm". possibly overkill in a few spots, but better to
-#   have too many than too few
+# - added "--" to all invocations of "basename", "cd", "cp", "dirname",
+#   "head", "md5sum", "mv", "pwd", "realpath", & "rm". possibly overkill in a
+#   few spots, but better to have too many than too few
 # ^ NOTE: don't forget "ln" when the time comes
 # - "function _pathname_md5sum_md5sum" tested 3 approaches to acquire md5sums
 #   of "-s, --size" bytes of files. results:
 # 1 fastest & functional. retained:
-#   _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null | md5sum -)
+#   _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE -- "$_ST_NAME" 2>/dev/null | md5sum -- -)
 #   _ST_MD5=${_ST_MD5/%  -/}
 # 2 slower & functional. discarded:
-#   _ST_MD5=$(md5sum <(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null) 2>/dev/null)
+#   _ST_MD5=$(md5sum -- <(head --bytes=$_OPTION_MD5SUM_SIZE -- "$_ST_NAME" 2>/dev/null) 2>/dev/null)
 #   _ST_MD5=${_ST_MD5/%  \/dev\/fd\/*/}
 # 3 slowest & functional. discarded:
-#   _ST_MD5=$(md5sum < <(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null) 2>/dev/null)
+#   _ST_MD5=$(md5sum -- < <(head --bytes=$_OPTION_MD5SUM_SIZE -- "$_ST_NAME" 2>/dev/null) 2>/dev/null)
 #   _ST_MD5=${_ST_MD5/%  -/}
 # - "function _pathname_md5sum_openssl" tested 3 approaches to acquire md5sums
 #   of "-s, --size" bytes of files. results:
 # 1 fastest & functional. retained:
-#   _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null | openssl dgst -md5)
+#   _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE -- "$_ST_NAME" 2>/dev/null | openssl dgst -md5)
 #   _ST_MD5=${_ST_MD5/#(stdin)= /}
 # 2 slower & functional. discarded:
-#   _ST_MD5=$(openssl dgst -md5 <(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null) 2>/dev/null)
+#   _ST_MD5=$(openssl dgst -md5 <(head --bytes=$_OPTION_MD5SUM_SIZE -- "$_ST_NAME" 2>/dev/null) 2>/dev/null)
 #   _ST_MD5=${_ST_MD5/#MD5(\/dev\/fd\/*)= /}
 # 3 slowest & functional. discarded:
-#   _ST_MD5=$(openssl dgst -md5 < <(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null) 2>/dev/null)
+#   _ST_MD5=$(openssl dgst -md5 < <(head --bytes=$_OPTION_MD5SUM_SIZE -- "$_ST_NAME" 2>/dev/null) 2>/dev/null)
 #   _ST_MD5=${_ST_MD5/#(stdin)= /}
 # - removed most #'d lines dealing with unnecessary doublequoting & disabled
 #   routines
@@ -161,8 +161,6 @@
 #   bash builtins in doublequotes
 # - wrap anything & everything involved with $_OPTION_PATHNAME in doublequotes
 #   ( _ARRAY_HOLDNAMES 2 _ARRAY_PATHNAMES _SD_NAME _ST_NAME _SU_NAME )
-# 2019-07-25
-# - "function _binary_validate_setup" added "rm"
 # 2019-07-12
 # - additional style changes:
 #   (my scripts are already bash specific, so backwards compatibility is not
@@ -1819,14 +1817,14 @@ function _pathname_md5sum_md5sum()
   if [[ -z $_OPTION_MD5SUM_SIZE ]]
   then
     # - generate md5sum of the entire file
-    _ST_MD5=$(md5sum "$_ST_NAME" 2>/dev/null)
+    _ST_MD5=$(md5sum -- "$_ST_NAME" 2>/dev/null)
 
     # - ${parameter/pattern/string}
     # - strip "  <pathname>" suffix from output. keep the rest
     _ST_MD5=${_ST_MD5/%  $_ST_NAME/}
   else
     # - generate md5sum of the first $_OPTION_MD5SUM_SIZE bytes of the file
-    _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null | md5sum -)
+    _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE -- "$_ST_NAME" 2>/dev/null | md5sum -- -)
 
     # - ${parameter/pattern/string}
     # - strip "  -" suffix from output. keep the rest
@@ -1864,7 +1862,7 @@ function _pathname_md5sum_openssl()
     _ST_MD5=${_ST_MD5/#MD5($_ST_NAME)= /}
   else
     # - generate md5sum of the first $_OPTION_MD5SUM_SIZE bytes of the file
-    _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null | openssl dgst -md5)
+    _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE -- "$_ST_NAME" 2>/dev/null | openssl dgst -md5)
 
     # - ${parameter/pattern/string}
     # - strip "(stdin)= " prefix from output. keep the rest

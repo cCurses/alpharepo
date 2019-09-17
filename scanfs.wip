@@ -11,12 +11,13 @@
 # - scan the named filesystem segment(s) & report findings in various formats
 # - optionally unlink files that were previously hardlinked
 
-# TODO:
-# - nested tests are not sufficient for setting up _FUNCTION_TRANSFORM. make
-#   the tests entirely sequential
-# - same thought regarding _FUNCTION_MD5SUM
-
 # 2019-09-17
+# - "function _builtin_validate_setup" & "function _binary_validate_setup"
+#   altered the "cd"/"pwd", "realpath", & "basename"/"dirname" tests for
+#   setting _FUNCTION_TRANSFORM. formerly a confusing mix of nested &
+#   sequential, currently ranked sequential
+# - "function _binary_validate_setup" altered the "md5sum" & "openssl" tests
+#   for setting _FUNCTION_MD5SUM. formerly nested, currently ranked sequential
 # - "function _binary_validate_setup" made the following changes to "head",
 #   "sort", & "touch" (respectively) so this script can be used with older
 #   versions of bash. (technically only required for the "head" test because
@@ -626,7 +627,7 @@ function _binary_validate_setup()
 
   # NOTE:
   # - ordering: by standalone binary or by the first named in fallback binary
-  #   pairs
+  #   pairs (TODO: update this description)
   # - each set is explicitly wrapped in $_BOOLEAN_* tests as appropriate. it's
   #   much easier to maintain & at the same time *still* test only those
   #   binaries & options used for specific actions
@@ -634,6 +635,9 @@ function _binary_validate_setup()
   # NOTE:
   # - several, but not all, _OPTIONS_* are set up here, others in
   #   "function _pathnames_scan"
+
+  # - be explicit for clarity. we'll be testing this variable further below
+  unset _FUNCTION_MD5SUM
 
   if $_BOOLEAN_UNLINK
   then
@@ -901,15 +905,10 @@ function _binary_validate_setup()
     #- ln -#
   fi # $_BOOLEAN_HARDLINK
 
-  if $_BOOLEAN_MD5SUM
+  # - "-z string" = true if the length of string is zero
+  if $_BOOLEAN_MD5SUM \
+  && [[ -z $_FUNCTION_MD5SUM ]]
   then
-    # NOTE:
-    # - it's highly unlikely, but the possibility does exist that the "md5sum"
-    #   binary may not be available. if it's not, attempt to use the "openssl"
-    #   binary in its place. openssl is ~13x larger & ~1/2 the speed of
-    #   md5sum, but slow is better than an avoidable error
-    # - (special thanks to vbatts for the idea of using openssl as a fallback)
-
     #+ md5sum +#
     # - "md5sum --help". stdout
     # - called in "function _pathname_md5sum_md5sum"
@@ -918,43 +917,55 @@ function _binary_validate_setup()
 
     _BINARY_NAME=md5sum
     _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
-    if [[ $_BINARY_HELP =~ "command not found" ]]
+    if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
-      #+ openssl (fallback) +#
-      # - naturally, there has to be ONE troublemaker. meh
-      # - "openssl --help". stderr. anything not a valid option spits out help
-      #   text. technically speaking, none of "--help", "-help", "-h", "-?"
-      #   are supported. they all provide useful help text, though *shrug*
-      # - "openssl --help 2>&1". stdout
-      #   "dgst -md5" (no "-" on dgst [required]. "-" on md5 [required])
-      # - beat the silly thing into submission:
-      #   "openssl dgst -help 2>&1"
-      # - called in "function _pathname_md5sum_openssl"
-      # - $_BOOLEAN_MD5SUM is true
-      # - _FUNCTION_MD5SUM is set to _pathname_md5sum_openssl (2/2)
-
-      _BINARY_NAME=openssl
-      _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1))
-      if [[ $_BINARY_HELP =~ "command not found" ]]
-      then
-        _show_error "required binaries \"md5sum\" or \"$_BINARY_NAME\" not found"
-      else
-        _BINARY_OPTION=-md5
-        if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-        then
-          _FUNCTION_MD5SUM=_pathname_md5sum_openssl
-          _eko_v "            \$_FUNCTION_MD5SUM: \"$_FUNCTION_MD5SUM\""
-        else
-          _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-        fi
-      fi
-      #- openssl (fallback) -#
-    else
       _FUNCTION_MD5SUM=_pathname_md5sum_md5sum
       _eko_v "            \$_FUNCTION_MD5SUM: \"$_FUNCTION_MD5SUM\""
     fi
     #- md5sum -#
-  fi # $_BOOLEAN_MD5SUM
+  fi # $_BOOLEAN_MD5SUM $_FUNCTION_MD5SUM
+
+  # - "-z string" = true if the length of string is zero
+  if $_BOOLEAN_MD5SUM \
+  && [[ -z $_FUNCTION_MD5SUM ]]
+  then
+    # NOTE:
+    # - it's highly unlikely, but the possibility does exist that the "md5sum"
+    #   binary may not be available. if it's not, attempt to use the "openssl"
+    #   binary in its place. openssl is ~13x larger & ~1/2 the speed of
+    #   md5sum, but slow is better than an avoidable error
+    # - (special thanks to vbatts for the idea of using openssl as a fallback)
+
+    #+ openssl (fallback to md5sum) +#
+    # - naturally, there has to be ONE troublemaker. meh
+    # - "openssl --help". stderr. anything not a valid option spits out help
+    #   text. technically speaking, none of "--help", "-help", "-h", "-?" are
+    #   supported. they all provide useful help text, though *shrug*
+    # - "openssl --help 2>&1". stdout
+    #   "dgst -md5" (no "-" on dgst [required]. "-" on md5 [required])
+    # - beat the silly thing into submission:
+    #   "openssl dgst -help 2>&1"
+    # - called in "function _pathname_md5sum_openssl"
+    # - $_BOOLEAN_MD5SUM is true
+    # - _FUNCTION_MD5SUM is set to _pathname_md5sum_openssl (2/2)
+
+    _BINARY_NAME=openssl
+    _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1))
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      _show_error "required binaries \"md5sum\" or \"$_BINARY_NAME\" not found"
+    else
+      _BINARY_OPTION=-md5
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _FUNCTION_MD5SUM=_pathname_md5sum_openssl
+        _eko_v "            \$_FUNCTION_MD5SUM: \"$_FUNCTION_MD5SUM\""
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi
+    #- openssl (fallback to md5sum) -#
+  fi # $_BOOLEAN_MD5SUM $_FUNCTION_MD5SUM
 
   if $_BOOLEAN_UNLINK
   then
@@ -983,11 +994,7 @@ function _binary_validate_setup()
     #- mv -#
   fi # $_BOOLEAN_UNLINK
 
-  # NOTE:
-  # - nested tests are not sufficient. in the current form only the binary's
-  #   existence is verified. binary existence *&* option support must be
-  #   verified
-
+#+
   # - "-z string" = true if the length of string is zero
   if [[ -z $_FUNCTION_TRANSFORM ]]
   then
@@ -1005,38 +1012,8 @@ function _binary_validate_setup()
 
     _BINARY_NAME=realpath
     _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
-    if [[ $_BINARY_HELP =~ "command not found" ]]
+    if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
-      #+ basename (fallback with dirname/find to realpath) +#
-      # - "basename --help". stdout
-      # - called in "function _pathname_transform_bruteforce"
-      # - _FUNCTION_TRANSFORM is set to _pathname_transform_bruteforce (3/3)
-
-      _BINARY_NAME=basename
-      _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
-      if [[ $_BINARY_HELP =~ "command not found" ]]
-      then
-        _show_error "required binary \"$_BINARY_NAME\" not found"
-      fi
-      #- basename (fallback with dirname/find to realpath) -#
-
-      #+ dirname (fallback with basename/find to realpath) +#
-      # - "dirname --help". stdout
-      # - called in "function _pathname_transform_bruteforce"
-      # - _FUNCTION_TRANSFORM is set to _pathname_transform_bruteforce (3/3)
-
-      _BINARY_NAME=dirname
-      _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
-      if [[ $_BINARY_HELP =~ "command not found" ]]
-      then
-        _show_error "required binary \"$_BINARY_NAME\" not found"
-      fi
-      #- dirname (fallback with basename/find to realpath) -#
-
-      # - it's ugly, but it definitely works
-      _FUNCTION_TRANSFORM=_pathname_transform_bruteforce
-      _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
-    else
       _BINARY_OPTION=--canonicalize-existing
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
@@ -1061,6 +1038,40 @@ function _binary_validate_setup()
       _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
     fi
     #- realpath -#
+  fi
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_FUNCTION_TRANSFORM ]]
+  then
+    #+ basename (fallback with dirname/find to realpath) +#
+    # - "basename --help". stdout
+    # - called in "function _pathname_transform_bruteforce"
+    # - _FUNCTION_TRANSFORM is set to _pathname_transform_bruteforce (3/3)
+
+    _BINARY_NAME=basename
+    _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      _show_error "required binary \"$_BINARY_NAME\" not found"
+    fi
+    #- basename (fallback with dirname/find to realpath) -#
+
+    #+ dirname (fallback with basename/find to realpath) +#
+    # - "dirname --help". stdout
+    # - called in "function _pathname_transform_bruteforce"
+    # - _FUNCTION_TRANSFORM is set to _pathname_transform_bruteforce (3/3)
+
+    _BINARY_NAME=dirname
+    _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      _show_error "required binary \"$_BINARY_NAME\" not found"
+    fi
+    #- dirname (fallback with basename/find to realpath) -#
+
+    # - it's ugly, but it definitely works
+    _FUNCTION_TRANSFORM=_pathname_transform_bruteforce
+    _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
   fi
 
   if $_BOOLEAN_HARDLINK \

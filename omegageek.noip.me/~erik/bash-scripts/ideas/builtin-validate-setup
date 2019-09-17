@@ -1,0 +1,84 @@
+#!/bin/bash
+#+ marker sof +#
+
+function _builtin_validate_setup()
+{
+  #+ _builtin_validate_setup +#
+
+  # variables:
+  # _BUILTIN_HELP
+  # _BUILTIN_NAME
+  # _BUILTIN_OPTION
+  # _OPTIONS_CD
+  # _OPTIONS_PWD
+
+  # builtins:
+  # cd
+  # pwd
+
+  # NOTE:
+  # - rather than test a given builtin's version (or more accurately, test a
+  #   given version of bash itself) in hopes of figuring out which features it
+  #   supports, test its supported feature set directly. not only is this much
+  #   simpler to do, it's possible to test only those features that are
+  #   explicitly used in the script
+  # - how? get the builtin to dump its embedded help text & parse the result
+  # - this can be used as a dual test. no help text = unsupported builtin,
+  #   otherwise parse the help text for descriptions of specific features
+
+  #+ cd +#
+  # - "help cd". stdout
+  #   "-L"
+
+  _BUILTIN_NAME=cd
+  _BUILTIN_HELP=$(echo $(help $_BUILTIN_NAME 2>&1))
+  if [[ $_BUILTIN_HELP =~ "no help topics match" ]]
+  then
+    echo "required builtin \"$_BUILTIN_NAME\" not supported"
+    exit 1
+  else
+    _BUILTIN_OPTION=-L
+    if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
+    then
+      _OPTIONS_CD=$_BUILTIN_OPTION
+    else
+      echo \""$_BUILTIN_NAME\" does not support \"$_BUILTIN_OPTION\""
+      exit 1
+    fi
+  fi
+  #- cd -#
+
+  #+ pwd +#
+  # - "help pwd". stdout
+  #   "-L"
+
+  _BUILTIN_NAME=pwd
+  _BUILTIN_HELP=$(echo $(help $_BUILTIN_NAME 2>&1))
+  if [[ $_BUILTIN_HELP =~ "no help topics match" ]]
+  then
+    echo "required builtin \"$_BUILTIN_NAME\" not supported"
+    exit 1
+  else
+    _BUILTIN_OPTION=-L
+    if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
+    then
+      _OPTIONS_PWD=$_BUILTIN_OPTION
+    else
+      echo \""$_BUILTIN_NAME\" does not support \"$_BUILTIN_OPTION\""
+      exit 1
+    fi
+  fi
+  #- pwd -#
+
+  #- _builtin_validate_setup -#
+}
+
+# - validate the existence & required options of system builtins
+# - while we're at it, set up the options for the various builtins
+_builtin_validate_setup
+
+echo "  \$_OPTIONS_CD: \"$_OPTIONS_CD\""
+echo " \$_OPTIONS_PWD: \"$_OPTIONS_PWD\""
+
+#- marker eof -#
+exit 0

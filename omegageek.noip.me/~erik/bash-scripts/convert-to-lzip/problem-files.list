@@ -1,0 +1,15 @@
+patches/packages/linux-4.4.88/kernel-source-4.4.88_smp-noarch-1.txz
+slackware/k/kernel-source-4.4.14_smp-noarch-1.txz
+patches/source/mariadb/mariadb-10.0.33.tar.xz
+patches/source/mozilla-firefox/firefox-52.5.2esr.source.tar.xz
+patches/source/mozilla-thunderbird/thunderbird-52.5.0.source.tar.xz
+patches/source/seamonkey/seamonkey-2.49.1.source.tar.xz
+source/ap/mariadb/mariadb-10.0.26.tar.xz
+source/d/gcc/gcc-5.3.0.tar.xz
+source/kde/src/extragear/calligra-2.9.11.tar.xz
+source/kde/src/oxygen-icons-4.14.3.tar.xz
+source/l/boost/boost_1_59_0.tar.xz
+source/l/qt/qt-everywhere-opensource-src-4.8.7.tar.xz
+source/xap/mozilla-firefox/firefox-45.2.0esr.source.tar.xz
+source/xap/mozilla-thunderbird/thunderbird-45.1.1.source.tar.xz
+source/xap/seamonkey/seamonkey-2.40.source.tar.xz

@@ -1,0 +1,958 @@
+#!/bin/bash
+#+ marker sof +#
+
+# osd v2019.08.11
+
+# Copyright (C) 2019
+# Erik Jan Tromp <alphageek@slackware.com>
+# Licensed under the GPL v2
+
+# concept:
+# - perform on screen display via popup message using desired text
+
+# TODO:
+# - handlers for $_AVAILABLE_KDIALOG, $_AVAILABLE_NOTIFYSEND, &
+#   $_AVAILABLE_XMESSAGE. allow for override?
+# - remove dependency on "which"
+
+# 2019-08-11
+# - "function _binary_validate_setup" altered _BINARY_HELP assignment & tests
+#   for each binary
+#  was: _BINARY_HELP=$(echo $($_BINARY_NAME --help all 2> /dev/null))
+#   is: _BINARY_HELP=$(echo $($_BINARY_NAME --help all 2>&1))
+#  was: _BINARY_HELP=$(echo $($_BINARY_NAME --help 2> /dev/null))
+#   is: _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+#  was: _BINARY_HELP=$(echo $($_BINARY_NAME -help 2> /dev/null))
+#   is: _BINARY_HELP=$(echo $($_BINARY_NAME -help 2>&1))
+#  was: if [[ -z $_BINARY_HELP ]]
+#   is: if [[ $_BINARY_HELP =~ "command not found" ]]
+#  was: # - lhs = list, rhs = single. surround each with doublequoted spaces
+#  was: if [[ " "$_BINARY_HELP" " =~ " "$_BINARY_OPTION" " ]]
+#   is: if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+#  was: # - lhs = list, rhs = single. surround each with doublequoted spaces
+#  was: if [[ ! " "$_BINARY_HELP" " =~ " "$_BINARY_OPTION" " ]]
+#   is: if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+# - "function _binary_validate_setup" additional test for "xmessage"
+#       if [[ $_BINARY_HELP =~ "Error: Can't open display:" ]]
+#       then
+#         _AVAILABLE_XMESSAGE=true
+#       fi
+# - "function _display_xauthority_verify" altered tests so this script can be
+#   used with older versions of bash
+#  was: # - "-v varname" = true if the shell variable varname is set
+#  was: if [[ -v DISPLAY ]] \
+#  was: && [[ -v XAUTHORITY ]]
+#   is: # - "-n string" = true if the length of string is non-zero
+#   is: if [[ -n $DISPLAY ]] \
+#   is: && [[ -n $XAUTHORITY ]]
+# - "function _display_xauthority_verify" altered $_HISTORY test
+#  was: # - lhs = list, rhs = single. surround each with doublequoted spaces
+#  was: if [[ " "$_HISTORY" " =~ " "$DISPLAY" " ]]
+#   is: if [[ " $_HISTORY " =~ " $DISPLAY " ]]
+# 2019-08-10
+# - "function _binary_validate_setup" added for "grep", "kdialog",
+#   "notify-send", "ps", "sed", "which", "xmessage"
+# - "function _display_xauthority_acquire" &
+#   "function _display_xauthority_verify" altered. switch from using pgrep to
+#   using ps & grep. the main advantage of this is $_USER can be derived
+#   directly from the output
+# 2019-07-12
+# - additional style changes:
+#   (my scripts are already bash specific, so backwards compatibility is not
+#   an issue. several ideas are from http://mywiki.wooledge.org/BashFAQ)
+#   - naming convention for functions
+#   - usage of "[]" vs "[[]]" to evaluate expressions
+#   - doublequote variable assignments only when absolutely necessary to avoid
+#     typecasting
+# 2019-07-10
+# - cleanup & improvements including, but not limited to, the following:
+# - style changes. many minor things add up to an overall major improvement
+# - "function _eko_d" removed
+# - "function _eko_iod" simplified & improved
+# - "function _parse_parameters" style changes & improvements
+# - "function _show_error" output to stderr, not stdout
+# 2019-05-29
+# - assorted edits (clarity & cleanup)
+# 2019-05-28
+# - complete rewrite begins using ideas learned in previous attempts
+# 2019-02-25
+# - coding begins from scratch. messy & crude, but it gets the job done
+
+# NOTE: (to self) (& others, if you're bored. hi there!)
+# - look for anything with the following tags: EDIT FIXME IDEA NOTE ORDER TODO
+#   TRY
+# - use of bash builtins is often (but not always) preferred over shelling out
+#   to binaries
+# ^ reasons: speed, availability, simplicity, & predictability. fast is always
+#   preferred, no need to test if a binary even *exists*, no need to be
+#   concerned about changed syntax or output from one release to the next
+
+# NOTE: (binary/variable/function indentation)
+# - 2 spaces, hash, binary/variable/function name = in function
+# - 0 spaces, hash, binary/variable/function name = in main
+# NOTE: (system binary use & abuse)
+  # grep
+  # kdialog (fallback to notify-send & xmessage)
+  # notify-send (fallback to kdialog & xmessage)
+  # ps
+  # sed
+  # which
+  # xmessage (fallback to kdialog & notify-send)
+# NOTE: (system & script variable use & abuse)
+# - system variables are always in the form "FOO"
+# - script variables are always in the form "_FOO"
+# - system variables referenced & modified. necessary & the whole point
+  # @
+  # DISPLAY
+  # XAUTHORITY
+# - system variables referenced but not modified
+  # #
+  # 1
+  # 2
+  # ?
+  # @
+  # FUNCNAME (single dimension indexed array)
+  # RANDOM
+# @
+# - ephemeral variables. here today, gone tomorrow (keeping track for myself)
+# - better to have too many than too few
+  # _AVAILABLE_KDIALOG
+  # _AVAILABLE_NOTIFYSEND
+  # _AVAILABLE_XMESSAGE
+  # _BINARY_HELP
+  # _BINARY_NAME
+  # _BINARY_OPTION
+  # _BOOLEAN_DEBUG
+  # _BOOLEAN_VERBOSE
+  # _COMMAND
+  # _EXIT_CODE
+  # _HISTORY
+  # _HOME
+  # _OPTION_MESSAGE
+  # _OPTION_TIMEOUT
+  # _OUTPUT_PS_GREP
+  # _PREFIX
+  # _SUFFIX
+  # _USER
+# NOTE: (script function use & abuse)
+# - script functions are always in the form "_foo"
+  # _attempt_osd
+  # _binary_validate_setup
+  # _display_xauthority_acquire
+  # _display_xauthority_verify
+  # _eko_iod
+  # _eko_v
+  # _show_error
+  # _show_help
+# _parse_parameters
+
+#+ setup here +#
+
+# (none)
+
+#- setup here -#
+
+#+ function definitions here +#
+
+# ORDER:
+# - before calling _parse_parameters, but otherwise alphabetical
+
+function _attempt_osd()
+{
+  _eko_iod "#+ _attempt_osd +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # ?
+  # DISPLAY
+  # _COMMAND
+  # _EXIT_CODE
+  # _HISTORY
+  # _OPTION_MESSAGE
+  # _OPTION_TIMEOUT
+
+  # binaries:
+  # kdialog (fallback to notify-send & xmessage)
+  # notify-send (fallback to kdialog & xmessage)
+  # which
+  # xmessage (fallback to kdialog & notify-send)
+
+  # NOTE:
+  # - all 3 of the following OSD utilities ship with stock slackware
+  # - at least 1 of these has been available since slackware 2.1
+  #   kdialog = kde/kdebase (9.0 - 13.37)
+  #   kdialog = kde/kde-baseapps (14.0 - present day)
+  #   notify-send = l/libnotify (13.1 - present day)
+  #   xmessage = x4/xf_ctrb (2.1)
+  #   xmessage = x4/x311ctrb (2.2.0 - 2.3)
+  #   xmessage = x2/x312ctrb (3.0 - 3.1)
+  #   xmessage = x7/x32bin (3.2)
+  #   xmessage = x4/x331bin (3.3 - 3.4)
+  #   xmessage = x1/x332bin (3.5 - 3.6)
+  #   xmessage = x1/xbin (3.9 - 7.1)
+  #   xmessage = x1/xfree86 (8.0)
+  #   xmessage = x/xfree86 (8.1 - 9.1)
+  #   xmessage = x/x11 (10.0 - 11.0)
+  #   xmessage = x/xmessage (12.0 - present day)
+
+  # TODO: (extra eye candy. do later, if at all)
+  # - possibly use event-specific icons with notify-send
+  # - syntax: "-i, --icon=ICON[,ICON...]"
+  # - list of possibilities to try:
+  #   https://specifications.freedesktop.org/icon-naming-spec/icon-naming-spec-latest.html
+  # - more possibilities to try in:
+  #   /usr/share/icons/
+  # - how to select which size to use when several are available?
+
+  # NOTE:
+  # - --timeout 0
+  # - notify-send & xmessage: popup that must be manually closed. this is good
+  # - kdialog: popup closes automatically after 10 seconds. this is bad
+  # - --message "$(/sbin/ifconfig)"
+  # - notify-send & xmessage: full ifconfig output displayed. this is good
+  # - kdialog: ifconfig output not displayed at all. this is bad
+
+  # - descending order of preference: notify-send, xmessage, kdialog, nothing
+  # - xmessage isn't as pretty as kdialog, but it behaves itself. hence the
+  #   ranking
+  if _COMMAND=notify-send
+  which $_COMMAND &>/dev/null
+  then
+    _eko_v "              \$_COMMAND: \"$_COMMAND\""
+    _eko_v "       \$_OPTION_MESSAGE: \"$_OPTION_MESSAGE\""
+    _eko_v "       \$_OPTION_TIMEOUT: \"$_OPTION_TIMEOUT\""
+
+    # - $((expression))
+    $_COMMAND --expire-time=$(( $_OPTION_TIMEOUT * 1000 )) "$_OPTION_MESSAGE"
+    _EXIT_CODE=$?
+
+    _eko_v "            \$_EXIT_CODE: \"$_EXIT_CODE\""
+  elif _COMMAND=xmessage
+  which $_COMMAND &>/dev/null
+  then
+    _eko_v "              \$_COMMAND: \"$_COMMAND\""
+    _eko_v "       \$_OPTION_MESSAGE: \"$_OPTION_MESSAGE\""
+    _eko_v "       \$_OPTION_TIMEOUT: \"$_OPTION_TIMEOUT\""
+
+    # NOTE:
+    # - the "&" is absolutely required
+    # - no buttons, so to close it, use what's available in the titlebar
+
+    $_COMMAND -buttons "" -timeout $_OPTION_TIMEOUT "$_OPTION_MESSAGE" &
+    _EXIT_CODE=$?
+
+    _eko_v "            \$_EXIT_CODE: \"$_EXIT_CODE\""
+  elif _COMMAND=kdialog
+  which $_COMMAND &>/dev/null
+  then
+    _eko_v "              \$_COMMAND: \"$_COMMAND\""
+    _eko_v "       \$_OPTION_MESSAGE: \"$_OPTION_MESSAGE\""
+    _eko_v "       \$_OPTION_TIMEOUT: \"$_OPTION_TIMEOUT\""
+
+    # NOTE:
+    # - something odd is going on with kdialog. inspect further later. it
+    #   *works*, just with some unpredictable behaviour
+    # - it changes position & shape at what appears to be completely random
+    #   intervals
+    #   - placed desktop top/right. rounded corners. lightbulb icon.
+    #     multiple messages do not overlap eachother. "&" is not required
+    #   - placed desktop middle/center. square corners. no icon. multiple
+    #     messages overlap eachother. "&" is required
+
+    # NOTE:
+    # - the "&" seems to be required. sometimes. when in doubt, keep it
+
+    #$_COMMAND --passivepopup "$_OPTION_MESSAGE" $_OPTION_TIMEOUT
+    $_COMMAND --passivepopup "$_OPTION_MESSAGE" $_OPTION_TIMEOUT &
+    _EXIT_CODE=$?
+
+    _eko_v "            \$_EXIT_CODE: \"$_EXIT_CODE\""
+  else
+    _show_error \""notify-send\", \"kdialog\", & \"xmessage\" unavailable"
+  fi
+
+  # - OSD succeeded, prevent multiple OSD popups on this display
+  if [[ $_EXIT_CODE -eq 0 ]]
+  then
+    _HISTORY+=" "$DISPLAY
+  fi
+
+  _eko_iod "#- _attempt_osd -#"
+}
+
+function _binary_validate_setup()
+{
+  _eko_iod "#+ _binary_validate_setup +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+  # _show_error
+
+  # variables:
+  # _AVAILABLE_KDIALOG
+  # _AVAILABLE_NOTIFYSEND
+  # _AVAILABLE_XMESSAGE
+  # _BINARY_HELP
+  # _BINARY_NAME
+  # _BINARY_OPTION
+
+  # binaries:
+  # grep
+  # kdialog (fallback to notify-send & xmessage)
+  # notify-send (fallback to kdialog & xmessage)
+  # ps
+  # sed
+  # which
+  # xmessage (fallback to kdialog & notify-send)
+
+  # NOTE:
+  # - rather than test a given binary's version in hopes of figuring out which
+  #   features it supports, test its supported feature set directly. not only
+  #   is this much simpler to do, it's possible to test only those features
+  #   that are explicitly used in the script
+  # - how? get the binary to dump its embedded help text & parse the result
+  # - this can be used as a dual test. no help text = no binary, otherwise
+  #   parse the help text for descriptions of specific features
+
+  # NOTE:
+  # - be explicit, use long form options when available
+
+  # TODO:
+  # - the logic for kdialog, notify-send, & xmessage needs to be altered. at
+  #   least 1 of them must exist & support its required options
+
+  # IDEA:
+  # - move the nested testing from "function _attempt_osd" to here
+
+  #+ grep +#
+  # - "grep --help". stdout
+  # - called in "function _display_xauthority_acquire"
+
+  _BINARY_NAME=grep
+  _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+  if [[ $_BINARY_HELP =~ "command not found" ]]
+  then
+    _show_error "required binary \"$_BINARY_NAME\" not found"
+  fi
+  #- grep -#
+
+  #+ kdialog +#
+  # - "kdialog --help". stdout
+  #   "--passivepopup"
+  # - called in "function _attempt_osd"
+  # - _AVAILABLE_KDIALOG is set
+
+  _BINARY_NAME=kdialog
+  _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+  if [[ $_BINARY_HELP =~ "command not found" ]]
+  then
+    _AVAILABLE_KDIALOG=false
+  else
+    _BINARY_OPTION=--passivepopup
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _AVAILABLE_KDIALOG=true
+    else
+      _AVAILABLE_KDIALOG=false
+    fi
+  fi
+  _eko_v "    \$_AVAILABLE_KDIALOG: \"$_AVAILABLE_KDIALOG\""
+  #- kdialog -#
+
+  #+ notify-send +#
+  # - "notify-send --help". stdout
+  #   "-t" (use "--expire-time=TIME") ("=" is optional, use "=" for uniformity)
+  # - called in "function _attempt_osd"
+  # - _AVAILABLE_NOTIFYSEND is set
+
+  _BINARY_NAME=notify-send
+  _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+  if [[ $_BINARY_HELP =~ "command not found" ]]
+  then
+    _AVAILABLE_NOTIFYSEND=false
+  else
+    _BINARY_OPTION=--expire-time=TIME
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _AVAILABLE_NOTIFYSEND=true
+    else
+      _AVAILABLE_NOTIFYSEND=false
+    fi
+  fi
+  _eko_v " \$_AVAILABLE_NOTIFYSEND: \"$_AVAILABLE_NOTIFYSEND\""
+  #- notify-send -#
+
+  # NOTE:
+  # - ps is a troublemaker. depending on version, it has different calling
+  #   syntax to get full help
+
+# c.s.c
+# 3.2.7  = procps-3.2.7-i486-2 (slackware 32 ?.?) (c, so who knows?)
+  # - "ps --help". stdout
+  # - "ps --help all". stderr (prefixed with single line error message)
+
+# a.n.m
+# 3.2.8  = procps-3.2.8-i486-3 (slackware 32 14.0)
+  # - "ps --help". stdout
+  # - "ps --help all". stderr (prefixed with single line error message)
+
+# d.n.m
+# 3.2.8  = procps-3.2.8-x86_64-4 (slackware 64 14.1)
+  # - "ps --help". stdout
+  # - "ps --help all". stderr (prefixed with single line error message)
+
+# e.o.n
+# 3.3.11 = procps-ng-3.3.11-x86_64-1 (slackware 64 14.2)
+  # - "ps --help". stdout (basically useless)
+  # - "ps --help all". stdout
+
+# *.e.l
+# 3.3.15 = procps-ng-3.3.15-i586-1_slack14.2
+  # - "ps --help". stdout (basically useless)
+  # - "ps --help all". stdout
+
+# h.s.o
+# 3.3.15 = procps-ng-3.3.15-x86_64-1_slack14.2
+  # - "ps --help". stdout (basically useless)
+  # - "ps --help all". stdout
+
+  #+ ps +#
+  # - "ps --help all". stdout or stderr depending on version
+  #   "-o" "o" (use "--format") ("=" is optional, use "=" for uniformity)
+  #   "ax" (used blind. not tested)
+  # - called in "function _display_xauthority_acquire"
+
+  _BINARY_NAME=ps
+  _BINARY_HELP=$(echo $($_BINARY_NAME --help all 2>&1))
+  if [[ $_BINARY_HELP =~ "command not found" ]]
+  then
+    _show_error "required binary \"$_BINARY_NAME\" not found"
+  else
+    _BINARY_OPTION=--format
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+  fi
+  #- ps -#
+
+  #+ sed +#
+  # - "sed --help". stdout
+  #   "-e script" (use "--expression=script") ("=" is optional, use "=" for
+  #   uniformity)
+  # - called in "function _display_xauthority_verify"
+
+  _BINARY_NAME=sed
+  _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+  if [[ $_BINARY_HELP =~ "command not found" ]]
+  then
+    _show_error "required binary \"$_BINARY_NAME\" not found"
+  else
+    _BINARY_OPTION=--expression=script
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+  fi
+  #- sed -#
+
+  #+ which +#
+  # - "which --help". stdout
+  # - called in "function _attempt_osd"
+
+  _BINARY_NAME=which
+  _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+  if [[ $_BINARY_HELP =~ "command not found" ]]
+  then
+    _show_error "required binary \"$_BINARY_NAME\" not found"
+  fi
+  #- which -#
+
+  # NOTE:
+  # - xmessage is a troublemaker. if $DISPLAY is unset, the most it will do is
+  #   dump "Error: Can't open display: " to stderr in all situations, even
+  #   when calling "xmessage -help". personally, I consider this a design flaw
+  # - so much for using it in scripts where X *is* running, but xmessage is
+  #   called from outside such an environment (ie: /etc/acpi/acpi_handler.sh)
+  # - so, let's see what happens when the issue is crudely sidestepped
+
+  #+ xmessage +#
+  # - "xmessage -help". stdout
+  #   "-buttons"
+  #   "-timeout"
+  # - called in "function _attempt_osd"
+  # - _AVAILABLE_XMESSAGE is set
+
+  _BINARY_NAME=xmessage
+  _BINARY_HELP=$(echo $($_BINARY_NAME -help 2>&1))
+  if [[ $_BINARY_HELP =~ "command not found" ]]
+  then
+    _AVAILABLE_XMESSAGE=false
+  else
+    _BINARY_OPTION=-buttons
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _AVAILABLE_XMESSAGE=true
+      _BINARY_OPTION=-timeout
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _AVAILABLE_XMESSAGE=true
+      else
+        _AVAILABLE_XMESSAGE=false
+      fi
+    else
+      _AVAILABLE_XMESSAGE=false
+    fi
+  fi
+
+  # - crude, but effective
+  # - "-buttons" & "-timeout" options have been available since at least
+  #   version ??? which shipped with slackware 2.1
+  if [[ $_BINARY_HELP =~ "Error: Can't open display:" ]]
+  then
+    _AVAILABLE_XMESSAGE=true
+  fi
+  _eko_v "   \$_AVAILABLE_XMESSAGE: \"$_AVAILABLE_XMESSAGE\""
+  #- xmessage -#
+
+  _eko_iod "#- _binary_validate_setup -#"
+}
+
+function _display_xauthority_acquire()
+{
+  _eko_iod "#+ _display_xauthority_acquire +#"
+
+  # functions:
+  # _display_xauthority_verify
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # DISPLAY
+  # XAUTHORITY
+  # _HISTORY
+  # _OUTPUT_PS_GREP
+  # _PREFIX
+  # _SUFFIX
+  # _USER
+
+  # binaries:
+  # grep
+  # ps
+
+  # - this is for the grandchild "function _attempt_osd"
+  # - be explicit for clarity
+  unset _HISTORY
+
+  # - get what's present (if anything) in ps output (process table)
+  # - use *only* the process table. if X isn't running, nothing will be found
+  # - also, this script may be run where $DISPLAY & $XAUTHORITY are not set in
+  #   the environment (think: /etc/acpi/acpi_handler.sh)
+  # - this routine will fail in a big way if either $DISPLAY or $XAUTHORITY
+  #   contain spaces
+  while read -r \
+  _OUTPUT_PS_GREP
+  do
+    # - belt & suspenders approach. guarantee an absolutely fresh start
+    # - be explicit for clarity
+    unset _USER
+    unset DISPLAY
+    unset XAUTHORITY
+
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $_OUTPUT_PS_GREP ]]
+    then
+      # - show what we found
+      _eko_v "       \$_OUTPUT_PS_GREP: \"$_OUTPUT_PS_GREP\""
+
+      # - extracting XAUTHORITY is quite simple
+      # - this must be done first
+      XAUTHORITY=${_OUTPUT_PS_GREP/* -auth /} # remove prefix
+      XAUTHORITY=${XAUTHORITY/ */}            # remove suffix
+
+      # - remove from _OUTPUT_PS_GREP what was just found *in* _OUTPUT_PS_GREP
+      # - why? the xauthority file's pathname may contain a literal ":"
+      #   (ie: /var/run/lxdm/lxdm-:0.auth)
+      _OUTPUT_PS_GREP=${_OUTPUT_PS_GREP/$XAUTHORITY/}
+
+      # - extracting DISPLAY is somewhat involved
+      # - this must be done last
+      # - refer to X(7) section "DISPLAY NAMES" for additional details
+      # - "hostname:displaynumber.screennumber" is fully supported here
+      _PREFIX=${_OUTPUT_PS_GREP/:*/} # remove suffix
+      _PREFIX=${_PREFIX/* /}         # remove prefix
+      _SUFFIX=${_OUTPUT_PS_GREP/*:/} # remove prefix
+      _SUFFIX=${_SUFFIX/ */}         # remove suffix
+      DISPLAY=$_PREFIX:$_SUFFIX      # put it all together. note the embedded ":"
+
+      # - acquire X's controlling user now. we might need it later
+      # - what remains of $_OUTPUT_PS_GREP is more than enough for this
+      _USER=${_OUTPUT_PS_GREP/ */} # remove suffix
+
+      # - show what we kept
+      _eko_v "                 \$_USER: \"$_USER\""
+      _eko_v "               \$DISPLAY: \"$DISPLAY\""
+      _eko_v "            \$XAUTHORITY: \"$XAUTHORITY\""
+
+      # - as the name implies
+      _display_xauthority_verify
+    fi
+
+    # - the following regex works extremely well using a very minimal mask
+    # - "/X.*" matches "/usr/bin/X" or "/usr/libexec/Xorg" & anything
+    #   (including nothing) afterwards, then matches " -auth "
+    # - the 2 patterns will *always* be in this order (binary then options)
+    # - DISPLAY & XAUTHORITY can be easily derived from the results
+  done \
+  <<< \
+  "$(ps ax --format=user,command | grep "/[X].* -auth ")"
+
+  # NOTE:
+  # - doublequotes around the commandline enclosed within $() are mandatory
+
+  _eko_iod "#- _display_xauthority_acquire -#"
+}
+
+function _display_xauthority_verify()
+{
+  _eko_iod "#+ _display_xauthority_verify +#"
+
+  # functions:
+  # _attempt_osd
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # DISPLAY
+  # XAUTHORITY
+  # _HISTORY
+  # _HOME
+  # _USER
+
+  # binaries:
+  # sed
+
+  # - very simplistic tests
+  # - refer to X(7) section "DISPLAY NAMES" for additional details
+  # - "hostname:displaynumber.screennumber" is fully supported here
+  if [[ $DISPLAY =~ ^.*:[0-9.]+$ ]]
+  then
+    _eko_v "               \$DISPLAY: \"$DISPLAY\" (pass)"
+    export DISPLAY
+
+    # - "-r file" = true if file exists & is readable
+    if [[ -r $XAUTHORITY ]]
+    then
+      _eko_v "            \$XAUTHORITY: \"$XAUTHORITY\" (pass)"
+      export XAUTHORITY
+    else
+      _eko_v "            \$XAUTHORITY: \"$XAUTHORITY\" (fail)"
+
+      # - but we kept the username. with the username, acquire home directory
+      #   so "home directory"/.Xauthority can be tested
+      # - why do the following at all? so this script can be run from a
+      #   restricted environment where $HOME isn't defined
+
+      _eko_v "                 \$_USER: \"$_USER\""
+
+      # - be explicit for clarity
+      _HOME="$(sed --expression="/^$_USER:.*/!d ; s/.*:.*:.*:.*:.*:\(.*\):.*/\1/g" /etc/passwd)"
+
+      # NOTE:
+      # - doublequotes around the commandline enclosed within $() are mandatory
+      # - it's highly unlikely that the user's home directory will contain
+      #   special characters, but it *is* technically possible. account for it
+
+      _eko_v "                 \$_HOME: \"$_HOME\""
+
+      # - ultimately, this is what we're looking for
+      XAUTHORITY=$_HOME/.Xauthority
+
+      # - "-r file" = true if file exists & is readable
+      if [[ -r $XAUTHORITY ]]
+      then
+        _eko_v "            \$XAUTHORITY: \"$XAUTHORITY\" (pass)"
+        export XAUTHORITY
+      else
+        _eko_v "            \$XAUTHORITY: \"$XAUTHORITY\" (fail)"
+        unset XAUTHORITY
+      fi
+    fi
+  else
+    _eko_v "               \$DISPLAY: \"$DISPLAY\" (fail)"
+    unset DISPLAY
+  fi
+
+  # - if we have both, attempt OSD (but only once per $DISPLAY)
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $DISPLAY ]] \
+  && [[ -n $XAUTHORITY ]]
+  then
+    if [[ " $_HISTORY " =~ " $DISPLAY " ]]
+    then
+      _eko_v "                 status: OSD previously succeeded on \"$DISPLAY\" (skipping)"
+    else
+      _attempt_osd
+    fi
+  fi
+
+  _eko_iod "#- _display_xauthority_verify -#"
+}
+
+function _eko_iod()
+{
+  #+ _eko_iod +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # #
+  # @
+  # FUNCNAME (single dimension indexed array)
+  # _BOOLEAN_DEBUG
+
+  # NOTE:
+  # - why $(( ${#FUNCNAME[@]} - 3 ))? to account for main, parent, current
+  # - pay special attention to the "*" in "%*s". it's part of the magic
+
+  if $_BOOLEAN_DEBUG
+  then
+    # - fast & fancy indenting/"outdenting"
+    # - $((expression))
+    # - ${#parameter}
+    printf "%*s" $(( ${#FUNCNAME[@]} - 3 ))
+
+    echo "$@"
+  fi
+
+  #- _eko_iod -#
+}
+
+function _eko_v()
+{
+  #+ _eko_v +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # @
+  # _BOOLEAN_VERBOSE
+
+  if $_BOOLEAN_VERBOSE
+  then
+    echo "$@"
+  fi
+
+  #- _eko_v -#
+}
+
+function _parse_parameters()
+{
+  #+ _parse_parameters +#
+
+  # functions:
+  # _binary_validate_setup
+  # _display_xauthority_acquire
+  # _eko_iod
+  # _eko_v
+  # _show_error
+  # _show_help
+
+  # variables:
+  # #
+  # 1
+  # 2
+  # RANDOM
+  # _BOOLEAN_DEBUG
+  # _BOOLEAN_VERBOSE
+  # _OPTION_MESSAGE
+  # _OPTION_TIMEOUT
+
+  # NOTE:
+  # - boolean variables are proper toggles
+  # - option variables have defaults assigned if nothing is specified
+
+  #+ parameter defaults +#
+
+  _BOOLEAN_DEBUG=false
+  _BOOLEAN_VERBOSE=false
+  unset _OPTION_MESSAGE
+  unset _OPTION_TIMEOUT
+
+  #- parameter defaults -#
+
+  while [[ $# -gt 0 ]]
+  do
+    case $1 in
+      ( -d \
+      | --debug )
+        if $_BOOLEAN_DEBUG
+        then
+          _BOOLEAN_DEBUG=false
+        else
+          _BOOLEAN_DEBUG=true
+        fi
+      ;;
+      ( -m \
+      | --message )
+        # - ${parameter:offset:length}
+        # - "-z string" = true if the length of string is zero
+        if [[ ${2:0:1} == - ]] \
+        || [[ -z $2 ]]
+        then
+          _show_error "message not specified"
+        else
+          _OPTION_MESSAGE=$2
+        fi
+        shift
+      ;;
+      ( -t \
+      | --timeout )
+        # - ${parameter:offset:length}
+        # - "-z string" = true if the length of string is zero
+        if [[ ${2:0:1} == - ]] \
+        || [[ -z $2 ]]
+        then
+          _show_error "timeout not specified"
+        # - ensure it's a whole positive number
+        elif [[ $2 =~ ^[0-9]+$ ]]
+        then
+          _OPTION_TIMEOUT=$2
+        else
+          _show_error "invalid timeout \"$2\" specified"
+        fi
+        shift
+      ;;
+      ( -v \
+      | --verbose )
+        if $_BOOLEAN_VERBOSE
+        then
+          _BOOLEAN_VERBOSE=false
+        else
+          _BOOLEAN_VERBOSE=true
+        fi
+      ;;
+      ( "-?" \
+      | -h \
+      | --help ) # -? must be "-?" or it matches "-<any single character>"
+        _show_help
+      ;;
+      ( -* )
+        _show_error "invalid option \"$1\" specified"
+      ;;
+      ( * )
+        _show_error "invalid parameter \"$1\" specified"
+      ;;
+    esac
+    shift
+  done
+
+  #- _parse_parameters -#
+
+  # - technically in the wrong spot, but it's a chicken or egg scenario
+  _eko_iod "#+ _parse_parameters +#"
+
+  # - validate the existence & required options of system binaries
+  # - while we're at it, perform simplistic setup for the known osd utilities
+  _binary_validate_setup
+
+  #+ parameter settings (in (mostly) proper order of operation) +#
+
+  # NOTE:
+  # - the following blocks are *very* sensitive to order of operations
+
+  # - no message specified. set a default (be quite literally random)
+  # - ${parameter:=word}
+  _OPTION_MESSAGE=${_OPTION_MESSAGE:=$RANDOM}
+
+  # - no timeout specified. set a default
+  # - ${parameter:=word}
+  _OPTION_TIMEOUT=${_OPTION_TIMEOUT:=5}
+
+  _eko_v "        \$_BOOLEAN_DEBUG: \"$_BOOLEAN_DEBUG\""
+  _eko_v "      \$_BOOLEAN_VERBOSE: \"$_BOOLEAN_VERBOSE\""
+  _eko_v "       \$_OPTION_MESSAGE: \"$_OPTION_MESSAGE\""
+  _eko_v "       \$_OPTION_TIMEOUT: \"$_OPTION_TIMEOUT\""
+
+  #- parameter settings (in (mostly) proper order of operation) -#
+
+  # - and so it begins
+  # - a simple chain reaction
+
+  _display_xauthority_acquire
+
+  # - and so it ends (so far)
+
+  _eko_iod "#- _parse_parameters -#"
+}
+
+function _show_error()
+{
+  _eko_iod "#+ _show_error +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # @
+
+  # - output to stderr, not stdout
+  # - be explicit for clarity
+  echo "Error: $@" 1>&2
+
+  _eko_iod "#- _show_error -#"
+
+  exit 1
+}
+
+function _show_help()
+{
+  _eko_iod "#+ _show_help +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # (none)
+
+  echo "Provide 0 or more parameters
+
+Optional parameters:
+  -d, --debug     Display debugging information (function names/entry/exit)
+  -m, --message   Message to be displayed. Use doublequotes if necessary
+  -t, --timeout   Timeout in whole seconds. defaults to \"5\"
+  -v, --verbose   Display verbose information (variable names/contents)
+  -?, -h, --help  Display this help text, useful as it is
+
+Notes:
+  If an option is specified multiple times, the last invocation is used
+  Setting a timeout of \"0\" makes the popup persistent (only supported by
+  notify-send & xmessage)"
+
+  _eko_iod "#- _show_help -#"
+
+  exit 0
+}
+
+#- function definitions here -#
+
+#+ start here +#
+
+# functions:
+# _parse_parameters
+
+# variables:
+# @
+
+_parse_parameters "$@"
+
+#- start here -#
+
+#- marker eof -#
+exit 0

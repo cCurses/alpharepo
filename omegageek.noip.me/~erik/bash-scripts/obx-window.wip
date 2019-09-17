@@ -1,0 +1,2326 @@
+#!/bin/bash
+
+# obx-window v2019.05.??
+
+# Copyright (C) 2017 - 2019
+# Erik Jan Tromp <alphageek@slackware.com>
+# Licensed under the GPL v2
+
+# concept:
+# - move selected window to desired position on desktop
+
+# TODO:
+# - experiment with "xprop -set". is it possible to completely replace wmctrl?
+
+# TODO:
+# - add stuff such that if "-c" isn't specified "same" is automagically used
+
+# NOTE:
+# - $_ROUTINE stuff is for testing multiple routines that achieve the same
+#   goal in different ways & being able to easily switch between them
+# - all of it will (likely) be removed from the finished product. maybe not,
+#   though, as it's a good reference to see which approaches work well & which
+#   are utter train wrecks
+
+# TODO:
+# - break some of the novel-length functions into smaller pieces so segments
+#   can be reused (in this script & others. recycling is a good thing :))
+#   (in progress - coming along nicely)
+
+# TODO:
+# - rework some of the variable setting routines. specifically, get creative
+#   with sed so the read/here string combination is greatly simplified
+#   (in progress - coming along nicely)
+
+# FIXME:
+# - sticky windows (maybe others?) are incorrectly added to _WINDOW_EXCLUDES
+# - find out why & remove them from the exclude list (or prevent them from
+#   being added in the first place. whichever is easier)
+# - or take a completely different approach to identifying which windows can
+#   be moved & which cannot be moved
+
+# 2019-05-??
+# - major edits (too many things to enumerate. complete change of style)
+# - edits are ongoing, hence the "??" in the date
+# 2018-02-02
+# - major edits (style, readability, maintainability)
+# - added function declarations (readability, maintainability)
+# 2017-11-21
+# - renamed _process_parameters function to _parse_parameters
+# - removed unnecessary 'read -r PARAMETERS <<< $(echo $*)' & altered
+#   _parse_parameters entry appropriately
+# - unified all _invalid_* functions into _error_invalid
+# - minor code refactoring. window position must now be prefixed with '-p'
+# 2017-11-13
+# - added -o option (use overall desktop X,Y for window placement calculations)
+# - reworked predefined window X,Y placement calculations
+# - removed gkrellm & xfce4-panel from window exclude list
+# - improved _NET_* information parsing
+# - simplified _WINDOW_ID validation
+# 2017-11-12
+# - added -id (window id) option
+# - renamed _invalid_window function to _invalid_window_name
+# - simplified help text
+# 2017-11-11
+# - added support for X,Y coordinate kludges based on _WINDOW_NAME
+#   (I'm looking at you, TigerVNC)
+# - reworked/simplified verbose output (readability)
+# - renamed several variables (readability)
+# - reworked coordinate validation (readability & bugfix)
+# - moved coordinate validation to _move_window_position function
+# 2017-11-10
+# - added gkrellm & plasma-desktop to window exclude list
+# - added left/right/top/bottom desktop border calculations
+# - updated out-of-range coordinate handling to stay within usable desktop X,Y
+# 2017-11-09
+# - added test for existence of wmctrl, xprop, & xwininfo
+# - added support for user specified coordinates in the form of X,Y
+#   - out-of-range values are restricted to overall desktop X,Y
+#   - use -1 for a given coordinate to remain unchanged
+# - removed dependency on openbox. use xprop instead of obxprop (same info)
+# - reworked/improved parameter processing
+# - added -d (dry-run) & -v (verbose) options
+# - moved otherwise unused 'display gathered & calculated information' stub to
+#   _move_window_position function. it's now the basis of verbose output
+# 2017-11-08
+# - removed hardcoded coordinates & sizes. all values are now calculated from
+#   obxprop, wmctrl, & xwininfo output
+# 2017-11-05
+# - first limited release
+
+# NOTE: (to all. READ THIS!)
+# - valid combinations:
+#    Upper/Left  Upper/Center  Upper/Right
+#   Middle/Left Middle/Center Middle/Right
+#   Bottom/Left Bottom/Center Bottom/Right
+#   User specified X,Y coordinates
+# - use wmctrl, xprop, & xwininfo to get desktop & window information,
+#   wmctrl to make changes
+# - required packages:
+#   - wmctrl (3rd party package)
+#   - xprop (stock Slackware X series package)
+#   - xwininfo (stock Slackware X series package)
+
+# NOTE: (to self) (& others, if you're bored. hi there!)
+# - look for anything with the following tags: EDIT FIXME IDEA NOTE ORDER TODO
+#   TRY
+# - use of bash builtins is often (but not always) preferred over shelling out
+#   to binaries
+# ^ reasons: speed, availability, simplicity, & predictability. fast is always
+#   preferred, no need to test if a binary even *exists*, no need to be
+#   concerned about changed syntax or output from one release to the next
+
+# NOTE: (system & script variable use & abuse)
+# - system variables are always in the form "FOO"
+# - script variables are always in the form "_FOO"
+# - system variables referenced & modified. necessary & the whole point
+#   (none)
+# - system variables referenced but not modified
+  # FUNCNAME
+  # HOSTNAME
+  # #
+  # 1
+  # @
+# - ephemeral variables. here today, gone tomorrow (keeping track for myself)
+# - better to have too many than too few
+  # _BOOLEAN_DEBUG
+  # _BOOLEAN_MAXIMIZED_X
+  # _BOOLEAN_MAXIMIZED_Y
+  # _BOOLEAN_OVERALL
+  # _BOOLEAN_QUIET
+  # _BOOLEAN_RAISE
+  # _BOOLEAN_STDOUT
+  # _BOOLEAN_SUBSET_D
+  # _BOOLEAN_SUBSET_V
+  # _BOOLEAN_TEST
+  # _BOOLEAN_VERBOSE
+  # _BORDER_B
+  # _BORDER_L
+  # _BORDER_R
+  # _BORDER_T
+  # _CHARACTER_POSITION
+  # _COMMAND_MOVE
+  # _COMMAND_RAISE
+  # _COORDINATE_X
+  # _COORDINATE_Y
+  # _COUNT
+  # _DESKTOP_GEOMETRY_H
+  # _DESKTOP_GEOMETRY_W
+  # _DESKTOP_GEOMETRY_X
+  # _DESKTOP_GEOMETRY_Y
+  # _DESKTOP_NAME (unused for now)
+  # _KLUDGE_X
+  # _KLUDGE_Y
+  # _LINE
+  # _NET_CLIENT_LIST_WINDOW
+  # _NET_FRAME_EXTENT_CARDINAL_BOTTOM
+  # _NET_FRAME_EXTENT_CARDINAL_LEFT
+  # _NET_FRAME_EXTENT_CARDINAL_RIGHT
+  # _NET_FRAME_EXTENT_CARDINAL_TOP
+  # _NET_WM_STATE_ATOM
+  # _OUTPUT_XPROP
+  # _OUTPUT_XWININFO
+  # _ROUTINE
+  # _VIEWPORT_POSITION_X (unused for now)
+  # _VIEWPORT_POSITION_Y (unused for now)
+  # _WINDOW_COORDINATES
+  # _WINDOW_DECORATED_X
+  # _WINDOW_DECORATED_Y
+  # _WINDOW_EXCLUDES
+  # _WINDOW_EXCLUDES_CUSTOM
+  # _WINDOW_ID
+  # _WINDOW_NAME
+  # _WINDOW_POSITION_X (unused for now)
+  # _WINDOW_POSITION_Y (unused for now)
+  # _WINDOW_UNDECORATED_X
+  # _WINDOW_UNDECORATED_Y
+  # _WMCTRL_BINARY
+  # _WORKAREA_GEOMETRY_H
+  # _WORKAREA_GEOMETRY_W
+  # _WORKAREA_GEOMETRY_X
+  # _WORKAREA_GEOMETRY_Y
+  # _XX0
+
+# NOTE: (script function use & abuse)
+# - script functions are always in the form "_foo"
+  # _doublequote_window_name
+  # _eko_S
+  # _eko_iod
+  # _eko_sd
+  # _eko_v
+  # _get_desktop_and_window_information
+  # _get_desktop_and_workarea_geometries
+  # _get_net_client_list_window
+  # _get_net_frame_extents_cardinal
+  # _get_net_wm_state_atom
+  # _get_window_id_and_name
+  # _get_window_undecorated_geometry
+  # _kludge_coordinates
+  # _move_window_position
+  # _parse_parameters
+  # _parse_user_specified_coordinates
+  # _set_window_position
+  # _show_error
+  # _show_help
+  # _validate_coordinates
+  # _validate_window_id
+  # _window_excludes_generate
+  # _window_excludes_generate_new (unused for now)
+  # _window_excludes_trim
+
+#+ setup here +#
+
+# - $_WINDOW_EXCLUDES_CUSTOM magic
+# - start absolutely fresh. when in doubt, be explicit
+unset _WINDOW_EXCLUDES_CUSTOM
+
+# EDIT: (custom window exclude list)
+# - 1st: ensure each entry is appended to the list using "+="
+# - 2nd: ensure each entry is prefixed by a space as is done here
+# - 3rd: ensure each entry is doublequoted as is done here (including the
+#        backslashes)
+
+# - which version of KDE is this from?
+_WINDOW_EXCLUDES_CUSTOM+=" \"plasma-desktop\""
+
+#- setup here -#
+
+#+ function definitions here +#
+
+# ORDER:
+# - before calling _parse_parameters, but otherwise alphabetical
+
+function _eko_S() {
+  #+ _eko_S +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # @
+  # _BOOLEAN_STDOUT
+
+  if $_BOOLEAN_STDOUT
+  then
+    echo "$@"
+  fi
+
+  #- _eko_S -#
+}
+
+function _eko_iod() {
+  #+ _eko_iod +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # @
+  # FUNCNAME
+  # _BOOLEAN_DEBUG
+  # _COUNT
+
+  # NOTE:
+  # - why "$(seq 4 ${#FUNCNAME[@]})"? account for: main, parent, current
+  # - a loop isn't very efficient time-wise, but this routine is not called
+  #   very often. also, there's no practical limit to the level of indentation
+  #   possible. we'd run out of stack long before the counter could possibly
+  #   roll over to the negatives
+
+  if $_BOOLEAN_DEBUG
+  then
+    for _COUNT in $(seq 4 ${#FUNCNAME[@]})
+    do
+      echo -n " "
+    done
+    echo "$@"
+  fi
+
+  #- _eko_iod -#
+}
+
+function _eko_sd() {
+  #+ _eko_sd +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # @
+  # _BOOLEAN_DEBUG
+  # _BOOLEAN_SUBSET_D
+
+  if $_BOOLEAN_DEBUG \
+  || $_BOOLEAN_SUBSET_D
+  then
+    echo "$@"
+  fi
+
+  #- _eko_sd -#
+}
+
+function _eko_v() {
+  #+ _eko_v +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # @
+  # _BOOLEAN_VERBOSE
+
+  if $_BOOLEAN_VERBOSE
+  then
+    echo "$@"
+  fi
+
+  #- _eko_v -#
+}
+
+function _doublequote_window_name() {
+  _eko_iod "#+ _doublequote_window_name +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # FUNCNAME[0]
+  # _CHARACTER_POSITION
+  # _ROUTINE
+  # _WINDOW_NAME
+
+  # NOTE:
+  # - regardless of the method used to acquire $_WINDOW_NAME, the variable may
+  #   or may not have prefix/suffix doublequotes. manipulate $_WINDOW_NAME
+  #   immediately after acquiring it so we'll have something predictable to
+  #   use throughout the script
+  # - there are at least 5 viable approaches to accomplish this
+
+  #_ROUTINE="complex_thorough"
+  #_ROUTINE="simple_thorough_1"
+  #_ROUTINE="simple_thorough_2"
+  #_ROUTINE="simple_blind"
+  _ROUTINE="sed" # preferred
+  case "$_ROUTINE" in
+    complex_thorough)
+      #+ complex_thorough method +#
+
+      # - uses: 2 bash parameter lengths, 4 bash substring expansions
+      #   uses: 2 bash arithmetic evaluations, 1 arithmetic expansion
+
+      _eko_v "               \$_WINDOW_NAME: $_WINDOW_NAME (raw) (complex_thorough)"
+
+      # - trim doublequotes: left side only
+      _CHARACTER_POSITION=0
+      # - -eq/-ne/-lt/-le/-gt/-ge = no doublequotes
+      # - ${#parameter}
+      # - lhs = single, rhs = single. doublequotes on lhs & rhs
+      # - ${parameter:offset:length}
+      while [ $_CHARACTER_POSITION -lt ${#_WINDOW_NAME} ] \
+      && [ "${_WINDOW_NAME:$_CHARACTER_POSITION:1}" = "\"" ]
+      do
+        # - ((expression))
+        # - id++ = variable post-increment
+        ((_CHARACTER_POSITION++))
+      done
+
+      # - ${parameter:offset}
+      _WINDOW_NAME="${_WINDOW_NAME:$_CHARACTER_POSITION}"
+      _eko_v "               \$_WINDOW_NAME: $_WINDOW_NAME (trimmed left)"
+
+      # - trim doublequotes: right side only
+      # - ${#parameter}
+      _CHARACTER_POSITION=${#_WINDOW_NAME}
+      # - -eq/-ne/-lt/-le/-gt/-ge = no doublequotes
+      # - lhs = single, rhs = single. doublequotes on lhs & rhs
+      # - ${parameter:offset:length}
+      # - $((expression))
+      while [ $_CHARACTER_POSITION -gt 0 ] \
+      && [ "${_WINDOW_NAME:$(($_CHARACTER_POSITION-1)):1}" = "\"" ]
+      do
+        # - ((expression))
+        # - id-- = variable post-decrement
+        ((_CHARACTER_POSITION--))
+      done
+
+      # - ${parameter:offset:length}
+      _WINDOW_NAME="${_WINDOW_NAME:0:$_CHARACTER_POSITION}"
+      _eko_v "               \$_WINDOW_NAME: $_WINDOW_NAME (trimmed right)"
+
+      # - now add a predictable set of doublequotes
+      _WINDOW_NAME=\""$_WINDOW_NAME\""
+      _eko_v "               \$_WINDOW_NAME: $_WINDOW_NAME (doublequoted)"
+
+      #- complex_thorough method -#
+    ;;
+    simple_thorough_1)
+      #+ simple_thorough_1 method +#
+
+      # - uses: 1 bash prefix removal, 1 bash suffix removal
+
+      _eko_v "               \$_WINDOW_NAME: $_WINDOW_NAME (raw) (simple_thorough_1)"
+
+      # - trim doublequotes: left side only
+      # - lhs = single, rhs = single. doublequotes on lhs & rhs
+      until [ "$_WINDOW_NAME" = "${_WINDOW_NAME/#\"/}" ]
+      do
+        # - ${parameter/pattern/string}
+        # - remove prefix
+        _WINDOW_NAME=${_WINDOW_NAME/#\"/}
+      done
+      _eko_v "               \$_WINDOW_NAME: $_WINDOW_NAME (trimmed left)"
+
+      # - trim doublequotes: right side only
+      # - lhs = single, rhs = single. doublequotes on lhs & rhs
+      until [ "$_WINDOW_NAME" = "${_WINDOW_NAME/%\"/}" ]
+      do
+        # - ${parameter/pattern/string}
+        # - remove suffix
+        _WINDOW_NAME=${_WINDOW_NAME/%\"/}
+      done
+      _eko_v "               \$_WINDOW_NAME: $_WINDOW_NAME (trimmed right)"
+
+      # - now add a predictable set of doublequotes
+      _WINDOW_NAME=\""$_WINDOW_NAME\""
+      _eko_v "               \$_WINDOW_NAME: $_WINDOW_NAME (doublequoted)"
+
+      #- simple_thorough_1 method -#
+    ;;
+    simple_thorough_2)
+      #+ simple_thorough_2 method +#
+
+      # - uses: 1 bash prefix removal, 1 bash suffix removal
+
+      _eko_v "               \$_WINDOW_NAME: $_WINDOW_NAME (raw) (simple_thorough_2)"
+
+      # - trim doublequotes: left & right sides simultaneously
+      # - lhs = single, rhs = single. doublequotes on lhs & rhs
+      until [ "$_WINDOW_NAME" = "${_WINDOW_NAME/#\"/}" ] \
+         && [ "$_WINDOW_NAME" = "${_WINDOW_NAME/%\"/}" ]
+      do
+        # - ${parameter/pattern/string}
+        # - remove prefix
+        _WINDOW_NAME=${_WINDOW_NAME/#\"/}
+        # - remove suffix
+        _WINDOW_NAME=${_WINDOW_NAME/%\"/}
+      done
+      _eko_v "               \$_WINDOW_NAME: $_WINDOW_NAME (trimmed left & right)"
+
+      # - now add a predictable set of doublequotes
+      _WINDOW_NAME=\""$_WINDOW_NAME\""
+      _eko_v "               \$_WINDOW_NAME: $_WINDOW_NAME (doublequoted)"
+
+      #- simple_thorough_2 method -#
+    ;;
+    simple_blind)
+      #+ simple_blind method +#
+
+      # - uses: 1 bash pattern substitution
+
+      _eko_v "               \$_WINDOW_NAME: $_WINDOW_NAME (raw) (simple_blind)"
+
+      # - this could be problematic if the window name itself contains spaces
+      # - ${parameter/pattern/string}
+      # - remove every doublequote
+      _WINDOW_NAME=${_WINDOW_NAME//\"/}
+      _eko_v "               \$_WINDOW_NAME: $_WINDOW_NAME (trimmed blind)"
+
+      # - now add a predictable set of doublequotes
+      _WINDOW_NAME=\""$_WINDOW_NAME\""
+      _eko_v "               \$_WINDOW_NAME: $_WINDOW_NAME (doublequoted)"
+
+      #- simple_blind method -#
+    ;;
+    sed)
+      #+ sed method +#
+
+      # - uses: 1 bash builtin, 1 pipe, 1 binary call
+
+      _eko_v "                     \$_WINDOW_NAME: $_WINDOW_NAME (raw) (sed)"
+
+      # - trim doublequotes: left & right sides simultaneously
+      _WINDOW_NAME="$(echo "$_WINDOW_NAME" | sed -e 's/^\"*// ; s/\"*$//')"
+      _eko_v "                     \$_WINDOW_NAME: $_WINDOW_NAME (trimmed left & right)"
+
+      # - now add a predictable set of doublequotes
+      _WINDOW_NAME=\""$_WINDOW_NAME\""
+      _eko_v "                     \$_WINDOW_NAME: $_WINDOW_NAME (doublequoted)"
+
+      #- sed method -#
+    ;;
+    *)
+      _show_error "\$_ROUTINE not defined in function ${FUNCNAME[0]}"
+    ;;
+  esac
+  # - clumsy, but necessary
+  unset _ROUTINE
+
+  _eko_iod "#- _doublequote_window_name -#"
+}
+
+function _get_desktop_and_window_information() {
+  _eko_iod "#+ _get_desktop_and_window_information +#"
+
+  # functions:
+  # _doublequote_window_name
+  # _eko_iod
+  # _eko_v
+  # _window_excludes_generate
+  # _get_desktop_and_workarea_geometries
+  # _get_net_frame_extents_cardinal
+  # _get_net_wm_state_atom
+  # _get_window_id_and_name
+  # _get_window_undecorated_geometry
+  # _show_error
+
+  # variables:
+  # _NET_FRAME_EXTENT_CARDINAL_BOTTOM
+  # _NET_FRAME_EXTENT_CARDINAL_LEFT
+  # _NET_FRAME_EXTENT_CARDINAL_RIGHT
+  # _NET_FRAME_EXTENT_CARDINAL_TOP
+  # _OUTPUT_XPROP
+  # _OUTPUT_XWININFO
+  # _WINDOW_EXCLUDES
+  # _WINDOW_ID
+  # _WINDOW_NAME
+  # _WINDOW_DECORATED_X
+  # _WINDOW_UNDECORATED_X
+  # _WINDOW_DECORATED_Y
+  # _WINDOW_UNDECORATED_Y
+
+  # - select window to be moved
+  # - information to be used multiple times
+  # - "-z string" = true if the length of string is zero
+  if [ -z "$_WINDOW_ID" ]
+  then
+    # - prompts for window from which to gether information
+    _OUTPUT_XWININFO="$(xwininfo)"
+  else
+    # - gathers information from specified window
+    # - $_WINDOW_ID previously acquired from _parse_parameters
+    _OUTPUT_XWININFO="$(xwininfo -id "$_WINDOW_ID")"
+  fi
+
+  _get_window_id_and_name
+
+  # - ensure $_WINDOW_NAME is doublequoted
+  _doublequote_window_name
+
+  _window_excludes_generate
+
+  # - lhs = list, rhs = single. spaces & doublequotes on lhs & rhs
+  if [[ " $_WINDOW_EXCLUDES " =~ " $_WINDOW_NAME " ]]
+  then
+    _show_error "unmovable window $_WINDOW_NAME specified"
+  fi
+
+  # - to be used multiple times
+  _OUTPUT_XPROP="$(xprop -id "$_WINDOW_ID")"
+
+  # get desktop & workarea geometries
+  _get_desktop_and_workarea_geometries
+
+  # - using Window ID, get the following:
+  # - 1> window undecorated geometry (xwininfo)
+  _get_window_undecorated_geometry
+
+  # - 2> _NET_* stuff (xprop)
+  # - possible output (from firefox & rxvt):
+  #   - "_NET_FRAME_EXTENTS(CARDINAL) = 0, 0, 21, 0"
+  #   - "_NET_FRAME_EXTENTS(CARDINAL) = 1, 1, 22, 6"
+  _get_net_frame_extents_cardinal
+
+  # - 3> calculate window's decorated geometry (undecorated + decorations)
+  _WINDOW_DECORATED_X=$(( $_NET_FRAME_EXTENT_CARDINAL_LEFT + $_WINDOW_UNDECORATED_X + $_NET_FRAME_EXTENT_CARDINAL_RIGHT ))
+  _WINDOW_DECORATED_Y=$(( $_NET_FRAME_EXTENT_CARDINAL_TOP + $_WINDOW_UNDECORATED_Y + $_NET_FRAME_EXTENT_CARDINAL_BOTTOM ))
+
+  # - 4> _NET_* stuff (xprop)
+  # - possible output (from firefox & rxvt): ignore all other states
+  #   - "_NET_WM_STATE(ATOM) = "
+  #   - "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_HORZ"
+  #   - "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_VERT"
+  #   - "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_MAXIMIZED_HORZ"
+  _get_net_wm_state_atom
+
+  _eko_iod "#- _get_desktop_and_window_information -#"
+}
+
+function _get_desktop_and_workarea_geometries() {
+  _eko_iod "#+ _get_desktop_and_workarea_geometries +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+  # _show_error
+
+  # variables:
+  # FUNCNAME[0]
+  # _BOOLEAN_OVERALL
+  # _BORDER_L
+  # _BORDER_R
+  # _BORDER_T
+  # _BORDER_B
+  # _DESKTOP_NAME (unused for now)
+  # _DESKTOP_GEOMETRY_H
+  # _DESKTOP_GEOMETRY_W
+  # _DESKTOP_GEOMETRY_X
+  # _DESKTOP_GEOMETRY_Y
+  # _VIEWPORT_POSITION_X (unused for now)
+  # _VIEWPORT_POSITION_Y (unused for now)
+  # _WORKAREA_GEOMETRY_H
+  # _WORKAREA_GEOMETRY_W
+  # _WORKAREA_GEOMETRY_X
+  # _WORKAREA_GEOMETRY_Y
+  # _WMCTRL_BINARY
+  # _XX0
+
+  # IDEA:
+  # - this information (& much more) can be gathered using "xprop -root"
+  # - refer to _window_excludes_generate_new for ongoing tweaks
+  #   "_NET_DESKTOP_GEOMETRY(CARDINAL) = "
+
+  #_ROUTINE="head_sed"
+  #_ROUTINE="bash_pattern_substitution"
+  #_ROUTINE="sed_sed"
+  _ROUTINE="sed_improved" # preferred
+  case "$_ROUTINE" in
+    head_sed)
+      #+ head_sed method +#
+
+      # - uses: 1 bash builtin, here string, 3 binary calls, 2 pipes
+
+      # - gather information about the *first* desktop
+      # - workarea geometry is required for final window position
+      # - variable names inspired by the clear explanations in wmctrl(1)
+      read -r _XX0 _XX0 _XX0 _DESKTOP_GEOMETRY_W _DESKTOP_GEOMETRY_H _XX0 \
+        _VIEWPORT_POSITION_X _VIEWPORT_POSITION_Y _XX0 _WORKAREA_GEOMETRY_X \
+        _WORKAREA_GEOMETRY_Y _WORKAREA_GEOMETRY_W _WORKAREA_GEOMETRY_H \
+        _DESKTOP_NAME \
+        <<< "$($_WMCTRL_BINARY -d | head -n 1 | sed -e 's/,/ /g ; s/x/ /g')"
+
+      _eko_v "                  geometries: \"$_DESKTOP_GEOMETRY_W $_DESKTOP_GEOMETRY_H $_WORKAREA_GEOMETRY_X $_WORKAREA_GEOMETRY_Y $_WORKAREA_GEOMETRY_W $_WORKAREA_GEOMETRY_H\""
+      # -  left border: nothing
+      # - right border: openbox dock xfce4-panel
+      #   "1920 1080 0 0 1852 1056"
+      # -  left border: xfce4-panel
+      # - right border: openbox dock
+      #   "1920 1080 68 0 1784 1056"
+
+      # (unused for now)
+      _eko_v "-      \$_VIEWPORT_POSITION_X: \"$_VIEWPORT_POSITION_X\" (unused for now)"
+      _eko_v "-      \$_VIEWPORT_POSITION_Y: \"$_VIEWPORT_POSITION_Y\" (unused for now)"
+      _eko_v "-             \$_DESKTOP_NAME: \"$_DESKTOP_NAME\" (unused for now)"
+
+      #- head_sed method -#
+    ;;
+    bash_pattern_substitution)
+      #+ bash_pattern_substitution method +#
+
+      # - uses: 1 bash builtin, here string, 1 binary call,
+      #   uses: 8 bash pattern substitutions
+
+      # - gather information about the *first* desktop
+      # - workarea geometry is required for final window position
+      # - variable names inspired by the clear explanations in wmctrl(1)
+      read -r _XX0 _XX0 _XX0 _DESKTOP_GEOMETRY_W _XX0 _VIEWPORT_POSITION_X \
+        _XX0 _WORKAREA_GEOMETRY_X _WORKAREA_GEOMETRY_W _DESKTOP_NAME \
+        <<< "$($_WMCTRL_BINARY -d)"
+
+      # - fancy footwork to separate W/H & X/Y
+      # - ${parameter/pattern/string}
+      # - remove prefix
+      _DESKTOP_GEOMETRY_H="${_DESKTOP_GEOMETRY_W/*x/}"
+      # - remove suffix
+      _DESKTOP_GEOMETRY_W="${_DESKTOP_GEOMETRY_W/x*/}"
+      # - remove prefix
+      _VIEWPORT_POSITION_Y="${_VIEWPORT_POSITION_X/*,/}"
+      # - remove suffix
+      _VIEWPORT_POSITION_X="${_VIEWPORT_POSITION_X/,*/}"
+      # - remove prefix
+      _WORKAREA_GEOMETRY_Y="${_WORKAREA_GEOMETRY_X/*,/}"
+      # - remove suffix
+      _WORKAREA_GEOMETRY_X="${_WORKAREA_GEOMETRY_X/,*/}"
+      # - remove prefix
+      _WORKAREA_GEOMETRY_H="${_WORKAREA_GEOMETRY_W/*x/}"
+      # - remove suffix
+      _WORKAREA_GEOMETRY_W="${_WORKAREA_GEOMETRY_W/x*/}"
+
+      _eko_v "                  geometries: \"$_DESKTOP_GEOMETRY_W $_DESKTOP_GEOMETRY_H $_WORKAREA_GEOMETRY_X $_WORKAREA_GEOMETRY_Y $_WORKAREA_GEOMETRY_W $_WORKAREA_GEOMETRY_H\""
+      # -  left border: nothing
+      # - right border: openbox dock xfce4-panel
+      #   "1920 1080 0 0 1852 1056"
+      # -  left border: xfce4-panel
+      # - right border: openbox dock
+      #   "1920 1080 68 0 1784 1056"
+
+      # (unused for now)
+      _eko_v "-      \$_VIEWPORT_POSITION_X: \"$_VIEWPORT_POSITION_X\" (unused for now)"
+      _eko_v "-      \$_VIEWPORT_POSITION_Y: \"$_VIEWPORT_POSITION_Y\" (unused for now)"
+      _eko_v "-             \$_DESKTOP_NAME: \"$_DESKTOP_NAME\" (unused for now)"
+
+      #- bash_pattern_substitution method -#
+    ;;
+    sed_sed)
+      #+ sed_sed method +#
+
+      # - uses: 1 bash builtin, here string, 3 binary calls, 2 pipes
+
+      # - gather information about the *current* desktop
+      # - workarea geometry is required for final window position
+      # - variable names inspired by the clear explanations in wmctrl(1)
+      # - as well, it gathers information specific to the current desktop, not
+      #   just the first one
+      # FIXME:
+      # - the 2nd sed invocation is flawed. it will replace *all* "," & "x" in
+      #   the entire line. including $_DESKTOP_NAME. a different approach is
+      #   required
+      read -r _DESKTOP_GEOMETRY_W _DESKTOP_GEOMETRY_H _XX0 \
+        _VIEWPORT_POSITION_X _VIEWPORT_POSITION_Y _XX0 _WORKAREA_GEOMETRY_X \
+        _WORKAREA_GEOMETRY_Y _WORKAREA_GEOMETRY_W _WORKAREA_GEOMETRY_H \
+        _DESKTOP_NAME \
+        <<< "$($_WMCTRL_BINARY -d | sed -n -e 's/.* \* DG: //p' | sed -e 's/[,x]/ /g')"
+
+      _eko_v "                  geometries: \"$_DESKTOP_GEOMETRY_W $_DESKTOP_GEOMETRY_H $_WORKAREA_GEOMETRY_X $_WORKAREA_GEOMETRY_Y $_WORKAREA_GEOMETRY_W $_WORKAREA_GEOMETRY_H\""
+      # -  left border: nothing
+      # - right border: openbox dock xfce4-panel
+      #   "1920 1080 0 0 1852 1056"
+      # -  left border: xfce4-panel
+      # - right border: openbox dock
+      #   "1920 1080 68 0 1784 1056"
+
+      # (unused for now)
+      _eko_v "-      \$_VIEWPORT_POSITION_X: \"$_VIEWPORT_POSITION_X\" (unused for now)"
+      _eko_v "-      \$_VIEWPORT_POSITION_Y: \"$_VIEWPORT_POSITION_Y\" (unused for now)"
+      _eko_v "-             \$_DESKTOP_NAME: \"$_DESKTOP_NAME\" (unused for now)"
+
+      #- sed_sed method -#
+    ;;
+    sed_improved)
+      #+ sed_improved method +#
+
+      # - uses: 1 bash builtin, here string, 2 binary calls, 1 pipe,
+      #   uses: 8 bash pattern substitutions
+
+      # - this is an update to the sed_sed method immediately above. takes a
+      #   bit more effort to get things done, but does things correctly now
+
+      # "0  * DG: 1920x1080  VP: 0,0  WA: 0,0 1852x1056  I"
+      #           1     2    3   4 5  6   7 8 9    10    11
+      #           1          2   3    4   5   6          7
+
+      # - gather information about the *current* desktop
+      # - workarea geometry is required for final window position
+      # - variable names inspired by the clear explanations in wmctrl(1)
+      # - as well, it gathers information specific to the current desktop, not
+      #   just the first one
+      read -r _DESKTOP_GEOMETRY_W _XX0 _VIEWPORT_POSITION_X _XX0 \
+        _WORKAREA_GEOMETRY_X _WORKAREA_GEOMETRY_W _DESKTOP_NAME \
+        <<< "$($_WMCTRL_BINARY -d | sed -n -e 's/.* \* DG: //p')"
+
+      # - fancy footwork to separate W/H & X/Y
+      # - ${parameter/pattern/string}
+      # - remove prefix
+      _DESKTOP_GEOMETRY_H="${_DESKTOP_GEOMETRY_W/*x/}"
+      # - remove suffix
+      _DESKTOP_GEOMETRY_W="${_DESKTOP_GEOMETRY_W/x*/}"
+      # - remove prefix
+      _VIEWPORT_POSITION_Y="${_VIEWPORT_POSITION_X/*,/}"
+      # - remove suffix
+      _VIEWPORT_POSITION_X="${_VIEWPORT_POSITION_X/,*/}"
+      # - remove prefix
+      _WORKAREA_GEOMETRY_Y="${_WORKAREA_GEOMETRY_X/*,/}"
+      # - remove suffix
+      _WORKAREA_GEOMETRY_X="${_WORKAREA_GEOMETRY_X/,*/}"
+      # - remove prefix
+      _WORKAREA_GEOMETRY_H="${_WORKAREA_GEOMETRY_W/*x/}"
+      # - remove suffix
+      _WORKAREA_GEOMETRY_W="${_WORKAREA_GEOMETRY_W/x*/}"
+
+      _eko_v "                        geometries: \"$_DESKTOP_GEOMETRY_W $_DESKTOP_GEOMETRY_H $_WORKAREA_GEOMETRY_X $_WORKAREA_GEOMETRY_Y $_WORKAREA_GEOMETRY_W $_WORKAREA_GEOMETRY_H\""
+      # -  left border: nothing
+      # - right border: openbox dock xfce4-panel
+      #   "1920 1080 0 0 1852 1056"
+      # -  left border: xfce4-panel
+      # - right border: openbox dock
+      #   "1920 1080 68 0 1784 1056"
+
+      # (unused for now)
+      _eko_v "-            \$_VIEWPORT_POSITION_X: \"$_VIEWPORT_POSITION_X\" (unused for now)"
+      _eko_v "-            \$_VIEWPORT_POSITION_Y: \"$_VIEWPORT_POSITION_Y\" (unused for now)"
+      _eko_v "-                   \$_DESKTOP_NAME: \"$_DESKTOP_NAME\" (unused for now)"
+
+      #- sed_improved method -#
+    ;;
+    *)
+      _show_error "\$_ROUTINE not defined in function ${FUNCNAME[0]}"
+    ;;
+  esac
+  # - clumsy, but necessary
+  unset _ROUTINE
+
+  # - calculate right/bottom borders of usable desktop
+  _DESKTOP_GEOMETRY_X=$(( $_DESKTOP_GEOMETRY_W - $_WORKAREA_GEOMETRY_X - $_WORKAREA_GEOMETRY_W ))
+  _DESKTOP_GEOMETRY_Y=$(( $_DESKTOP_GEOMETRY_H - $_WORKAREA_GEOMETRY_Y - $_WORKAREA_GEOMETRY_H ))
+
+  # - out-of-range calculations: overall desktop X,Y vs usable desktop X,Y
+  if $_BOOLEAN_OVERALL
+  then
+    _BORDER_L=0
+    _BORDER_R=0
+    _BORDER_T=0
+    _BORDER_B=0
+  else
+    _BORDER_L=$_WORKAREA_GEOMETRY_X
+    _BORDER_R=$_DESKTOP_GEOMETRY_X
+    _BORDER_T=$_WORKAREA_GEOMETRY_Y
+    _BORDER_B=$_DESKTOP_GEOMETRY_Y
+  fi
+
+  _eko_iod "#- _get_desktop_and_workarea_geometries -#"
+}
+
+function _get_net_client_list_window() {
+  _eko_iod "#+ _get_net_client_list_window +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # FUNCNAME[0]
+  # _NET_CLIENT_LIST_WINDOW
+  # _ROUTINE
+  # _XX0
+
+  # "_NET_CLIENT_LIST(WINDOW): window id # "
+
+  # bash_pattern_substitution method is slower: a lot
+  #_ROUTINE="grep_sed"
+  #_ROUTINE="bash_pattern_substitution"
+  _ROUTINE="sed_sed" # preferred
+  case "$_ROUTINE" in
+    grep_sed)
+      #+ grep_sed method +#
+
+      # - uses: 1 bash builtin, here string, 3 binary calls, 2 pipes
+
+      read -r _XX0 _XX0 _XX0 _XX0 _NET_CLIENT_LIST_WINDOW \
+        <<< "$(xprop -root | grep '^_NET_CLIENT_LIST(WINDOW)' | sed -e 's/,//g')"
+
+      _eko_v "            \$_NET_CLIENT_LIST_WINDOW: \"$_NET_CLIENT_LIST_WINDOW\""
+
+      #- grep_sed method -#
+    ;;
+    bash_pattern_substitution)
+      #+ bash_pattern_substitution method +#
+
+      # - uses: 1 binary call, 3 bash pattern substitutions
+
+      _NET_CLIENT_LIST_WINDOW="$(xprop -root)"
+      # - ${parameter/pattern/string}
+      # - remove prefix
+      _NET_CLIENT_LIST_WINDOW="${_NET_CLIENT_LIST_WINDOW/*_NET_CLIENT_LIST(WINDOW): window id # /}"
+      # - remove suffix
+      _NET_CLIENT_LIST_WINDOW="${_NET_CLIENT_LIST_WINDOW/$'\x0a'*/}"
+       # - remove every comma
+      _NET_CLIENT_LIST_WINDOW="${_NET_CLIENT_LIST_WINDOW//,/}"
+
+      _eko_v "            \$_NET_CLIENT_LIST_WINDOW: \"$_NET_CLIENT_LIST_WINDOW\""
+
+      #- bash_pattern_substitution method -#
+    ;;
+    sed_sed)
+      #+ sed_sed method +#
+
+      # - uses: 3 binary calls, 2 pipes
+
+      _NET_CLIENT_LIST_WINDOW="$(xprop -root | sed -n -e 's/^_NET_CLIENT_LIST(WINDOW): window id # //p' | sed -e 's/,//g')"
+
+      _eko_v "          \$_NET_CLIENT_LIST_WINDOW: \"$_NET_CLIENT_LIST_WINDOW\""
+
+      #- sed_sed method -#
+    ;;
+    *)
+      _show_error "\$_ROUTINE not defined in function ${FUNCNAME[0]}"
+    ;;
+  esac
+  # - clumsy, but necessary
+  unset _ROUTINE
+
+  _eko_iod "#- _get_net_client_list_window -#"
+}
+
+function _get_net_frame_extents_cardinal() {
+  _eko_iod "#+ _get_net_frame_extents_cardinal +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # FUNCNAME[0]
+  # _NET_FRAME_EXTENT_CARDINAL_BOTTOM
+  # _NET_FRAME_EXTENT_CARDINAL_LEFT
+  # _NET_FRAME_EXTENT_CARDINAL_RIGHT
+  # _NET_FRAME_EXTENT_CARDINAL_TOP
+  # _OUTPUT_XPROP
+  # _ROUTINE
+  # _XX0
+
+  # "_NET_FRAME_EXTENTS(CARDINAL) = "
+
+  # bash_pattern_substitution method is slower: slightly
+  #_ROUTINE="grep_sed"
+  #_ROUTINE="bash_pattern_substitution"
+  _ROUTINE="sed_sed" # preferred
+  case "$_ROUTINE" in
+    grep_sed)
+      #+ grep_sed method +#
+
+      # - uses: 2 bash builtins, here string, 2 binary calls, 2 pipes
+
+      read -r _XX0 _XX0 _NET_FRAME_EXTENT_CARDINAL_LEFT \
+        _NET_FRAME_EXTENT_CARDINAL_RIGHT _NET_FRAME_EXTENT_CARDINAL_TOP \
+        _NET_FRAME_EXTENT_CARDINAL_BOTTOM \
+        <<< "$(echo "$_OUTPUT_XPROP" | grep '^_NET_FRAME_EXTENTS(CARDINAL)' | sed -e 's/,//g')"
+
+      _eko_v "              \$_NET_FRAME_EXTENT_CARDINAL_LEFT: \"$_NET_FRAME_EXTENT_CARDINAL_LEFT\""
+      _eko_v "              \$_NET_FRAME_EXTENT_CARDINAL_RIGHT: \"$_NET_FRAME_EXTENT_CARDINAL_RIGHT\""
+      _eko_v "              \$_NET_FRAME_EXTENT_CARDINAL_TOP: \"$_NET_FRAME_EXTENT_CARDINAL_TOP\""
+      _eko_v "              \$_NET_FRAME_EXTENT_CARDINAL_BOTTOM: \"$_NET_FRAME_EXTENT_CARDINAL_BOTTOM\""
+
+      #- grep_sed method -#
+    ;;
+    bash_pattern_substitution)
+      #+ bash_pattern_substitution method +#
+
+      # - uses: 3 bash pattern substitutions, 1 bash builtin, here string
+
+      # - ${parameter/pattern/string}
+      # - remove prefix
+      _XX0="${_OUTPUT_XPROP/*_NET_FRAME_EXTENTS(CARDINAL) = /}"
+      # - remove suffix
+      _XX0="${_XX0/$'\x0a'*/}"
+      # - remove every comma
+      _XX0="${_XX0//,/}"
+
+      read -r _NET_FRAME_EXTENT_CARDINAL_LEFT \
+        _NET_FRAME_EXTENT_CARDINAL_RIGHT _NET_FRAME_EXTENT_CARDINAL_TOP \
+        _NET_FRAME_EXTENT_CARDINAL_BOTTOM \
+        <<< "$_XX0"
+
+      _eko_v "              \$_NET_FRAME_EXTENT_CARDINAL_LEFT: \"$_NET_FRAME_EXTENT_CARDINAL_LEFT\""
+      _eko_v "              \$_NET_FRAME_EXTENT_CARDINAL_RIGHT: \"$_NET_FRAME_EXTENT_CARDINAL_RIGHT\""
+      _eko_v "              \$_NET_FRAME_EXTENT_CARDINAL_TOP: \"$_NET_FRAME_EXTENT_CARDINAL_TOP\""
+      _eko_v "              \$_NET_FRAME_EXTENT_CARDINAL_BOTTOM: \"$_NET_FRAME_EXTENT_CARDINAL_BOTTOM\""
+
+      #- bash_pattern_substitution method -#
+    ;;
+    sed_sed)
+      #+ sed_sed method +#
+
+      # - uses: 2 bash builtins, here string, 2 pipes, 2 binary calls
+
+      read -r _NET_FRAME_EXTENT_CARDINAL_LEFT _NET_FRAME_EXTENT_CARDINAL_RIGHT _NET_FRAME_EXTENT_CARDINAL_TOP _NET_FRAME_EXTENT_CARDINAL_BOTTOM \
+        <<< "$(echo "$_OUTPUT_XPROP" | sed -n -e 's/^_NET_FRAME_EXTENTS(CARDINAL) = //p' | sed -e 's/,//g')"
+
+      _eko_v "  \$_NET_FRAME_EXTENT_CARDINAL_LEFT: \"$_NET_FRAME_EXTENT_CARDINAL_LEFT\""
+      _eko_v " \$_NET_FRAME_EXTENT_CARDINAL_RIGHT: \"$_NET_FRAME_EXTENT_CARDINAL_RIGHT\""
+      _eko_v "   \$_NET_FRAME_EXTENT_CARDINAL_TOP: \"$_NET_FRAME_EXTENT_CARDINAL_TOP\""
+      _eko_v "\$_NET_FRAME_EXTENT_CARDINAL_BOTTOM: \"$_NET_FRAME_EXTENT_CARDINAL_BOTTOM\""
+
+      #- sed_sed method -#
+    ;;
+    *)
+      _show_error "\$_ROUTINE not defined in function ${FUNCNAME[0]}"
+    ;;
+  esac
+  # - clumsy, but necessary
+  unset _ROUTINE
+
+  _eko_iod "#- _get_net_frame_extents_cardinal -#"
+}
+
+function _get_net_wm_state_atom() {
+  _eko_iod "#+ _get_net_wm_state_atom +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # FUNCNAME[0]
+  # _BOOLEAN_MAXIMIZED_X
+  # _BOOLEAN_MAXIMIZED_Y
+  # _NET_WM_STATE_ATOM
+  # _OUTPUT_XPROP
+  # _ROUTINE
+  # _XX0
+
+  # "_NET_WM_STATE(ATOM) = "
+
+  # bash_pattern_substitution method is slower: slightly
+  #_ROUTINE="grep_sed"
+  #_ROUTINE="bash_pattern_substitution"
+  _ROUTINE="sed_sed" # preferred
+  case "$_ROUTINE" in
+    grep_sed)
+      #+ grep_sed method +#
+
+      # - uses: 2 bash builtins, here string, 2 pipes, 2 binary calls
+
+      read -r _XX0 _XX0 _NET_WM_STATE_ATOM \
+        <<< "$(echo "$_OUTPUT_XPROP" | grep '^_NET_WM_STATE(ATOM)' | sed -e 's/,//g')"
+
+      _eko_v "              \$_NET_WM_STATE_ATOM: \"$_NET_WM_STATE_ATOM\""
+
+      #- grep_sed method -#
+    ;;
+    bash_pattern_substitution)
+      #+ bash_pattern_substitution method +#
+
+      # - uses: 3 bash pattern substitutions
+
+      # - ${parameter/pattern/string}
+      # - remove prefix
+      _NET_WM_STATE_ATOM="${_OUTPUT_XPROP/*_NET_WM_STATE(ATOM) = /}"
+      # - remove suffix
+      _NET_WM_STATE_ATOM="${_NET_WM_STATE_ATOM/$'\x0a'*/}"
+      # - remove every comma
+      _NET_WM_STATE_ATOM="${_NET_WM_STATE_ATOM//,/}"
+
+      _eko_v "              \$_NET_WM_STATE_ATOM: \"$_NET_WM_STATE_ATOM\""
+
+      #- bash_pattern_substitution method -#
+    ;;
+    sed_sed)
+      #+ sed_sed method +#
+
+      # - uses: 1 bash builtin, 2 pipes, 2 binary calls
+
+      _NET_WM_STATE_ATOM="$(echo "$_OUTPUT_XPROP" | sed -n -e 's/^_NET_WM_STATE(ATOM) = //p' | sed -e 's/,//g')"
+
+      _eko_v "               \$_NET_WM_STATE_ATOM: \"$_NET_WM_STATE_ATOM\""
+
+      #- sed_sed method -#
+    ;;
+    *)
+      _show_error "\$_ROUTINE not defined in function ${FUNCNAME[0]}"
+    ;;
+  esac
+  # - clumsy, but necessary
+  unset _ROUTINE
+
+  # - lhs = list, rhs = single. spaces & doublequotes on lhs & rhs
+  if [[ " $_NET_WM_STATE_ATOM " =~ " _NET_WM_STATE_MAXIMIZED_HORZ " ]]
+  then
+    _BOOLEAN_MAXIMIZED_X=true
+  else
+    _BOOLEAN_MAXIMIZED_X=false
+  fi
+
+  # - lhs = list, rhs = single. spaces & doublequotes on lhs & rhs
+  if [[ " $_NET_WM_STATE_ATOM " =~ " _NET_WM_STATE_MAXIMIZED_VERT " ]]
+  then
+    _BOOLEAN_MAXIMIZED_Y=true
+  else
+    _BOOLEAN_MAXIMIZED_Y=false
+  fi
+
+  _eko_iod "#- _get_net_wm_state_atom -#"
+}
+
+function _get_window_undecorated_geometry() {
+  _eko_iod "#+ _get_window_undecorated_geometry +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # FUNCNAME[0]
+  # _OUTPUT_XWININFO
+  # _ROUTINE
+  # _WINDOW_POSITION_X (unused for now)
+  # _WINDOW_UNDECORATED_X
+  # _WINDOW_POSITION_Y (unused for now)
+  # _WINDOW_UNDECORATED_Y
+  # _XX0
+
+  #_ROUTINE="grep"
+  #_ROUTINE="bash_pattern_substitution"
+  #_ROUTINE="sed_old"
+  #_ROUTINE="sed_sed" # do *not* use
+  _ROUTINE="no_doublequotes_sed" # preferred
+  case "$_ROUTINE" in
+    grep)
+      #+ grep method +#
+
+      # - uses: 3 bash builtins, here string, pipe, 1 binary call
+
+      # - do not doublequote the $(foo) below
+      # - I think I know why. output is 2 lines
+      # - double echo works around it
+      read -r _XX0 _WINDOW_UNDECORATED_X _XX0 _WINDOW_UNDECORATED_Y \
+        <<< "$(echo $(echo "$_OUTPUT_XWININFO" | grep -E 'Width:|Height:'))"
+#        <<< $(echo "$_OUTPUT_XWININFO" | grep -E 'Width:|Height:')
+#        <<< "$(echo "$_OUTPUT_XWININFO" | grep -E 'Width:|Height:')"
+
+      _eko_v "      \$_WINDOW_UNDECORATED_X: \"$_WINDOW_UNDECORATED_X\""
+      _eko_v "      \$_WINDOW_UNDECORATED_Y: \"$_WINDOW_UNDECORATED_Y\""
+
+      #- grep method -#
+    ;;
+    bash_pattern_substitution)
+      #+ bash_pattern_substitution method +#
+
+      # - uses: 4 bash pattern substitutions
+
+      # - ${parameter/pattern/string}
+      # - remove prefix
+      _WINDOW_UNDECORATED_X="${_OUTPUT_XWININFO/*Width: /}"
+      # - remove suffix
+      _WINDOW_UNDECORATED_X="${_WINDOW_UNDECORATED_X/$'\x0a'*/}"
+      # - remove prefix
+      _WINDOW_UNDECORATED_Y="${_OUTPUT_XWININFO/*Height: /}"
+      # - remove suffix
+      _WINDOW_UNDECORATED_Y="${_WINDOW_UNDECORATED_Y/$'\x0a'*/}"
+
+      _eko_v "      \$_WINDOW_UNDECORATED_X: \"$_WINDOW_UNDECORATED_X\""
+      _eko_v "      \$_WINDOW_UNDECORATED_Y: \"$_WINDOW_UNDECORATED_Y\""
+
+      #- bash_pattern_substitution method -#
+    ;;
+    sed_old)
+      #+ sed_old method +#
+
+      # - uses: 3 bash builtins, here string, 1 pipe, 1 binary call
+
+      # - do not doublequote the $(foo) below
+      # - I think I know why. output is 2 lines
+      # - double echo works around it
+      read -r _WINDOW_UNDECORATED_X _WINDOW_UNDECORATED_Y \
+        <<< "$(echo $(echo "$_OUTPUT_XWININFO" | sed -n -e 's/.*\(Width\|Height\): //p'))"
+#        <<< "$(echo $(echo "$_OUTPUT_XWININFO" | sed -n -e 's/\(.*Width: \|.*Height: \)//p'))"
+#        <<< $(echo "$_OUTPUT_XWININFO" | sed -n -e 's/\(.*Width: \|.*Height: \)//p')
+#        <<< "$(echo "$_OUTPUT_XWININFO" | sed -n -e 's/\(.*Width: \|.*Height: \)//p')"
+
+      _eko_v "      \$_WINDOW_UNDECORATED_X: \"$_WINDOW_UNDECORATED_X\""
+      _eko_v "      \$_WINDOW_UNDECORATED_Y: \"$_WINDOW_UNDECORATED_Y\""
+
+      #- sed_old method -#
+    ;;
+    sed_sed)
+      #+ sed_sed method +#
+
+      # - uses: 2 bash builtins, here string, 2 pipes, 2 binary calls
+
+      # NOTE:
+      # - do *not* use this method!
+      # - "-geometry" counts characters not pixels for X/Y dimensions of
+      #   terminals. this, obviously, is bad
+
+      read -r _WINDOW_UNDECORATED_X _WINDOW_UNDECORATED_Y _WINDOW_POSITION_X \
+        _WINDOW_POSITION_Y \
+        <<< "$(echo "$_OUTPUT_XWININFO" | sed -n -e 's/.*-geometry //p' | sed -e 's/[x+-]/ /g')"
+
+      _eko_v "      \$_WINDOW_UNDECORATED_X: \"$_WINDOW_UNDECORATED_X\""
+      _eko_v "      \$_WINDOW_UNDECORATED_Y: \"$_WINDOW_UNDECORATED_Y\""
+
+      # (unused for now)
+      _eko_v "-        \$_WINDOW_POSITION_X: \"$_WINDOW_POSITION_X\" (unused for now)"
+      _eko_v "-        \$_WINDOW_POSITION_Y: \"$_WINDOW_POSITION_Y\" (unused for now)"
+
+      #- sed_sed method -#
+    ;;
+    no_doublequotes_sed)
+      #+ no_doublequotes_sed method +#
+
+      # - uses: 2 bash builtins, here string, 1 pipe, 1 binary call
+
+      # NOTE:
+      # - no doublequotes around $_OUTPUT_XWININFO
+      # - there is no spacing to preserve, so the lack of doublequotes is of
+      #   no consequence
+
+      read -r _WINDOW_UNDECORATED_X _WINDOW_UNDECORATED_Y \
+        <<< "$(echo $_OUTPUT_XWININFO | sed -n -e 's/.*Width: \(.*\) Height: \(.*\) Depth:.*/\1 \2/p')"
+
+      _eko_v "            \$_WINDOW_UNDECORATED_X: \"$_WINDOW_UNDECORATED_X\""
+      _eko_v "            \$_WINDOW_UNDECORATED_Y: \"$_WINDOW_UNDECORATED_Y\""
+
+      #- no_doublequotes_sed method -#
+    ;;
+    *)
+      _show_error "\$_ROUTINE not defined in function ${FUNCNAME[0]}"
+    ;;
+  esac
+  # - clumsy, but necessary
+  unset _ROUTINE
+
+  _eko_iod "#- _get_window_undecorated_geometry -#"
+}
+
+function _get_window_id_and_name() {
+  _eko_iod "#+ _get_window_id_and_name +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+  # _show_error
+
+  # variables:
+  # FUNCNAME[0]
+  # _OUTPUT_XWININFO
+  # _ROUTINE
+  # _WINDOW_ID
+  # _WINDOW_NAME
+  # _XX0
+
+  #_ROUTINE="grep"
+  #_ROUTINE="bash_pattern_substitution"
+  _ROUTINE="sed" # preferred
+  case "$_ROUTINE" in
+    grep)
+      #+ grep method +#
+
+      # - uses: 2 bash builtins, here string, 1 pipe, 1 binary call
+
+      # - get window's Window ID & name
+      read -r _XX0 _XX0 _XX0 _WINDOW_ID _WINDOW_NAME \
+        <<< "$(echo "$_OUTPUT_XWININFO" | grep 'Window id:')"
+
+      _eko_v "                 \$_WINDOW_ID: \"$_WINDOW_ID\""
+      _eko_v "               \$_WINDOW_NAME: \"$_WINDOW_NAME\""
+
+      #- grep method -#
+    ;;
+    bash_pattern_substitution)
+      #+ bash_pattern_substitution method +#
+
+      # - uses: 4 bash pattern substitutions
+
+      # - get window's Window ID & name
+      # - ${parameter/pattern/string}
+      # - remove prefix
+      _WINDOW_NAME="${_OUTPUT_XWININFO/*Window id: /}"
+      # - remove suffix
+      _WINDOW_NAME="${_WINDOW_NAME/$'\x0a'*/}"
+      # - remove suffix
+      _WINDOW_ID="${_WINDOW_NAME/ */}"
+      # - remove prefix
+      _WINDOW_NAME="${_WINDOW_NAME/$_WINDOW_ID /}"
+
+      _eko_v "                 \$_WINDOW_ID: \"$_WINDOW_ID\""
+      _eko_v "               \$_WINDOW_NAME: \"$_WINDOW_NAME\""
+
+      #- bash_pattern_substitution method -#
+    ;;
+    sed)
+      #+ sed method +#
+
+      # - uses: 2 bash builtins, here string, 1 pipe, 1 binary call
+
+      # - get window's Window ID & name
+      read -r _WINDOW_ID _WINDOW_NAME \
+        <<< "$(echo "$_OUTPUT_XWININFO" | sed -n -e 's/.*Window id: \(.*\) \(.*\)/\1 \2/p')"
+
+      _eko_v "                       \$_WINDOW_ID: \"$_WINDOW_ID\""
+      _eko_v "                     \$_WINDOW_NAME: \"$_WINDOW_NAME\""
+
+      #- sed method -#
+    ;;
+    *)
+      _show_error "\$_ROUTINE not defined in function ${FUNCNAME[0]}"
+    ;;
+  esac
+  # - clumsy, but necessary
+  unset _ROUTINE
+
+  _eko_iod "#- _get_window_id_and_name -#"
+}
+
+function _kludge_coordinates() {
+  _eko_iod "#+ _kludge_coordinates +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # _KLUDGE_X
+  # _KLUDGE_Y
+  # _NET_FRAME_EXTENT_CARDINAL_LEFT
+  # _NET_FRAME_EXTENT_CARDINAL_TOP
+  # _WINDOW_NAME
+
+  # - lhs = list or single, rhs = regex. doublequotes on lhs only (not really)
+  # - the regex must be *outside* the doublequotes
+  if [[ "$_WINDOW_NAME" =~ .*" - TigerVNC\""$ ]]
+  then
+    # - dimensions of left & top decorations
+    # - seems most likely for other windows as well. if not, this routine is
+    #   already in place & quite simple to update
+    _KLUDGE_X=$_NET_FRAME_EXTENT_CARDINAL_LEFT
+    _KLUDGE_Y=$_NET_FRAME_EXTENT_CARDINAL_TOP
+  else
+    _KLUDGE_X=0
+    _KLUDGE_Y=0
+  fi
+
+  _eko_iod "#- _kludge_coordinates -#"
+}
+
+function _move_window_position() {
+  _eko_iod "#+ _move_window_position +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+  # _kludge_coordinates
+  # _validate_coordinates
+
+  # variables:
+  # _BOOLEAN_MAXIMIZED_X
+  # _BOOLEAN_MAXIMIZED_Y
+  # _BOOLEAN_RAISE
+  # _BOOLEAN_TEST
+  # _BORDER_B
+  # _BORDER_L
+  # _BORDER_R
+  # _BORDER_T
+  # _COMMAND_MOVE
+  # _COMMAND_RAISE
+  # _COORDINATE_X
+  # _COORDINATE_Y
+  # _NET_FRAME_EXTENT_CARDINAL_BOTTOM
+  # _NET_FRAME_EXTENT_CARDINAL_LEFT
+  # _NET_FRAME_EXTENT_CARDINAL_RIGHT
+  # _NET_FRAME_EXTENT_CARDINAL_TOP
+  # _DESKTOP_GEOMETRY_H
+  # _DESKTOP_GEOMETRY_W
+  # _DESKTOP_GEOMETRY_X
+  # _DESKTOP_GEOMETRY_Y
+  # _KLUDGE_X
+  # _KLUDGE_Y
+  # _WINDOW_ID
+  # _WINDOW_NAME
+  # _WINDOW_DECORATED_X
+  # _WINDOW_UNDECORATED_X
+  # _WINDOW_DECORATED_Y
+  # _WINDOW_UNDECORATED_Y
+  # _WMCTRL_BINARY
+  # _WORKAREA_GEOMETRY_H
+  # _WORKAREA_GEOMETRY_W
+  # _WORKAREA_GEOMETRY_X
+  # _WORKAREA_GEOMETRY_Y
+
+  # - possible outcomes: error exit, force to fit, ignore part or all of a
+  #   coordinate if the window is maximized
+  _validate_coordinates
+
+  # - some windows misbehave in their window placement
+  # - beat them into submission
+  _kludge_coordinates
+
+  # TODO: (maybe)
+  # - reorder $_COMMAND stuff. raise first, then move
+  # - use only 1 variable ($_COMMAND), but do 2 sets of tests
+
+  # - finally: the command to move the window ('-i -r' order is important)
+  # - experimented with "-b add,above". something's not going as expected so
+  #   it's not used in $_COMMAND_MOVE below
+  _COMMAND_MOVE="$_WMCTRL_BINARY -i -r $_WINDOW_ID -e 0,$(( $_COORDINATE_X + $_KLUDGE_X )),$(( $_COORDINATE_Y + $_KLUDGE_Y )),-1,-1"
+  # - instead, a second call to wmctrl to explicitly raise & give focus
+  # - don't use "-R". it causes the window to become "unsticky"
+ #_COMMAND_RAISE="$_WMCTRL_BINARY -i -R $_WINDOW_ID"
+  _COMMAND_RAISE="$_WMCTRL_BINARY -i -a $_WINDOW_ID"
+
+  _eko_v "                         window id: $_WINDOW_ID
+                       window name: $_WINDOW_NAME
+                  desktop geometry: $_DESKTOP_GEOMETRY_W,$_DESKTOP_GEOMETRY_H
+                 workarea geometry: $_WORKAREA_GEOMETRY_W,$_WORKAREA_GEOMETRY_H
+         desktop borders (L,R,T,B): $_BORDER_L,$_BORDER_R,$_BORDER_T,$_BORDER_B
+          desktop limits (L,R,T,B): $_WORKAREA_GEOMETRY_X,$_DESKTOP_GEOMETRY_X,$_WORKAREA_GEOMETRY_Y,$_DESKTOP_GEOMETRY_Y
+          window X,Y (undecorated): $_WINDOW_UNDECORATED_X,$_WINDOW_UNDECORATED_Y
+      window decorations (L,R,T,B): $_NET_FRAME_EXTENT_CARDINAL_LEFT,$_NET_FRAME_EXTENT_CARDINAL_RIGHT,$_NET_FRAME_EXTENT_CARDINAL_TOP,$_NET_FRAME_EXTENT_CARDINAL_BOTTOM
+            window X,Y (decorated): $_WINDOW_DECORATED_X,$_WINDOW_DECORATED_Y
+              window maximized X,Y: $_BOOLEAN_MAXIMIZED_X,$_BOOLEAN_MAXIMIZED_Y
+               new X,Y coordinates: $_COORDINATE_X,$_COORDINATE_Y
+                       X,Y kludges: $_KLUDGE_X,$_KLUDGE_Y
+             wmctrl command (move): $_COMMAND_MOVE"
+
+  if $_BOOLEAN_RAISE
+  then
+    _eko_v "            wmctrl command (raise): $_COMMAND_RAISE"
+  fi
+
+###
+
+# TODO:
+# - replace "echo" with "_eko_S"?
+
+#+
+  if $_BOOLEAN_TEST
+  then
+    # show command but don't move window
+    echo "$_COMMAND_MOVE"
+    if $_BOOLEAN_RAISE
+    then
+      # show command but don't raise/focus window
+      echo "$_COMMAND_RAISE"
+    fi
+  else
+    # move window if possible
+    $_COMMAND_MOVE
+    if $_BOOLEAN_RAISE
+    then
+      # raise/focus window if possible
+      $_COMMAND_RAISE
+    fi
+  fi
+#-
+
+###
+
+  _eko_iod "#- _move_window_position -#"
+}
+
+function _parse_parameters() {
+  #+ _parse_parameters +#
+
+  # functions:
+  # _eko_iod
+  # _eko_sd
+  # _set_window_position
+  # _show_error
+  # _show_help
+  # _validate_window_id
+
+  # variables:
+  # #
+  # 1
+  # _BOOLEAN_DEBUG
+  # _BOOLEAN_OVERALL
+  # _BOOLEAN_QUIET
+  # _BOOLEAN_RAISE
+  # _BOOLEAN_STDOUT
+  # _BOOLEAN_SUBSET_D
+  # _BOOLEAN_SUBSET_V
+  # _BOOLEAN_TEST
+  # _BOOLEAN_VERBOSE
+  # _INDENT  
+  # _WINDOW_COORDINATES
+  # _WINDOW_ID
+  # _WMCTRL_BINARY
+
+  # NOTE:
+  # - all boolean variables are now proper toggles
+
+  # NOTE:
+  # - $_BOOLEAN_QUIET
+  # - $_BOOLEAN_STDOUT
+  # ^ are special. it's a bit confusing to set up initially
+
+  # - $_BOOLEAN_STDOUT
+  # - companion function: _eko_S
+  # - default: true
+  # - *not* toggled in while/do/done loop like the others
+  # - set to false if either $_BOOLEAN_DEBUG or $_BOOLEAN_VERBOSE are true
+
+  # - $_BOOLEAN_QUIET
+  # - companion functions: none
+  # - default: false
+  # - toggled in while/do/done loop like the others
+  # - option "-q, --quiet"
+  # - immediately *after* the while/do/done loop it sets all booleans
+  #   responsible for printing text to false (all other booleans remain
+  #   unchanged)
+
+  #+ parameter defaults +#
+
+  _BOOLEAN_DEBUG=false
+  _BOOLEAN_OVERALL=false
+  _BOOLEAN_QUIET=false
+  _BOOLEAN_RAISE=false
+  _BOOLEAN_STDOUT=true
+  _BOOLEAN_SUBSET_D=false
+  _BOOLEAN_SUBSET_V=false
+  _BOOLEAN_TEST=false
+  _BOOLEAN_VERBOSE=false
+  unset _WINDOW_COORDINATES
+  unset _WINDOW_ID
+
+  #- parameter defaults -#
+
+  #+ other defaults +#
+
+  _INDENT=0
+
+  #- other defaults -#
+
+  # - -eq/-ne/-lt/-le/-gt/-ge = no doublequotes
+  while [ $# -gt 0 ]
+  do
+    # - case modification. force lowercase
+    # - ${parameter,,pattern}
+    case "${1,,}" in
+      -c|--coordinates)
+        shift
+        # - case modification. force lowercase
+        # - ${parameter,,pattern}
+        case "${1,,}" in
+          ul|uc|ur|ml|mc|mr|bl|bc|br|same|*,*)
+            _WINDOW_COORDINATES="${1,,}"
+          ;;
+          *)
+            _show_error "invalid window coordinates \"$1\" specified"
+          ;;
+        esac
+      ;;
+      -d|--debug)
+        if $_BOOLEAN_DEBUG
+        then
+          _BOOLEAN_DEBUG=false
+        else
+          _BOOLEAN_DEBUG=true
+        fi
+      ;;
+      -id)
+        shift
+        # - case modification. force lowercase
+        # - ${parameter,,pattern}
+        _WINDOW_ID="${1,,}"
+      ;;
+      -o|--overall)
+        if $_BOOLEAN_OVERALL
+        then
+          _BOOLEAN_OVERALL=false
+        else
+          _BOOLEAN_OVERALL=true
+        fi
+      ;;
+      -q|--quiet)
+        if $_BOOLEAN_QUIET
+        then
+          _BOOLEAN_QUIET=false
+        else
+          _BOOLEAN_QUIET=true
+        fi
+      ;;
+      -r|--raise)
+        if $_BOOLEAN_RAISE
+        then
+          _BOOLEAN_RAISE=false
+        else
+          _BOOLEAN_RAISE=true
+        fi
+      ;;
+      -sd|--subset-debug)
+        if $_BOOLEAN_SUBSET_D
+        then
+          _BOOLEAN_SUBSET_D=false
+        else
+          _BOOLEAN_SUBSET_D=true
+        fi
+      ;;
+      -sv|--subset-verbose)
+        if $_BOOLEAN_SUBSET_V
+        then
+          _BOOLEAN_SUBSET_V=false
+        else
+          _BOOLEAN_SUBSET_V=true
+        fi
+      ;;
+      -t|--test)
+        if $_BOOLEAN_TEST
+        then
+          _BOOLEAN_TEST=false
+        else
+          _BOOLEAN_TEST=true
+        fi
+      ;;
+      -v|--verbose)
+        if $_BOOLEAN_VERBOSE
+        then
+          _BOOLEAN_VERBOSE=false
+        else
+          _BOOLEAN_VERBOSE=true
+        fi
+      ;;
+      '-?'|-h|--help) # -? must be '-?' or it matches '-<any single character>'
+        _show_help
+      ;;
+      -*)
+        _show_error "invalid option \"$1\" specified"
+      ;;
+      *)
+        _show_error "invalid parameter \"$1\" specified"
+      ;;
+    esac
+    shift
+  done
+
+  #- _parse_parameters -#
+
+  # - technically in the wrong spot, but it's a chicken or egg scenario
+  _eko_iod "#+ _parse_parameters +#"
+
+  #+ parameter settings (in (mostly) proper order of operation) +#
+
+  # NOTE:
+  # - the following 6 blocks are *very* sensitive to order of operations
+
+  _eko_sd "             \$_BOOLEAN_DEBUG: \"$_BOOLEAN_DEBUG\""
+  _eko_sd "           \$_BOOLEAN_OVERALL: \"$_BOOLEAN_OVERALL\""
+  _eko_sd "             \$_BOOLEAN_QUIET: \"$_BOOLEAN_QUIET\""
+  _eko_sd "             \$_BOOLEAN_RAISE: \"$_BOOLEAN_RAISE\""
+  _eko_sd "            \$_BOOLEAN_STDOUT: \"$_BOOLEAN_STDOUT\""
+  _eko_sd "          \$_BOOLEAN_SUBSET_D: \"$_BOOLEAN_SUBSET_D\""
+  _eko_sd "          \$_BOOLEAN_SUBSET_V: \"$_BOOLEAN_SUBSET_V\""
+  _eko_sd "              \$_BOOLEAN_TEST: \"$_BOOLEAN_TEST\""
+  _eko_sd "           \$_BOOLEAN_VERBOSE: \"$_BOOLEAN_VERBOSE\""
+  _eko_sd "        \$_WINDOW_COORDINATES: \"$_WINDOW_COORDINATES\""
+  _eko_sd "                 \$_WINDOW_ID: \"$_WINDOW_ID\""
+
+  if $_BOOLEAN_DEBUG \
+  || $_BOOLEAN_VERBOSE
+  then
+    _BOOLEAN_STDOUT=false
+  fi
+
+  # - prevent printing text, do not prevent actions
+  if $_BOOLEAN_QUIET
+  then
+    _BOOLEAN_DEBUG=false
+   #_BOOLEAN_OVERALL=false
+    _BOOLEAN_QUIET=false
+   #_BOOLEAN_RAISE=false
+    _BOOLEAN_STDOUT=false
+    _BOOLEAN_SUBSET_D=false
+    _BOOLEAN_SUBSET_V=false
+   #_BOOLEAN_TEST=false
+    _BOOLEAN_VERBOSE=false
+  fi
+
+  # ORDER:
+  # - before anything/everything else (except toggling the assorted booleans
+  #   as above, this command *must* succeed
+
+  # - dual purpose: full path to binary or "" if nothing is returned
+  _WMCTRL_BINARY="$(which wmctrl 2> /dev/null)"
+  # - "-z string" = true if the length of string is zero
+  if [ -z "$_WMCTRL_BINARY" ]
+  then
+    _show_error "binary \"wmctrl\" not found"
+  fi
+
+  # validate Window ID if it was specified on the commandline
+  # - "-n string" = true if the length of string is non-zero
+  if [ -n "$_WINDOW_ID" ]
+  then
+   #_validate_window_id "$_WINDOW_ID"
+    _validate_window_id
+  fi
+
+  # - do the thing
+  _set_window_position
+
+  #- parameter settings (in (mostly) proper order of operation) -#
+
+  _eko_iod "#- _parse_parameters -#"
+}
+
+function _parse_user_specified_coordinates() {
+  _eko_iod "#+ _parse_user_specified_coordinates +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+  # _show_error
+
+  # variables:
+  # FUNCNAME[0]
+  # _COORDINATE_X
+  # _COORDINATE_Y
+  # _ROUTINE
+  # _WINDOW_COORDINATES
+
+  #_ROUTINE="sed"
+  #_ROUTINE="bash_pattern_substitution_1"
+  _ROUTINE="bash_pattern_substitution_2" # preferred
+  case "$_ROUTINE" in
+    sed)
+      #+ sed method +#
+
+      # - uses: 2 bash builtins, here string, 1 pipe, 1 binary call
+
+      read -r _COORDINATE_X _COORDINATE_Y \
+        <<< "$(echo $_WINDOW_COORDINATES | sed -e 's/,/ /g')"
+
+      _eko_v "              \$_COORDINATE_X: \"$_COORDINATE_X\""
+      _eko_v "              \$_COORDINATE_Y: \"$_COORDINATE_Y\""
+
+      #- sed method -#
+    ;;
+    bash_pattern_substitution_1)
+      #+ bash_pattern_substitution_1 method +#
+
+      # - uses: 2 bash pattern substitutions
+
+      # - ${parameter/pattern/string}
+      # - remove suffix
+      _COORDINATE_X="${_WINDOW_COORDINATES/,*/}"
+      # - remove prefix
+      _COORDINATE_Y="${_WINDOW_COORDINATES/*,/}"
+
+      _eko_v "              \$_COORDINATE_X: \"$_COORDINATE_X\""
+      _eko_v "              \$_COORDINATE_Y: \"$_COORDINATE_Y\""
+
+      #- bash_pattern_substitution_1 method -#
+    ;;
+    bash_pattern_substitution_2)
+      #+ bash_pattern_substitution_2 method +#
+
+      # - uses: 2 bash builtins, here string, 1 bash pattern substitution
+
+      # - ${parameter/pattern/string}
+      # - replace comma
+      read -r _COORDINATE_X _COORDINATE_Y \
+        <<< $(echo ${_WINDOW_COORDINATES/,/ })
+
+      _eko_v "              \$_COORDINATE_X: \"$_COORDINATE_X\""
+      _eko_v "              \$_COORDINATE_Y: \"$_COORDINATE_Y\""
+
+      #- bash_pattern_substitution_2 method -#
+    ;;
+    *)
+      _show_error "\$_ROUTINE not defined in function ${FUNCNAME[0]}"
+    ;;
+  esac
+  # - clumsy, but necessary
+  unset _ROUTINE
+
+  _eko_iod "#- _parse_user_specified_coordinates -#"
+}
+
+function _set_window_position() {
+  _eko_iod "#+ _set_window_position +#"
+
+  # functions:
+  # _get_desktop_and_window_information
+  # _eko_iod
+  # _move_window_position
+  # _parse_user_specified_coordinates
+
+  # variables:
+  # _BORDER_B
+  # _BORDER_L
+  # _BORDER_R
+  # _BORDER_T
+  # _COORDINATE_X
+  # _COORDINATE_Y
+  # _DESKTOP_GEOMETRY_H
+  # _DESKTOP_GEOMETRY_W
+  # _WINDOW_COORDINATES
+  # _WINDOW_DECORATED_X
+  # _WINDOW_DECORATED_Y
+
+  # - gather desktop/window info, calculate new window position, move window
+  # - there are 9 pre-defined coordinates (3x3 grid), 1 "do not move"
+  #   coordinate (for use with --raise), & 1 free-form coordinate
+  case "$_WINDOW_COORDINATES" in
+    ul) # Upper/Left
+      _get_desktop_and_window_information
+      _COORDINATE_X=$_BORDER_L
+      _COORDINATE_Y=$_BORDER_T
+      _move_window_position
+    ;;
+    uc) # Upper/Center
+      _get_desktop_and_window_information
+      _COORDINATE_X=$(( ( $_DESKTOP_GEOMETRY_W - $_WINDOW_DECORATED_X - $_BORDER_R ) / 2 ))
+      _COORDINATE_Y=$_BORDER_T
+      _move_window_position
+    ;;
+    ur) # Upper/Right
+      _get_desktop_and_window_information
+      _COORDINATE_X=$((   $_DESKTOP_GEOMETRY_W - $_WINDOW_DECORATED_X - $_BORDER_R       ))
+      _COORDINATE_Y=$_BORDER_T
+      _move_window_position
+    ;;
+    ml) # Middle/Left
+      _get_desktop_and_window_information
+      _COORDINATE_X=$_BORDER_L
+      _COORDINATE_Y=$(( ( $_DESKTOP_GEOMETRY_H - $_WINDOW_DECORATED_Y - $_BORDER_B ) / 2 ))
+      _move_window_position
+    ;;
+    mc) # Middle/Center
+      _get_desktop_and_window_information
+      _COORDINATE_X=$(( ( $_DESKTOP_GEOMETRY_W - $_WINDOW_DECORATED_X - $_BORDER_R ) / 2 ))
+      _COORDINATE_Y=$(( ( $_DESKTOP_GEOMETRY_H - $_WINDOW_DECORATED_Y - $_BORDER_B ) / 2 ))
+      _move_window_position
+    ;;
+    mr) # Middle/Right
+      _get_desktop_and_window_information
+      _COORDINATE_X=$((   $_DESKTOP_GEOMETRY_W - $_WINDOW_DECORATED_X - $_BORDER_R       ))
+      _COORDINATE_Y=$(( ( $_DESKTOP_GEOMETRY_H - $_WINDOW_DECORATED_Y - $_BORDER_B ) / 2 ))
+      _move_window_position
+    ;;
+    bl) # Bottom/Left
+      _get_desktop_and_window_information
+      _COORDINATE_X=$_BORDER_L
+      _COORDINATE_Y=$((   $_DESKTOP_GEOMETRY_H - $_WINDOW_DECORATED_Y - $_BORDER_B       ))
+      _move_window_position
+    ;;
+    bc) # Bottom/Center
+      _get_desktop_and_window_information
+      _COORDINATE_X=$(( ( $_DESKTOP_GEOMETRY_W - $_WINDOW_DECORATED_X - $_BORDER_R ) / 2 ))
+      _COORDINATE_Y=$((   $_DESKTOP_GEOMETRY_H - $_WINDOW_DECORATED_Y - $_BORDER_B       ))
+      _move_window_position
+    ;;
+    br) # Bottom/Right
+      _get_desktop_and_window_information
+      _COORDINATE_X=$((   $_DESKTOP_GEOMETRY_W - $_WINDOW_DECORATED_X - $_BORDER_R       ))
+      _COORDINATE_Y=$((   $_DESKTOP_GEOMETRY_H - $_WINDOW_DECORATED_Y - $_BORDER_B       ))
+      _move_window_position
+    ;;
+    same) # Same (unchanged) coordinates. aka: do not move
+      _get_desktop_and_window_information
+      _COORDINATE_X=-1
+      _COORDINATE_Y=-1
+      _move_window_position
+    ;;
+    *,*) # user specified coordinates
+      _get_desktop_and_window_information
+      _parse_user_specified_coordinates
+      _move_window_position
+    ;;
+    *)
+      _show_help
+    ;;
+  esac
+
+  _eko_iod "#- _set_window_position -#"
+}
+
+function _show_error() {
+  _eko_iod "#+ _show_error +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # @
+
+  echo "Error: $@"
+
+  _eko_iod "#- _show_error -#"
+
+  exit 1
+}
+
+function _show_help() {
+  _eko_iod "#+ _show_help +#"
+
+  # functions:
+  # _eko_S
+  # _eko_iod
+
+  # variables:
+  # (none)
+
+  echo "Provide at least 1 parameter: <Window Coordinates> [OPTION] [[OPTION]]
+
+Mandatory parameter (Window Coordinates):
+  -c, --coordinates ul|uc|ur   Upper/Left   Upper/Center   Upper/Right
+  -c, --coordinates ml|mc|mr  Middle/Left  Middle/Center  Middle/Right
+  -c, --coordinates bl|bc|br  Bottom/Left  Bottom/Center  Bottom/Right
+  -c, --coordinates same      Do not change coordinates (for use with --raise)
+  -c, --coordinates X,Y       User specified X,Y coordinates
+
+Optional parameters:
+  -d, --debug      Display debugging information
+  -id <Window ID>  Window ID (in hexadecimal format)
+  -o, --overall    Use overall desktop X,Y for window placement calculations
+  -q, --quiet      Display only error messages & this help text
+  -r, --raise      Raise window & give it focus
+  -t, --test       Perform all calculations, but do not perform any actions
+  -v, --verbose    Display verbose information
+  -?, -h, --help   Display this help text, useful as it is
+
+Note:
+  If an option is specified multiple times, the last invocation is used"
+
+  _eko_iod "#- _show_help -#"
+
+  exit 0
+}
+
+function _validate_coordinates() {
+  _eko_iod "#+ _validate_coordinates +#"
+
+  # functions:
+  # _eko_iod
+  # _show_error
+
+  # variables:
+  # _BOOLEAN_MAXIMIZED_X
+  # _BOOLEAN_MAXIMIZED_Y
+  # _BORDER_B
+  # _BORDER_L
+  # _BORDER_R
+  # _BORDER_T
+  # _COORDINATE_X
+  # _COORDINATE_Y
+  # _DESKTOP_GEOMETRY_H
+  # _DESKTOP_GEOMETRY_W
+  # _WINDOW_DECORATED_X
+  # _WINDOW_DECORATED_Y
+
+  #+ error exits +#
+
+  # - non-numeric X coordinate? (negative included)
+  if ! [[ $_COORDINATE_X =~ ^-?[0-9]+$ ]]
+  then
+    _show_error "invalid X coordinate \"$_COORDINATE_X\" specified"
+  fi
+
+  # - non-numeric Y coordinate? (negative included)
+  if ! [[ $_COORDINATE_Y =~ ^-?[0-9]+$ ]]
+  then
+    _show_error "invalid Y coordinate \"$_COORDINATE_Y\" specified"
+  fi
+
+  # - negative X coordinate that is not -1?
+  if [[ $_COORDINATE_X =~ ^-[0-9]+$ ]] \
+  && [ $_COORDINATE_X -ne -1 ]
+  then
+    _show_error "invalid X coordinate \"$_COORDINATE_X\" specified"
+  fi
+
+  # - negative Y coordinate that is not -1?
+  if [[ $_COORDINATE_Y =~ ^-[0-9]+$ ]] \
+  && [ $_COORDINATE_Y -ne -1 ]
+  then
+    _show_error "invalid Y coordinate \"$_COORDINATE_Y\" specified"
+  fi
+
+  #- error exits -#
+
+  #+ force to fit +#
+
+  # - force coordinates to fit within usable or overall desktop X,Y
+  # - left (special case: -1)
+  if [ $_COORDINATE_X -lt $_BORDER_L ] \
+  && [ $_COORDINATE_X -ne -1 ]
+  then
+    _COORDINATE_X=$_BORDER_L
+  fi
+
+  # - force coordinates to fit within usable or overall desktop X,Y
+  # - right
+  if [ $(( $_COORDINATE_X + $_WINDOW_DECORATED_X + $_BORDER_R )) -gt $_DESKTOP_GEOMETRY_W ]
+  then
+    _COORDINATE_X=$(( $_DESKTOP_GEOMETRY_W - $_WINDOW_DECORATED_X - $_BORDER_R ))
+  fi
+
+  # - force coordinates to fit within usable or overall desktop X,Y
+  # - top (special case: -1)
+  if [ $_COORDINATE_Y -lt $_BORDER_T ] \
+  && [ $_COORDINATE_Y -ne -1 ]
+  then
+    _COORDINATE_Y=$_BORDER_T
+  fi
+
+  # - force coordinates to fit within usable or overall desktop X,Y
+  # - bottom
+  if [ $(( $_COORDINATE_Y + $_WINDOW_DECORATED_Y + $_BORDER_B )) -gt $_DESKTOP_GEOMETRY_H ]
+  then
+    _COORDINATE_Y=$(( $_DESKTOP_GEOMETRY_H - $_WINDOW_DECORATED_Y - $_BORDER_B ))
+  fi
+
+  #- force to fit -#
+
+  #+ tweaks +#
+
+  # - tweak X position if required by _NET_WM_STATE_MAXIMIZED_* restrictions
+  # - simply set field to "-1" if MAXIMIZED
+  if $_BOOLEAN_MAXIMIZED_X
+  then
+    _COORDINATE_X=-1
+  fi
+
+  # - tweak Y position if required by _NET_WM_STATE_MAXIMIZED_* restrictions
+  # - simply set field to "-1" if MAXIMIZED
+  if $_BOOLEAN_MAXIMIZED_Y
+  then
+    _COORDINATE_Y=-1
+  fi
+
+  #- tweaks -#
+
+  _eko_iod "#- _validate_coordinates -#"
+}
+
+function _validate_window_id() {
+  _eko_iod "#+ _validate_window_id +#"
+
+  # functions:
+  # _eko_iod
+  # _get_net_client_list_window
+  # _show_error
+
+  # variables:
+  # _WINDOW_ID
+  # _NET_CLIENT_LIST_WINDOW
+
+  # - get full list of Window IDs
+  _get_net_client_list_window
+
+  if ! [[ " $_NET_CLIENT_LIST_WINDOW " =~ " $_WINDOW_ID " ]]
+  then
+    _show_error "invalid Window ID \"$_WINDOW_ID\" specified"
+  fi
+
+  _eko_iod "#- _validate_window_id -#"
+}
+
+function _window_excludes_generate_new() {
+  _eko_iod "#+ _window_excludes_generate_new +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # _WINDOW_EXCLUDES_NEW
+
+  # - $_WINDOW_EXCLUDES_NEW magic
+  # - start absolutely fresh. when in doubt, be explicit
+  unset _WINDOW_EXCLUDES_NEW
+
+  # do stuff
+  # - populate $_NET_CLIENT_LIST_WINDOW via "xprop -root"
+  # - loop through $_NET_CLIENT_LIST_WINDOW .. $WINDOW_ID ?
+  # - populate $_XPROP_ID via "xprop -id $WINDOW_ID"
+  # - "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_DOCK"
+  # ^ if above is found, add contents from "_NET_WM_NAME(UTF8_STRING) = "
+  #   to $_WINDOW_EXCLUDES_NEW 
+
+
+  # - the root window itself
+  _WINDOW_EXCLUDES_NEW+=" \"(the root window) (has no name)\""
+
+
+
+#+ notes +#
+  # IDEA:
+# - something completely different:
+# - cycle through the window id list & identify unmovable windows
+
+# items of potential interest:
+# _NET_DESKTOP_GEOMETRY(CARDINAL) = 1920, 1080
+# _NET_DESKTOP_NAMES(UTF8_STRING) = "I", "II", "III", "IV", "V", "VI", "VII", "VIII"
+# _NET_DESKTOP_VIEWPORT(CARDINAL) = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+# _NET_NUMBER_OF_DESKTOPS(CARDINAL) = 8
+# _NET_WORKAREA(CARDINAL) = 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056
+
+# - from xprop
+# - other functions dealing with _NET_*:
+
+# - _get_net_frame_extents_cardinal
+   # - "_NET_FRAME_EXTENTS(CARDINAL) = "
+# read -r _NET_FRAME_EXTENT_CARDINAL_LEFT _NET_FRAME_EXTENT_CARDINAL_RIGHT _NET_FRAME_EXTENT_CARDINAL_TOP _NET_FRAME_EXTENT_CARDINAL_BOTTOM \
+#   <<< "$(echo "$_OUTPUT_XPROP" | sed -n -e 's/^_NET_FRAME_EXTENTS(CARDINAL) = //p' | sed -e 's/,//g')"
+
+# - _get_net_wm_state_atom
+   # - "_NET_WM_STATE(ATOM) = "
+# _NET_WM_STATE_ATOM="$(echo "$_OUTPUT_XPROP" | sed -n -e 's/^_NET_WM_STATE(ATOM) = //p' | sed -e 's/,//g')"
+
+# - _get_net_client_list_window
+   # - "_NET_CLIENT_LIST(WINDOW): window id # "
+# _NET_CLIENT_LIST_WINDOW="$(xprop -root | sed -n -e 's/^_NET_CLIENT_LIST(WINDOW): window id # //p' | sed -e 's/,//g')"
+
+# - everything the script is using at the moment:
+# "_NET_CLIENT_LIST(WINDOW): window id # "
+# "_NET_DESKTOP_GEOMETRY(CARDINAL) = "
+# "_NET_FRAME_EXTENTS(CARDINAL) = "
+# "_NET_WM_DESKTOP(CARDINAL) = "
+# "_NET_WM_STATE(ATOM) = "
+# "_NET_WM_WINDOW_TYPE(ATOM) = "
+
+# - the list:
+# - *box dock, root window, tint2, wmagnify normal, wmagnify sticky, xfce4-panel
+
+# - tint2, wmagnify sticky, xfce4-panel
+# - not good enought: ignores *box dock & includes sticky windows
+#   _NET_WM_DESKTOP(CARDINAL) = 4294967295
+# - wmagnify normal
+#   _NET_WM_DESKTOP(CARDINAL) = 0
+
+# - *box dock, tint2, xfce4-panel
+# - I think this is as good as it'll get. the root window can be manually
+#   added to the exclude list later
+#   _NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_DOCK
+#- notes -#
+
+  _eko_iod "#- _window_excludes_generate_new -#"
+}
+
+function _window_excludes_generate() {
+  _eko_iod "#+ _window_excludes_generate +#"
+
+  # functions:
+  # _eko_iod
+  # _show_error
+  # _window_excludes_trim
+
+  # variables:
+  # FUNCNAME[0]
+  # HOSTNAME
+  # _LINE
+  # _ROUTINE
+  # _WINDOW_EXCLUDES
+  # _WINDOW_EXCLUDES_CUSTOM
+  # _WMCTRL_BINARY
+  # _XX0
+
+  # NOTE:
+  # - I honestly wish the wmctrl developer put doublequotes around field #4
+  #   because it is possible to have a valid entry containing spaces. quoting
+  #   field #4 would have simplified things immensely. so, what follows is a
+  #   mildly entertaining circus act. sit back & enjoy the show, folks!
+  # - field #3 is either "N/A" or the short hostname. this can be used
+  # - the extra spaces in field #3 are a royal pain in the ass (the space(s)
+  #   in field #4 aren't exactly helping, either. example:
+  #   "0x01000008 -1       N/A tint2"
+  #   "0x01200004 -1 beryllium xfce4-panel"
+  #   "0x03800099 -1 beryllium Magnify 2x"
+
+  # FIXME:
+  # - sticky windows (like "Magnify 2x" in the example above, maybe others?)
+  #   are incorrectly added to _WINDOW_EXCLUDES
+  # - find out why & remove them from the exclude list (or prevent them from
+  #   being added in the first place. whichever is easier)
+
+  # - $_WINDOW_EXCLUDES magic
+  # - start absolutely fresh. when in doubt, be explicit
+  unset _WINDOW_EXCLUDES
+
+  #_ROUTINE="old_loop"
+  #_ROUTINE="sed_loop"
+  #_ROUTINE="sed_tr"
+  _ROUTINE="sed_bash_pattern_substitution" # preferred
+  case "$_ROUTINE" in
+    old_loop)
+      #+ old_loop method +#
+
+      # - uses: 2 bash builtins, 4 bash prefix removals,
+      #   uses: 1 bash suffix removal, here string, 2 binary calls, 1 pipe
+
+      # - assign a temporary variable the contents of $(echo $_LINE) (no
+      #   quotes around $_LINE itself) to eliminate extra spaces, then crawl
+      #   through it in a simple fashion, stripping the first 3 fields. use
+      #   the head of field #4 as a search term for $_LINE. grab & enjoy. any
+      #   & all spaces in field #4+ will be preserved
+      while read -r _LINE
+      do
+        _XX0="$(echo $_LINE)"
+        _XX0="${_XX0#* }" # remove prefix: field #1
+        _XX0="${_XX0#* }" # remove prefix: field #2
+        _XX0="${_XX0#* }" # remove prefix: field #3
+        _XX0="${_XX0% *}" # remove suffix (if any) from what remains
+
+        # NOTE:
+        # - output from wmctrl is without doublequotes. they must be added here
+        _LINE=\"$_XX0${_LINE#*$_XX0}\"
+
+        # - append $_LINE to $_WINDOW_EXCLUDES
+        # - the leading space is important!
+        _WINDOW_EXCLUDES+=" $_LINE"
+      done <<< "$($_WMCTRL_BINARY -l | grep ' -1 ')"
+
+      #- old_loop method -#
+    ;;
+    sed_loop)
+      #+ sed_loop method +#
+
+      # - uses: 1 bash builtin, here string, 2 binary calls, 1 pipe,
+      #   uses: 1 bash pattern substitution
+
+      # NOTE:
+      # - the loop would not be necessary if I could figure out how to get sed
+      #   to provide its report in a single line
+
+      while read -r _LINE
+      do
+        # - append $_LINE to $_WINDOW_EXCLUDES
+        # - the leading space is important!
+        # - this cannot be done in the sed commandline. for some reason, the
+        #   space is not preserved
+        # - NOTE: doublequotes in use with sed
+        # - ${parameter/pattern/string}
+        # - remove suffix
+        _WINDOW_EXCLUDES+=" $_LINE"
+      done <<< "$($_WMCTRL_BINARY -l | sed -n -e "s/0x.* -1 .*\(${HOSTNAME/.*/}\|N\/A\) \(.*\)/\"\2\"/p")"
+     #done <<< "$($_WMCTRL_BINARY -l | sed -n -e 's/0x.* -1 .* \(.*\)/ \"\1\"/p')"
+
+      #- sed_loop method -#
+    ;;
+    sed_tr)
+      #+ sed_tr method +#
+
+      # - uses: 3 binary calls, 2 pipes, 1 bash pattern substitution
+
+      # NOTE:
+      # - this will do for now, but I still want to figure out the sed magic
+      #   noted above
+
+      # - populate $_WINDOW_EXCLUDES all at once
+      # - take careful note of the leading space on each entry
+      # - NOTE: doublequotes in use with sed
+      # - ${parameter/pattern/string}
+      # - remove suffix
+      _WINDOW_EXCLUDES="$($_WMCTRL_BINARY -l | sed -n -e "s/0x.* -1 .*\(${HOSTNAME/.*/}\|N\/A\) \(.*\)/ \"\2\"/p" | tr -d '\n')"
+     #_WINDOW_EXCLUDES="$($_WMCTRL_BINARY -l | sed -n -e 's/0x.* -1 .* \(.*\)/ \"\1\"/p' | tr -d '\n')"
+
+      #- sed_tr method -#
+    ;;
+
+    sed_bash_pattern_substitution)
+      #+ sed_bash_pattern_substitution method +#
+
+      # - uses: 2 binary calls, 1 pipe, 2 bash pattern substitutions
+
+      # - populate $_WINDOW_EXCLUDES all at once
+      # - take careful note of the leading space on each entry
+      # - NOTE: doublequotes in use with sed
+      # - ${parameter/pattern/string}
+      # - remove suffix
+      _WINDOW_EXCLUDES="$($_WMCTRL_BINARY -l | sed -n -e "s/0x.* -1 .*\(${HOSTNAME/.*/}\|N\/A\) \(.*\)/ \"\2\"/p")"
+
+      # - ${parameter/pattern/string}
+      # - remove every 0x0a
+      _WINDOW_EXCLUDES="${_WINDOW_EXCLUDES//$'\x0a'/}"
+
+      #- sed_bash_pattern_substitution method -#
+    ;;
+    *)
+      _show_error "\$_ROUTINE not defined in function ${FUNCNAME[0]}"
+    ;;
+  esac
+  # - clumsy, but necessary
+  unset _ROUTINE
+
+  # FIXME:
+  # - hardcoded for "Magnify 2X" at the moment
+  _window_excludes_trim
+
+  #+ do not remove these lines +#
+
+  # NOTE: (default window exclude list additions)
+  # - 1st: ensure each entry is appended to the list using "+="
+  # - 2nd: ensure each entry is prefixed by a space as is done here
+  # - 3rd: ensure each entry is doublequoted as is done here (including the
+  #        backslashes)
+
+  # - blackbox/fluxbox/openbox/*box dock
+  _WINDOW_EXCLUDES+=" \"(has no name)\""
+
+  # - the root window itself
+  _WINDOW_EXCLUDES+=" \"(the root window) (has no name)\""
+
+  # - any custom excludes that were defined in "#+ setup here +#" way above
+  _WINDOW_EXCLUDES+="$_WINDOW_EXCLUDES_CUSTOM"
+
+  #- do not remove these lines -#
+
+  #+ testing +#
+  _eko_v "                 \$_WINDOW_EXCLUDES: $_WINDOW_EXCLUDES"
+  _eko_v "                     \$_WINDOW_NAME: $_WINDOW_NAME"
+  #- testing -#
+
+  _eko_iod "#- _window_excludes_generate -#"
+}
+
+function _window_excludes_trim() {
+  _eko_iod "#+ _window_excludes_trim +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # _WINDOW_EXCLUDES
+
+  # TODO:
+  # - figure out how to destinguish a "sticky" window from others
+
+  #+ testing +#
+  _eko_v "trim+            \$_WINDOW_EXCLUDES: $_WINDOW_EXCLUDES"
+  #- testing -#
+
+  # - quick hack to see if this will even work
+  # - ugly!
+  # - ${parameter/pattern/string}
+  # - remove pattern
+  _WINDOW_EXCLUDES="${_WINDOW_EXCLUDES/ \"Magnify 2x\"/}"
+
+  #+ testing +#
+  _eko_v "trim-            \$_WINDOW_EXCLUDES: $_WINDOW_EXCLUDES"
+  #- testing -#
+
+  _eko_iod "#- _window_excludes_trim -#"
+}
+
+#- function definitions here -#
+
+#+ start here +#
+
+# functions:
+# _parse_parameters
+
+_parse_parameters "$@"
+
+#- start here -#
+
+exit 0 #+ marker +#

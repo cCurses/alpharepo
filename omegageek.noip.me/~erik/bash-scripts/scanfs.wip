@@ -1,0 +1,2889 @@
+#!/bin/bash
+#+ marker sof +#
+
+# scanfs v2019.09.17
+
+# Copyright (C) 2019
+# Erik Jan Tromp <alphageek@slackware.com>
+# Licensed under the GPL v2
+
+# concept:
+# - scan the named filesystem segment(s) & report findings in various formats
+# - optionally unlink files that were previously hardlinked
+
+# TODO:
+# - nested tests are not sufficient for setting up _FUNCTION_TRANSFORM. make
+#   the tests entirely sequential
+# - same thought regarding _FUNCTION_MD5SUM
+
+# 2019-09-17
+# - "function _binary_validate_setup" made the following changes to "head",
+#   "sort", & "touch" (respectively) so this script can be used with older
+#   versions of bash. (technically only required for the "head" test because
+#   of the "[" & "]" in the _BINARY_OPTION setup & test, but did all 3 for
+#   uniformity)
+#  add: _BINARY_HELP=${_BINARY_HELP//=/ }
+#  was: _BINARY_OPTION=--bytes=[-]NUM
+#   is: _BINARY_OPTION=--bytes
+#  add: _BINARY_HELP=${_BINARY_HELP//=/ }
+#  was: _BINARY_OPTION=--key=KEYDEF
+#   is: _BINARY_OPTION=--key
+#  add: _BINARY_HELP=${_BINARY_HELP//=/ }
+#  was: _BINARY_OPTION=--date=STRING
+#   is: _BINARY_OPTION=--date
+# - added "--" to all invocations of "basename", "cd", "cp", "dirname", "mv",
+#   "pwd", "realpath", & "rm". possibly overkill in a few spots, but better to
+#   have too many than too few
+# ^ NOTE: don't forget "ln" when the time comes
+# - "function _pathname_md5sum_md5sum" tested 3 approaches to acquire md5sums
+#   of "-s, --size" bytes of files. results:
+# 1 fastest & functional. retained:
+#   _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null | md5sum -)
+#   _ST_MD5=${_ST_MD5/%  -/}
+# 2 slower & functional. discarded:
+#   _ST_MD5=$(md5sum <(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null) 2>/dev/null)
+#   _ST_MD5=${_ST_MD5/%  \/dev\/fd\/*/}
+# 3 slowest & functional. discarded:
+#   _ST_MD5=$(md5sum < <(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null) 2>/dev/null)
+#   _ST_MD5=${_ST_MD5/%  -/}
+# - "function _pathname_md5sum_openssl" tested 3 approaches to acquire md5sums
+#   of "-s, --size" bytes of files. results:
+# 1 fastest & functional. retained:
+#   _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null | openssl dgst -md5)
+#   _ST_MD5=${_ST_MD5/#(stdin)= /}
+# 2 slower & functional. discarded:
+#   _ST_MD5=$(openssl dgst -md5 <(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null) 2>/dev/null)
+#   _ST_MD5=${_ST_MD5/#MD5(\/dev\/fd\/*)= /}
+# 3 slowest & functional. discarded:
+#   _ST_MD5=$(openssl dgst -md5 < <(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null) 2>/dev/null)
+#   _ST_MD5=${_ST_MD5/#(stdin)= /}
+# - removed most #'d lines dealing with unnecessary doublequoting & disabled
+#   routines
+# - NOTE: (to self) refer to the 2019-09-14 savepoint for the "before" version
+# 2019-09-14
+# - "function _binary_validate_setup" & "function _builtin_validate_setup" 
+#   added calls to "function _eko_v" for variables that are explicitly assigned
+# - explicitly unset specific key variables in "setup" that are later set in
+#   "function _binary_validate_setup", "function _builtin_validate_setup", &
+#   "function _pathnames_scan" for safety
+# - "function _pathnames_scan" altered calling syntax to "find". read very
+#   carefully. these simple changes make scanning ~20% faster
+#  was: <<< \
+#  was: "$(find "$_SU_NAME" \
+#   is: < \
+#   is: <(find "$_SU_NAME" \
+#  was: -printf "%D %i %M %n %U %G %s %TY-%Tm-%Td %TH:%TM:%TS %TZ\n" 2>/dev/null)"
+#   is: -printf "%D %i %M %n %U %G %s %TY-%Tm-%Td %TH:%TM:%TS %TZ\n" 2>/dev/null)
+#  was: <<< \
+#  was: "$(find "$_SD_NAME" \
+#   is: < \
+#   is: <(find "$_SD_NAME" \
+#  was: | sort --key=11)"
+#   is: | sort --key=11)
+#  was: <<< \
+#  was: "$(find "${_ARRAY_PATHNAMES[@]}" \
+#   is: < \
+#   is: <(find "${_ARRAY_PATHNAMES[@]}" \
+#  was: | sort --key=4)"
+#   is: | sort --key=4)
+# 2019-09-12
+# - "function _pathname_transform_cd_pwd" added & ranked testing order (1/3)
+# - "function _pathname_transform_realpath" ranked testing order (2/3)
+# - "function _pathname_transform_bruteforce" ranked testing order (3/3)
+# - "function _builtin_validate_setup" added for "cd -P" & "pwd -P"
+# - "function _pathname_validate" updated to correctly decipher the pathname
+#   if the last element is a symlink
+# 2019-08-13
+# - "-n, --nanoseconds" option added. it's for use with the "-l, --long" &
+#   "-v, --verbose" options
+# 2019-08-11
+# - "function _binary_validate_setup" altered _BINARY_HELP assignment & tests
+#   for each binary
+#  was: _BINARY_HELP=$(echo $($_BINARY_NAME --help 2> /dev/null))
+#   is: _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+#  was: _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1 /dev/null))
+#   is: _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1))
+#  was: if [[ -z $_BINARY_HELP ]]
+#   is: if [[ $_BINARY_HELP =~ "command not found" ]]
+# - "function _binary_validate_setup" reverted how multiple options are
+#   appended to each binary's option list
+#  was: _OPTIONS_FOO=${_OPTIONS_FOO/%/ $_BINARY_OPTION}
+#   is: _OPTIONS_FOO+=" "$_BINARY_OPTION
+# - "function _parse_parameters" altered how paths are appended to the arrays
+#  was: _ARRAY_HOLDNAMES=( "${_ARRAY_HOLDNAMES[@]}" "$2" )
+#   is: _ARRAY_HOLDNAMES+=( "$2" )
+#  was: _ARRAY_PATHNAMES=( "${_ARRAY_PATHNAMES[@]}" "$_OPTION_PATHNAME" )
+#   is: _ARRAY_PATHNAMES+=( "$_OPTION_PATHNAME" )
+# 2019-08-08
+# - "-V, --version-sort" & "-o, --ordered" options removed & what was
+#   "-o, --ordered" is now hardcoded. why? version sorted & unordered listings
+#   served no real purpose other than as curiosities. additionally, processing
+#   time is virtually identical with all forms
+# - "function _binary_validate_setup" removed "cat"
+# 2019-07-28
+# - undo as much of the "wrap everything in doublequotes" nonsense as
+#   possible. there are select cases where doublequotes are retained, but
+#   *not* everywhere
+# - "function _binary_validate_setup" altered how multiple options are
+#   appended to each binary's option list
+#  was: _OPTIONS_FOO+=" "$_BINARY_OPTION
+#   is: _OPTIONS_FOO=${_OPTIONS_FOO/%/ $_BINARY_OPTION}
+# ^ this also makes it possible to *prepend* options quite easily. example:
+#       _OPTIONS_FOO=${_OPTIONS_FOO/#/$_BINARY_OPTION }
+# - more doublequote wraps ( _STRING_PATHNAME ) (not sure about this one)
+# 2019-07-27
+# - "function _trap" improved the conditional tests to explicitly handle
+#   cleanup only if unlinking is interrupted
+# 2019-07-25
+# - "function _binary_validate_setup" added "rm"
+# - "function _trap" added
+# - more doublequote wraps ( _LHS _RHS )
+# 2019-07-23
+# - "-V, --version-sort" option added. refer to sort(1) for specifics
+# 2019-07-22
+# - "function _binary_validate_setup" altered calling syntax to "sort"
+#  was: _OPTIONS_SORT_DIRECTORIES="sort +3"
+#  was: _OPTIONS_SORT_FILES="sort +10"
+#   is: _OPTIONS_SORT_DIRECTORIES="sort --key=4"
+#   is: _OPTIONS_SORT_FILES="sort --key=11"
+# - "function _binary_validate_setup" added "--key" test to "sort"
+# 2019-07-21
+# - "function _pathname_md5sum_md5sum", "function _pathname_md5sum_openssl", &
+#   "function _pathnames_scan" experimented with replacing usage of pipes with
+#   using "<(commandlist)" (careful: no space between "<" & "("). counter to
+#   expectations, the "<(commandlist)" form is *slower* than "| commandlist"
+#   by roughly a factor of 2 in "function _pathnames_scan"
+# ^ additional "2>/dev/null" & _ST_MD5 massaging in each md5sum function
+# 2019-07-18
+# - "function _binary_validate_setup" improved "head" test
+# - wrap anything & everything involved with calling standalone binaries or
+#   bash builtins in doublequotes
+# - wrap anything & everything involved with $_OPTION_PATHNAME in doublequotes
+#   ( _ARRAY_HOLDNAMES 2 _ARRAY_PATHNAMES _SD_NAME _ST_NAME _SU_NAME )
+# 2019-07-25
+# - "function _binary_validate_setup" added "rm"
+# 2019-07-12
+# - additional style changes:
+#   (my scripts are already bash specific, so backwards compatibility is not
+#   an issue. several ideas are from http://mywiki.wooledge.org/BashFAQ)
+#   - naming convention for functions
+#   - usage of "[]" vs "[[]]" to evaluate expressions
+#   - doublequote variable assignments only when absolutely necessary to avoid
+#     typecasting
+# 2019-07-??
+# - major edits (too many things to enumerate)
+# - edits are ongoing, hence the "??" in the date
+# - "function _binary_validate_setup" added "cat", "date", "id", "ln", "mv",
+#   "sort", "touch"
+# 2019-06-??
+# - "function _binary_validate_setup" added for "basename", "cp", "date",
+#   "dirname", "find", "head", "md5sum", "openssl", "realpath"
+# 2019-05-11
+# - start of project
+
+# NOTE:
+# - this is a snippet designed for my upcoming project "hardlink" (an absolute
+#   & complete rewrite of the tcl original)
+# - unfortunately, it appears this will not happen. why? in tcl, it's possible
+#   to open a persistent connection to the db, perform as many actions as are
+#   required, *then* close the db. the standalone "sqlite3" binary appears to
+#   be incapable of this. open once, perform a single action (or a small
+#   number of actions), then close. rinse & repeat. this is *not* practical
+#   when dealing with large numbers of files (ie: thousands or millions)
+# - addendum #1: this might be possible after all. what you see here are
+#   various attempts to get it right. I suspect it will be incredibly slow for
+#   larger filesets, but it *will* work
+# - addendum #2: unlinking files is now 100% functional, complete with
+#   preservation of all stat(2) information except (obviously) link counts.
+#   for added fun, though the initial filesystem scan itself is slower than
+#   the tcl original, the actions required for unlinking files are *faster*
+
+# NOTE:
+# - on the bright side, this script can be used to generate a list of md5sums
+#   suitable for use with "md5sum -c". the calling syntax is quite simple.
+#   use either:
+#   "scanfs -p <PathName> -m > checksums.md5" to generate md5sums using the
+#   absolute pathname of each regular file in <PathName>
+#   or:
+#   "scanfs -p <PathName> -m -r > checksums.md5" to generate md5sums using the
+#   relative pathname of each regular file in <PathName>
+
+# NOTE:
+# - the fraction-of-second portion of timestamps are written to the filesystem
+#   as nanoseconds. find's "-printf" option "%TS" simply presents the
+#   0-padded value directly as 10 decimal digits. in contrast, ls's
+#   "--full-time" option removes the trailing 0 to present 9 decimal digits
+#   for human readability
+
+# TODO:
+# - allow for regular files to be specified with "-p, --pathname"
+# - much *much* later, if ever. probably never
+
+# NOTE:
+# - random scribbles in "function _sqlite3_test"
+# - right idea, wrong place. create/populate/close the sqlite3 db in
+#   "function _pathnames_scan"?
+
+# NOTE: (to self) (& others, if you're bored. hi there!)
+# - look for anything with the following tags: EDIT FIXME IDEA NOTE ORDER TODO
+#   TRY
+# - use of bash builtins is often (but not always) preferred over shelling out
+#   to binaries
+# ^ reasons: speed, availability, simplicity, & predictability. fast is always
+#   preferred, no need to test if a binary even *exists*, no need to be
+#   concerned about changed syntax or output from one release to the next
+
+# NOTE: (builtin/binary/variable/function indentation)
+# - 2 spaces, hash, binary/variable/function name = in function
+# - 0 spaces, hash, binary/variable/function name = in main
+# NOTE: (system builtin use & abuse)
+  # cd (in combination with pwd, fallback to basename/dirname/find/realpath)
+  # pwd (in combination with cd, fallback to basename/dirname/find/realpath)
+# NOTE: (system binary use & abuse)
+  # basename (fallback with dirname/find to realpath)
+  # cp
+  # dirname (fallback with basename/find to realpath)
+  # find
+  # head
+  # id
+  # ln
+  # md5sum
+  # mv
+  # openssl (fallback to md5sum)
+  # realpath
+  # rm
+  # sort
+  # touch
+# NOTE: (system & script variable use & abuse)
+# - system variables are always in the form "FOO"
+# - script variables are always in the form "_FOO"
+# - system variables referenced & modified. necessary & the whole point
+  # @
+# LC_ALL
+# TZ
+# - system variables referenced but not modified
+  # #
+  # $$
+  # 1
+  # 2
+  # @
+  # FUNCNAME (single dimension indexed array)
+  # PPID
+# @
+# - ephemeral variables. here today, gone tomorrow (keeping track for myself)
+# - better to have too many than too few
+  # _ARRAY_ELEMENT_HN (counter)
+  # _ARRAY_ELEMENT_PN (counter)
+  # _ARRAY_HOLDNAMES (single dimension indexed array)
+  # _ARRAY_PATHNAMES (single dimension indexed array)
+  # _BASENAME
+  # _BINARY_HELP
+  # _BINARY_NAME
+  # _BINARY_OPTION
+  # _BOOLEAN_DEBUG
+  # _BOOLEAN_DRYRUN
+  # _BOOLEAN_ERROR
+  # _BOOLEAN_HARDLINK
+  # _BOOLEAN_LONG
+  # _BOOLEAN_MD5SUM
+  # _BOOLEAN_NANOSECONDS
+  # _BOOLEAN_NONSPARSE
+  # _BOOLEAN_RELATIVE
+  # _BOOLEAN_SPARSE
+  # _BOOLEAN_STDOUT
+  # _BOOLEAN_TIMESTAMP
+  # _BOOLEAN_UNLINK
+  # _BOOLEAN_VERBOSE
+  # _BOOLEAN_XDEV
+  # _BUILTIN_HELP
+  # _BUILTIN_NAME
+  # _BUILTIN_OPTION
+  # _DIRNAME
+  # _FUNCTION_MD5SUM (_pathname_md5sum_md5sum _pathname_md5sum_openssl)
+  # _FUNCTION_TRANSFORM (_pathname_transform_bruteforce _pathname_transform_cd_pwd _pathname_transform_realpath)
+  # _LHS
+  # _LINKNAME
+  # _LLEN
+  # _MIN_LEN
+  # _MY_GID
+  # _MY_UID
+  # _OPTIONS_CD (cd options, not script options)
+  # _OPTIONS_CP (cp options, not script options)
+  # _OPTIONS_LN (ln options, not script options)
+  # _OPTIONS_MV (mv options, not script options)
+  # _OPTIONS_PWD (pwd options, not script options)
+  # _OPTIONS_READWRITE (find options. not script options)
+  # _OPTIONS_REALPATH (realpath options, not script options)
+  # _OPTIONS_RM (rm options, not script options)
+  # _OPTIONS_UIDGID (find options. not script options)
+  # _OPTIONS_UNLINK (find options. not script options)
+  # _OPTIONS_XDEV (find options. not script options)
+  # _OPTION_MD5SUM_SIZE
+  # _OPTION_PATHNAME
+  # _RHS
+  # _RLEN
+  # _SD_MTIM_HMS (contrivance. not from stat(2))
+  # _SD_MTIM_UTC (contrivance. not from stat(2))
+  # _SD_MTIM_YMD (contrivance. not from stat(2))
+  # _SD_NAME (contrivance. not from stat(2))
+  # _STRING_PATHNAME
+  # _ST_DEV
+  # _ST_GID
+  # _ST_INO
+  # _ST_MD5 (contrivance. not from stat(2))
+  # _ST_MODE
+  # _ST_MTIM_HMS (contrivance. not from stat(2))
+  # _ST_MTIM_UTC (contrivance. not from stat(2))
+  # _ST_MTIM_YMD (contrivance. not from stat(2))
+  # _ST_NAME (contrivance. not from stat(2))
+  # _ST_NLINK
+  # _ST_SIZE
+  # _ST_UID
+  # _SU_NAME (contrivance. not from stat(2))
+# _ARRAY_HOLDNAMES (single dimension indexed array)
+# _ARRAY_PATHNAMES (single dimension indexed array)
+# _FUNCTION_MD5SUM (_pathname_md5sum_md5sum _pathname_md5sum_openssl)
+# _FUNCTION_TRANSFORM (_pathname_transform_bruteforce _pathname_transform_cd_pwd _pathname_transform_realpath)
+# _MY_GID
+# _MY_UID
+# _OPTIONS_CD (cd options, not script options)
+# _OPTIONS_CP (cp options, not script options)
+# _OPTIONS_LN (ln options, not script options)
+# _OPTIONS_MV (mv options, not script options)
+# _OPTIONS_PWD (pwd options, not script options)
+# _OPTIONS_REALPATH (realpath options, not script options)
+# _OPTIONS_READWRITE (find options. not script options)
+# _OPTIONS_RM (rm options, not script options)
+# _OPTIONS_UIDGID (find options. not script options)
+# _OPTIONS_UNLINK (find options. not script options)
+# _OPTIONS_XDEV (find options. not script options)
+# NOTE: (script function use & abuse)
+# - script functions are always in the form "_foo"
+  # _binary_validate_setup
+  # _builtin_validate_setup
+  # _eko_iod
+  # _eko_v
+  # _pathname_md5sum_md5sum (_FUNCTION_MD5SUM)
+  # _pathname_md5sum_openssl (_FUNCTION_MD5SUM)
+  # _pathname_redundant_check
+  # _pathname_transform_bruteforce (_FUNCTION_TRANSFORM)
+  # _pathname_transform_cd_pwd (_FUNCTION_TRANSFORM)
+  # _pathname_transform_realpath (_FUNCTION_TRANSFORM)
+  # _pathname_validate
+  # _pathnames_scan
+  # _show_error
+  # _show_help
+  # _show_warning
+# _parse_parameters
+# _trap
+
+#+ setup here +#
+
+# variables:
+# LC_ALL
+# TZ
+# _ARRAY_HOLDNAMES (single dimension indexed array)
+# _ARRAY_PATHNAMES (single dimension indexed array)
+# _FUNCTION_MD5SUM (_pathname_md5sum_md5sum _pathname_md5sum_openssl)
+# _FUNCTION_TRANSFORM (_pathname_transform_bruteforce _pathname_transform_cd_pwd _pathname_transform_realpath)
+# _MY_GID
+# _MY_UID
+# _OPTIONS_CD (cd options, not script options)
+# _OPTIONS_CP (cp options, not script options)
+# _OPTIONS_LN (ln options, not script options)
+# _OPTIONS_MV (mv options, not script options)
+# _OPTIONS_PWD (pwd options, not script options)
+# _OPTIONS_REALPATH (realpath options, not script options)
+# _OPTIONS_READWRITE (find options. not script options)
+# _OPTIONS_RM (rm options, not script options)
+# _OPTIONS_UIDGID (find options. not script options)
+# _OPTIONS_UNLINK (find options. not script options)
+# _OPTIONS_XDEV (find options. not script options)
+
+# - doing this here so we get no suprises in "function _binary_validate_setup",
+#   "function _builtin_validate_setup", & "function _pathnames_scan"
+unset _FUNCTION_MD5SUM
+unset _FUNCTION_TRANSFORM
+unset _MY_GID
+unset _MY_UID
+unset _OPTIONS_CD
+unset _OPTIONS_CP
+unset _OPTIONS_LN
+unset _OPTIONS_MV
+unset _OPTIONS_PWD
+unset _OPTIONS_READWRITE
+unset _OPTIONS_REALPATH
+unset _OPTIONS_RM
+unset _OPTIONS_UIDGID
+unset _OPTIONS_UNLINK
+unset _OPTIONS_XDEV
+
+# - the locale specified by the environment affects sort order. set LC_ALL=C
+#   to get the traditional sort order that uses native byte values
+export LC_ALL=C
+
+# - for timezone agnostic file timestamps in long/verbose listings as well as
+#   (eventually) usage in the sqlite3 db
+export TZ=UTC
+
+# - be explicit for clarity
+# - single dimension indexed array
+declare -a _ARRAY_HOLDNAMES
+declare -a _ARRAY_PATHNAMES
+
+#- setup here -#
+
+#+ function definitions here +#
+
+# ORDER:
+# - before calling _parse_parameters, but otherwise alphabetical
+
+# - except this one. 'tis special
+function _trap()
+{
+  _eko_iod "#+ _trap +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # _BOOLEAN_DRYRUN
+  # _BOOLEAN_UNLINK
+  # _OPTIONS_RM (rm options, not script options)
+  # _SD_MTIM_HMS (contrivance. not from stat(2))
+  # _SD_MTIM_UTC (contrivance. not from stat(2))
+  # _SD_MTIM_YMD (contrivance. not from stat(2))
+  # _SD_NAME (contrivance. not from stat(2))
+  # _ST_NAME (contrivance. not from stat(2))
+  # _SU_NAME (contrivance. not from stat(2))
+
+  # binaries:
+  # rm
+  # touch
+
+  # NOTE:
+  # - hardlinking & unlinking will require slightly different actions
+  #   hardlinking: restore parent directory's timestamp
+  #   unlinking: delete temp file. restore parent directory's timestamp
+  # - for now, concentrate exclusively on cleaning up from unlinking
+
+  # IDEA:
+  # - set up a trap to catch what *can* be caught. the various $_S[DTU]_*
+  #   variables will be pointed at the last directory/file processed along
+  #   with the parent directory's timestamp, so cleaning up will be fairly
+  #   straightforward
+  # - also: _SU_NAME="${_ST_NAME}.scanfs.$_MY_UID.$PPID.$$" (already set)
+
+  # NOTE:
+  # - regarding the parent directory's timestamp (specifically $_SD_MTIM_HMS),
+  #   preserve nanoseconds & include them in the report so we know exactly
+  #   what is & is not being preserved
+
+  # IDEA:
+  # - there's no kill like overkill. do a "bottom up" set of tests:
+  # - ultimately, these can be done in any order. using a specific order makes
+  #   maintenance easier
+  # - this has a more logical feel to it. first & foremost, the temp file must
+  #   exist. everything else depends on that
+  #   $_SU_NAME exists & is a regular file
+  #   $_SU_NAME matches $_ST_NAME with "[.].*$" via "=~" (anchor with "^")
+  #   $_ST_NAME exists & is a regular file
+  #   $_ST_NAME matches $_SD_NAME with "[/].*$" via "=~" (anchor with "^")
+  #   $_SD_NAME exists & is a directory
+
+  # above or below
+
+  # IDEA:
+  # - there's no kill like overkill. do a "top down" set of tests:
+  # - ultimately, these can be done in any order. using a specific order makes
+  #   maintenance easier
+  #   $_SD_NAME exists & is a directory
+  #   $_ST_NAME matches $_SD_NAME with "[/].*$" via "=~" (anchor with "^")
+  #   $_ST_NAME exists & is a regular file
+  #   $_SU_NAME matches $_ST_NAME with "[.].*$" via "=~" (anchor with "^")
+  #   $_SU_NAME exists & is a regular file
+
+  # - this test is known to work
+  #if $_BOOLEAN_UNLINK \
+  #&& [[ -d $_SD_NAME ]] \
+  #&& [[ -f $_ST_NAME ]] \
+  #&& [[ -f $_SU_NAME ]]
+
+  # - use this ordering. if nothing else, it's aesthetically pleasing
+  # - considerably more thorough than the above test
+  #if $_BOOLEAN_UNLINK \
+  #&& [[ -f $_SU_NAME ]] \
+  #&& [[ $_SU_NAME =~ ^$_ST_NAME[.].*$ ]] \
+  #&& [[ -f $_ST_NAME ]] \
+  #&& [[ $_ST_NAME =~ ^$_SD_NAME[/].*$ ]] \
+  #&& [[ -d $_SD_NAME ]]
+
+  # - doublequote pathnames (but not the regex portions) for safety
+  if $_BOOLEAN_UNLINK \
+  && [[ -f "$_SU_NAME" ]] \
+  && [[ "$_SU_NAME" =~ ^"$_ST_NAME"[.].*$ ]] \
+  && [[ -f "$_ST_NAME" ]] \
+  && [[ "$_ST_NAME" =~ ^"$_SD_NAME"[/].*$ ]] \
+  && [[ -d "$_SD_NAME" ]]
+  then
+    _eko_v ""
+    _eko_v "             \$_BOOLEAN_DRYRUN: \"$_BOOLEAN_DRYRUN\""
+    _eko_v "             \$_BOOLEAN_UNLINK: \"$_BOOLEAN_UNLINK\""
+    _eko_v "                    \$_SU_NAME: \"$_SU_NAME\""
+    _eko_v "                    \$_ST_NAME: \"$_ST_NAME\""
+    _eko_v "                    \$_SD_NAME: \"$_SD_NAME\""
+    _eko_v "                    \$_SD_MTIM: \"$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC\""
+
+    # - put the dry-run test here so we get the above report but
+    #   (conditionally) prevent the below actions
+    if ! $_BOOLEAN_DRYRUN
+    then
+      rm $_OPTIONS_RM -- "$_SU_NAME"
+
+      # - there is a single (known) special case where attempting to restore
+      #   the parent directory's timestamp will fail. script run as non-root.
+      #   unlinking files in a directory that is itself mode 1777 (drwxrwxrwt)
+      #   & owned by someone other than oneself. hence the "2>/dev/null"
+      #   below
+      touch --date="$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC" "$_SD_NAME" 2>/dev/null
+    fi
+  fi
+
+  _eko_iod "#- _trap -#"
+
+  exit 1
+}
+
+# - refer to bash(1) section "SHELL BUILTIN COMMANDS" & signal(7) section
+#   "Standard signals" for additional details
+trap _trap SIGINT SIGTERM
+
+function _binary_validate_setup()
+{
+  _eko_iod "#+ _binary_validate_setup +#"
+
+  # functions:
+  # _eko_iod
+  # _pathname_md5sum_md5sum (_FUNCTION_MD5SUM)
+  # _pathname_md5sum_openssl (_FUNCTION_MD5SUM)
+  # _pathname_transform_bruteforce (_FUNCTION_TRANSFORM)
+  # _pathname_transform_realpath (_FUNCTION_TRANSFORM)
+  # _show_error
+
+  # variables:
+  # _BINARY_HELP
+  # _BINARY_NAME
+  # _BINARY_OPTION
+  # _BOOLEAN_HARDLINK
+  # _BOOLEAN_MD5SUM
+  # _BOOLEAN_NONSPARSE
+  # _BOOLEAN_SPARSE
+  # _BOOLEAN_UNLINK
+  # _BOOLEAN_XDEV
+  # _FUNCTION_MD5SUM (_pathname_md5sum_md5sum _pathname_md5sum_openssl)
+  # _FUNCTION_TRANSFORM (_pathname_transform_bruteforce _pathname_transform_cd_pwd _pathname_transform_realpath)
+  # _MY_GID
+  # _MY_UID
+  # _OPTIONS_CP (cp options, not script options)
+  # _OPTIONS_LN (ln options, not script options)
+  # _OPTIONS_MV (mv options, not script options)
+  # _OPTIONS_RM (rm options, not script options)
+  # _OPTIONS_REALPATH (realpath options, not script options)
+  # _OPTION_MD5SUM_SIZE
+
+  # binaries:
+  # basename (fallback with dirname/find to realpath)
+  # cp
+  # dirname (fallback with basename/find to realpath)
+  # find
+  # head
+  # ln
+  # id
+  # md5sum
+  # mv
+  # openssl (fallback to md5sum)
+  # realpath
+  # rm
+  # sort
+  # touch
+
+  # NOTE:
+  # - rather than test a given binary's version in hopes of figuring out which
+  #   features it supports, test its supported feature set directly. not only
+  #   is this much simpler to do, it's possible to test only those features
+  #   that are explicitly used in the script
+  # - how? get the binary to dump its embedded help text & parse the result
+  # - this can be used as a dual test. no help text = no binary, otherwise
+  #   parse the help text for descriptions of specific features
+
+  # NOTE:
+  # - be explicit, use long form options when available
+
+  # NOTE:
+  # - the logic of the md5sum<>openssl vs realpath<>basename/dirname/find
+  #   tests differ subtly but significantly, but the end result is the same
+
+  # NOTE:
+  # - ordering: by standalone binary or by the first named in fallback binary
+  #   pairs
+  # - each set is explicitly wrapped in $_BOOLEAN_* tests as appropriate. it's
+  #   much easier to maintain & at the same time *still* test only those
+  #   binaries & options used for specific actions
+
+  # NOTE:
+  # - several, but not all, _OPTIONS_* are set up here, others in
+  #   "function _pathnames_scan"
+
+  if $_BOOLEAN_UNLINK
+  then
+    #+ cp +#
+    # - "cp --help". stdout
+    #   "-f" (use "--force")
+    #   "-P" (use "--no-dereference")
+    #   "-p" (use "--preserve=all". "=" required)
+    #   "--sparse=always" ("=" required)
+    #   "--sparse=never" ("=" required)
+    # - called in "function _pathnames_scan"
+    # - $_BOOLEAN_NONSPARSE is true/false
+    # - $_BOOLEAN_SPARSE is true/false
+    # - $_BOOLEAN_UNLINK is true
+    # - _OPTIONS_CP is set
+
+    _BINARY_NAME=cp
+    _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      _show_error "required binary \"$_BINARY_NAME\" not found"
+    else
+      _BINARY_OPTION=--force
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _OPTIONS_CP=$_BINARY_OPTION
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+
+      _BINARY_OPTION=--no-dereference
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _OPTIONS_CP+=" "$_BINARY_OPTION
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+
+      _BINARY_OPTION=--preserve=all
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _OPTIONS_CP+=" "$_BINARY_OPTION
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+
+      if $_BOOLEAN_SPARSE
+      then
+        _BINARY_OPTION=--sparse=always
+        if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+        then
+          _OPTIONS_CP+=" "$_BINARY_OPTION
+        else
+          _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+        fi
+      fi # $_BOOLEAN_SPARSE
+
+      if $_BOOLEAN_NONSPARSE
+      then
+        _BINARY_OPTION=--sparse=never
+        if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+        then
+          _OPTIONS_CP+=" "$_BINARY_OPTION
+        else
+          _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+        fi
+      fi # $_BOOLEAN_NONSPARSE
+      _eko_v "                 \$_OPTIONS_CP: \"$_OPTIONS_CP\""
+    fi
+    #- cp -#
+  fi # $_BOOLEAN_UNLINK
+
+  #+ find +#
+  # - "find --help". stdout
+  #   "-gid"
+  #   "-links"
+  #   "-maxdepth"
+  #   "-printf"
+  #   "-readable"
+  #   "-type"
+  #   "-uid"
+  #   "-writable"
+  #   "-xdev"
+  # - called in "function _pathname_transform_bruteforce"
+  # - called in "function _pathname_validate"
+  # - called in "function _pathnames_scan"
+  # - $_BOOLEAN_HARDLINK is true/false (TODO. not yet implemented)
+  # - $_BOOLEAN_UNLINK is true/false
+  # - $_BOOLEAN_XDEV is true/false
+
+  _BINARY_NAME=find
+  _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+  if [[ $_BINARY_HELP =~ "command not found" ]]
+  then
+    _show_error "required binary \"$_BINARY_NAME\" not found"
+  else
+    if $_BOOLEAN_HARDLINK \
+    || $_BOOLEAN_UNLINK
+    then
+      _BINARY_OPTION=-gid
+      if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi # $_BOOLEAN_HARDLINK $_BOOLEAN_UNLINK
+
+    if $_BOOLEAN_UNLINK
+    then
+      _BINARY_OPTION=-links
+      if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi # $_BOOLEAN_UNLINK
+
+    _BINARY_OPTION=-maxdepth
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+
+    _BINARY_OPTION=-printf
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+
+    _BINARY_OPTION=-readable
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+
+    _BINARY_OPTION=-type
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+
+    if $_BOOLEAN_HARDLINK \
+    || $_BOOLEAN_UNLINK
+    then
+      _BINARY_OPTION=-uid
+      if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi # $_BOOLEAN_HARDLINK $_BOOLEAN_UNLINK
+
+    if $_BOOLEAN_HARDLINK \
+    || $_BOOLEAN_UNLINK
+    then
+      _BINARY_OPTION=-writable
+      if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi # $_BOOLEAN_HARDLINK $_BOOLEAN_UNLINK
+
+    if $_BOOLEAN_XDEV
+    then
+      _BINARY_OPTION=-xdev
+      if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi # $_BOOLEAN_XDEV
+  fi
+  #- find -#
+
+  # - "-n string" = true if the length of string is non-zero
+  if $_BOOLEAN_MD5SUM \
+  && [[ -n $_OPTION_MD5SUM_SIZE ]]
+  then
+    #+ head +#
+    # - "head --help". stdout
+    #   "-c" (use "--bytes") ("=" is optional, use "=" for uniformity)
+    # - called in "function _pathname_md5sum_md5sum"
+    # - called in "function _pathname_md5sum_openssl"
+    # - $_BOOLEAN_MD5SUM is true
+    # - $_OPTION_MD5SUM_SIZE is non-zero length
+
+    _BINARY_NAME=head
+    _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+    _BINARY_HELP=${_BINARY_HELP//=/ }
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      _show_error "required binary \"$_BINARY_NAME\" not found"
+    else
+      _BINARY_OPTION=--bytes
+      if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi
+    #- head -#
+  fi # $_BOOLEAN_MD5SUM $_OPTION_MD5SUM_SIZE
+
+  if $_BOOLEAN_HARDLINK \
+  || $_BOOLEAN_UNLINK
+  then
+    #+ id +#
+    # - "id --help". stdout
+    #   "-g" (use "--group")
+    #   "-u" (use "--user")
+    # - called in "function _binary_validate_setup" (this function)
+    # - $_BOOLEAN_HARDLINK is true/false (TODO. not yet implemented)
+    # - $_BOOLEAN_UNLINK is true/false
+    # - _MY_GID is set
+    # - _MY_UID is set
+
+    _BINARY_NAME=id
+    _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      _show_error "required binary \"$_BINARY_NAME\" not found"
+    else
+      _BINARY_OPTION=--group
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        # - no doublequotes on the binary or its option. aka: NO CAPES!
+        _MY_GID=$($_BINARY_NAME $_BINARY_OPTION)
+        _eko_v "                     \$_MY_GID: \"$_MY_GID\""
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+
+      _BINARY_OPTION=--user
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        # - no doublequotes on the binary or its option. aka: NO CAPES!
+        _MY_UID=$($_BINARY_NAME $_BINARY_OPTION)
+        _eko_v "                     \$_MY_UID: \"$_MY_UID\""
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi
+    #- id -#
+  fi # $_BOOLEAN_HARDLINK $_BOOLEAN_UNLINK
+
+  if $_BOOLEAN_HARDLINK
+  then
+    #+ ln +#
+    # - "ln --help". stdout
+    #   "-f" (use "--force")
+    # - called in "function _pathnames_scan"
+    # - $_BOOLEAN_HARDLINK is true (TODO. not yet implemented)
+    # - _OPTIONS_LN is set
+
+    _BINARY_NAME=ln
+    _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      _show_error "required binary \"$_BINARY_NAME\" not found"
+    else
+      _BINARY_OPTION=--force
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _OPTIONS_LN=$_BINARY_OPTION
+        _eko_v "                 \$_OPTIONS_LN: \"$_OPTIONS_LN\""
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi
+    #- ln -#
+  fi # $_BOOLEAN_HARDLINK
+
+  if $_BOOLEAN_MD5SUM
+  then
+    # NOTE:
+    # - it's highly unlikely, but the possibility does exist that the "md5sum"
+    #   binary may not be available. if it's not, attempt to use the "openssl"
+    #   binary in its place. openssl is ~13x larger & ~1/2 the speed of
+    #   md5sum, but slow is better than an avoidable error
+    # - (special thanks to vbatts for the idea of using openssl as a fallback)
+
+    #+ md5sum +#
+    # - "md5sum --help". stdout
+    # - called in "function _pathname_md5sum_md5sum"
+    # - $_BOOLEAN_MD5SUM is true
+    # - _FUNCTION_MD5SUM is set to _pathname_md5sum_md5sum (1/2)
+
+    _BINARY_NAME=md5sum
+    _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      #+ openssl (fallback) +#
+      # - naturally, there has to be ONE troublemaker. meh
+      # - "openssl --help". stderr. anything not a valid option spits out help
+      #   text. technically speaking, none of "--help", "-help", "-h", "-?"
+      #   are supported. they all provide useful help text, though *shrug*
+      # - "openssl --help 2>&1". stdout
+      #   "dgst -md5" (no "-" on dgst [required]. "-" on md5 [required])
+      # - beat the silly thing into submission:
+      #   "openssl dgst -help 2>&1"
+      # - called in "function _pathname_md5sum_openssl"
+      # - $_BOOLEAN_MD5SUM is true
+      # - _FUNCTION_MD5SUM is set to _pathname_md5sum_openssl (2/2)
+
+      _BINARY_NAME=openssl
+      _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1))
+      if [[ $_BINARY_HELP =~ "command not found" ]]
+      then
+        _show_error "required binaries \"md5sum\" or \"$_BINARY_NAME\" not found"
+      else
+        _BINARY_OPTION=-md5
+        if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+        then
+          _FUNCTION_MD5SUM=_pathname_md5sum_openssl
+          _eko_v "            \$_FUNCTION_MD5SUM: \"$_FUNCTION_MD5SUM\""
+        else
+          _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+        fi
+      fi
+      #- openssl (fallback) -#
+    else
+      _FUNCTION_MD5SUM=_pathname_md5sum_md5sum
+      _eko_v "            \$_FUNCTION_MD5SUM: \"$_FUNCTION_MD5SUM\""
+    fi
+    #- md5sum -#
+  fi # $_BOOLEAN_MD5SUM
+
+  if $_BOOLEAN_UNLINK
+  then
+    #+ mv +#
+    # - "mv --help". stdout
+    #   "-f" (use "--force")
+    # - called in "function _pathnames_scan"
+    # - $_BOOLEAN_UNLINK is true
+    # - _OPTIONS_MV is set
+
+    _BINARY_NAME=mv
+    _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      _show_error "required binary \"$_BINARY_NAME\" not found"
+    else
+      _BINARY_OPTION=--force
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _OPTIONS_MV=$_BINARY_OPTION
+        _eko_v "                 \$_OPTIONS_MV: \"$_OPTIONS_MV\""
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi
+    #- mv -#
+  fi # $_BOOLEAN_UNLINK
+
+  # NOTE:
+  # - nested tests are not sufficient. in the current form only the binary's
+  #   existence is verified. binary existence *&* option support must be
+  #   verified
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_FUNCTION_TRANSFORM ]]
+  then
+    # - _FUNCTION_TRANSFORM is set to _pathname_transform_cd_pwd (1/3)
+    # - _FUNCTION_TRANSFORM is set to _pathname_transform_realpath (2/3)
+    # - _FUNCTION_TRANSFORM is set to _pathname_transform_bruteforce (3/3)
+
+    #+ realpath +#
+    # - "realpath --help". stdout
+    #   "-e" (use "--canonicalize-existing")
+    #   "-P" (use "--physical")
+    # - called in "function _pathname_transform_realpath"
+    # - _FUNCTION_TRANSFORM is set to _pathname_transform_realpath (2/3)
+    # - _OPTIONS_REALPATH is set
+
+    _BINARY_NAME=realpath
+    _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      #+ basename (fallback with dirname/find to realpath) +#
+      # - "basename --help". stdout
+      # - called in "function _pathname_transform_bruteforce"
+      # - _FUNCTION_TRANSFORM is set to _pathname_transform_bruteforce (3/3)
+
+      _BINARY_NAME=basename
+      _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+      if [[ $_BINARY_HELP =~ "command not found" ]]
+      then
+        _show_error "required binary \"$_BINARY_NAME\" not found"
+      fi
+      #- basename (fallback with dirname/find to realpath) -#
+
+      #+ dirname (fallback with basename/find to realpath) +#
+      # - "dirname --help". stdout
+      # - called in "function _pathname_transform_bruteforce"
+      # - _FUNCTION_TRANSFORM is set to _pathname_transform_bruteforce (3/3)
+
+      _BINARY_NAME=dirname
+      _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+      if [[ $_BINARY_HELP =~ "command not found" ]]
+      then
+        _show_error "required binary \"$_BINARY_NAME\" not found"
+      fi
+      #- dirname (fallback with basename/find to realpath) -#
+
+      # - it's ugly, but it definitely works
+      _FUNCTION_TRANSFORM=_pathname_transform_bruteforce
+      _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
+    else
+      _BINARY_OPTION=--canonicalize-existing
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _OPTIONS_REALPATH=$_BINARY_OPTION
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+
+      _BINARY_OPTION=--physical
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _OPTIONS_REALPATH+=" "$_BINARY_OPTION
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+
+      # - it's much more graceful, but may not be available. if the tests
+      #   reach this far, then it does exist & it does support the required
+      #   options
+      _FUNCTION_TRANSFORM=_pathname_transform_realpath
+      _eko_v "           \$_OPTIONS_REALPATH: \"$_OPTIONS_REALPATH\""
+      _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
+    fi
+    #- realpath -#
+  fi
+
+  if $_BOOLEAN_HARDLINK \
+  || $_BOOLEAN_UNLINK
+  then
+    #+ rm +#
+    # - "rm --help". stdout
+    #   "-f" (use "--force")
+    # - called in "function _trap"
+    # - $_BOOLEAN_HARDLINK is true/false (TODO. not yet implemented)
+    # - $_BOOLEAN_UNLINK is true/false
+    # - _OPTIONS_RM is set
+
+    _BINARY_NAME=rm
+    _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      _show_error "required binary \"$_BINARY_NAME\" not found"
+    else
+      _BINARY_OPTION=--force
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _OPTIONS_RM=$_BINARY_OPTION
+        _eko_v "                 \$_OPTIONS_RM: \"$_OPTIONS_RM\""
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi
+    #- rm -#
+  fi # $_BOOLEAN_HARDLINK $_BOOLEAN_UNLINK
+
+  #+ sort +#
+  # - "sort --help". stdout
+  #   "-k" (use "--key") ("=" is optional, use "=" for uniformity)
+  # - called in "function _pathnames_scan"
+
+  _BINARY_NAME=sort
+  _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+  _BINARY_HELP=${_BINARY_HELP//=/ }
+  if [[ $_BINARY_HELP =~ "command not found" ]]
+  then
+    _show_error "required binary \"$_BINARY_NAME\" not found"
+  else
+    _BINARY_OPTION=--key
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+  fi
+  #- sort -#
+
+  if $_BOOLEAN_HARDLINK \
+  || $_BOOLEAN_UNLINK
+  then
+    #+ touch +#
+    # - "touch --help". stdout
+    #   "-d" (use "--date") ("=" is optional, use "=" for uniformity)
+    # - called in "function _pathnames_scan"
+    # - $_BOOLEAN_HARDLINK is true/false (TODO. not yet implemented)
+    # - $_BOOLEAN_UNLINK is true/false
+    # - $_BOOLEAN_TIMESTAMP is true/false (set in "function _pathnames_scan")
+    # - $_SD_MTIM_HMS is referenced in "function _trap"
+    # - $_SD_MTIM_UTC is referenced in "function _trap"
+    # - $_SD_MTIM_YMD is referenced in "function _trap"
+    # - $_SD_NAME is referenced in "function _trap"
+
+    _BINARY_NAME=touch
+    _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+    _BINARY_HELP=${_BINARY_HELP//=/ }
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      _show_error "required binary \"$_BINARY_NAME\" not found"
+    else
+      _BINARY_OPTION=--date
+      if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi
+    #- touch -#
+  fi # $_BOOLEAN_HARDLINK $_BOOLEAN_UNLINK
+
+  _eko_iod "#- _binary_validate_setup -#"
+}
+
+function _builtin_validate_setup()
+{
+  _eko_iod "#+ _builtin_validate_setup +#"
+
+  # functions:
+  # _eko_iod
+  # _pathname_transform_cd_pwd (_FUNCTION_TRANSFORM)
+  # _show_error
+
+  # variables:
+  # _BUILTIN_HELP
+  # _BUILTIN_NAME
+  # _BUILTIN_OPTION
+  # _FUNCTION_TRANSFORM (_pathname_transform_bruteforce _pathname_transform_cd_pwd _pathname_transform_realpath)
+  # _OPTIONS_CD (cd options, not script options)
+  # _OPTIONS_PWD (pwd options, not script options)
+
+  # builtins:
+  # cd (in combination with pwd, fallback to basename/dirname/find/realpath)
+  # pwd (in combination with cd, fallback to basename/dirname/find/realpath)
+
+  # NOTE:
+  # - rather than test a given builtin's version (or more accurately, test a
+  #   given version of bash itself) in hopes of figuring out which features it
+  #   supports, test its supported feature set directly. not only is this much
+  #   simpler to do, it's possible to test only those features that are
+  #   explicitly used in the script
+  # - how? get the builtin to dump its embedded help text & parse the result
+  # - this can be used as a dual test. no help text = unsupported builtin,
+  #   otherwise parse the help text for descriptions of specific features
+
+  # NOTE:
+  # - technically speaking, we only need one of the following tests to succeed
+
+  # - be explicit for clarity. we'll be testing this variable in
+  #   "function _binary_validate_setup"
+  unset _FUNCTION_TRANSFORM
+
+  # - be explicit for clarity. we'll be testing this variable further below
+  unset _OPTIONS_CD
+
+  #+ cd +#
+  # - "help cd". stdout
+  #   "-P"
+  # - called in "function _pathname_transform_cd_pwd"
+  # - _OPTIONS_CD is set
+
+  _BUILTIN_NAME=cd
+  _BUILTIN_HELP=$(echo $(help $_BUILTIN_NAME 2>&1))
+  if [[ $_BUILTIN_HELP =~ "no help topics match" ]]
+  then
+    _show_error "required builtin \"$_BUILTIN_NAME\" not supported"
+  else
+    _BUILTIN_OPTION=-P
+    if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
+    then
+      _OPTIONS_CD=$_BUILTIN_OPTION
+      _eko_v "                 \$_OPTIONS_CD: \"$_OPTIONS_CD\""
+    fi
+  fi
+  #- cd -#
+
+  # - be explicit for clarity. we'll be testing this variable further below
+  unset _OPTIONS_PWD
+
+  #+ pwd +#
+  # - "help pwd". stdout
+  #   "-P"
+  # - called in "function _pathname_transform_cd_pwd"
+  # - _OPTIONS_PWD is set
+
+  _BUILTIN_NAME=pwd
+  _BUILTIN_HELP=$(echo $(help $_BUILTIN_NAME 2>&1))
+  if [[ $_BUILTIN_HELP =~ "no help topics match" ]]
+  then
+    _show_error "required builtin \"$_BUILTIN_NAME\" not supported"
+  else
+    _BUILTIN_OPTION=-P
+    if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
+    then
+      _OPTIONS_PWD=$_BUILTIN_OPTION
+      _eko_v "                \$_OPTIONS_PWD: \"$_OPTIONS_PWD\""
+    fi
+  fi
+  #- pwd -#
+
+  # - _FUNCTION_TRANSFORM is set to _pathname_transform_cd_pwd (1/3)
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_OPTIONS_CD ]] \
+  || [[ -n $_OPTIONS_PWD ]]
+  then
+    _FUNCTION_TRANSFORM=_pathname_transform_cd_pwd
+    _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
+  fi
+
+  _eko_iod "#- _builtin_validate_setup -#"
+}
+
+function _eko_iod()
+{
+  #+ _eko_iod +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # #
+  # @
+  # FUNCNAME (single dimension indexed array)
+  # _BOOLEAN_DEBUG
+
+  # NOTE:
+  # - why $(( ${#FUNCNAME[@]} - 3 ))? to account for main, parent, current
+  # - pay special attention to the "*" in "%*s". it's part of the magic
+
+  if $_BOOLEAN_DEBUG
+  then
+    # - fast & fancy indenting/"outdenting"
+    # - $((expression))
+    # - ${#parameter}
+    printf "%*s" $(( ${#FUNCNAME[@]} - 3 ))
+
+    echo "$@"
+  fi
+
+  #- _eko_iod -#
+}
+
+function _eko_v()
+{
+  #+ _eko_v +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # @
+  # _BOOLEAN_VERBOSE
+
+  if $_BOOLEAN_VERBOSE
+  then
+    echo "$@"
+  fi
+
+  #- _eko_v -#
+}
+
+function _parse_parameters()
+{
+  #+ _parse_parameters +#
+
+  # functions:
+  # _binary_validate_setup
+  # _builtin_validate_setup
+  # _eko_iod
+  # _eko_v
+  # _pathname_redundant_check
+  # _pathname_validate
+  # _pathnames_scan
+  # _show_error
+  # _show_help
+
+  # variables:
+  # #
+  # 1
+  # 2
+  # @
+  # _ARRAY_ELEMENT_HN (counter)
+  # _ARRAY_HOLDNAMES (single dimension indexed array)
+  # _ARRAY_PATHNAMES (single dimension indexed array)
+  # _BOOLEAN_DEBUG
+  # _BOOLEAN_DRYRUN
+  # _BOOLEAN_ERROR
+  # _BOOLEAN_HARDLINK
+  # _BOOLEAN_LONG
+  # _BOOLEAN_MD5SUM
+  # _BOOLEAN_NANOSECONDS
+  # _BOOLEAN_NONSPARSE
+  # _BOOLEAN_RELATIVE
+  # _BOOLEAN_SPARSE
+  # _BOOLEAN_STDOUT
+  # _BOOLEAN_UNLINK
+  # _BOOLEAN_VERBOSE
+  # _BOOLEAN_XDEV
+  # _FUNCTION_TRANSFORM (_pathname_transform_bruteforce _pathname_transform_cd_pwd _pathname_transform_realpath)
+  # _OPTIONS_CP (cp options, not script options)
+  # _OPTIONS_LN (ln options, not script options)
+  # _OPTIONS_MV (mv options, not script options)
+  # _OPTIONS_RM (rm options, not script options)
+  # _OPTION_MD5SUM_SIZE
+  # _OPTION_PATHNAME
+
+  # NOTE:
+  # - boolean variables are proper toggles
+
+  # NOTE:
+  # - _BOOLEAN_STDOUT is special. it's quite simple to set up initially
+  # - companion functions: none. used directly in "function _pathnames_scan"
+  # - default: true
+  # - *not* toggled in while/do/done loop like the others
+  # - set to false immediately after the while/do/done loop if any of
+  #   $_BOOLEAN_DEBUG, $_BOOLEAN_LONG, or $_BOOLEAN_VERBOSE are true
+
+  #+ parameter defaults +#
+
+  _BOOLEAN_DEBUG=false
+  _BOOLEAN_DRYRUN=false
+  _BOOLEAN_ERROR=false
+  _BOOLEAN_HARDLINK=false
+  _BOOLEAN_LONG=false
+  _BOOLEAN_MD5SUM=false
+  _BOOLEAN_NANOSECONDS=false
+  _BOOLEAN_NONSPARSE=false
+  _BOOLEAN_RELATIVE=false
+  _BOOLEAN_SPARSE=false
+  _BOOLEAN_STDOUT=true
+  _BOOLEAN_UNLINK=false
+  _BOOLEAN_VERBOSE=false
+  _BOOLEAN_XDEV=false
+  unset _ARRAY_HOLDNAMES
+  unset _ARRAY_PATHNAMES
+  unset _OPTION_MD5SUM_SIZE
+  unset _OPTION_PATHNAME
+
+  #- parameter defaults -#
+
+  # NOTE:
+  # - perform minimal checks in the loop & additional checks after the loop.
+  #   why? to permit variables to "settle" if specified multiple times & to
+  #   permit options that rely on eachother (ie: "-m, --md5sum" & "-s, --size")
+  #   as well as options that conflict (ie: "-H, --hardlink" & "-U, --unlink")
+  #   to be specified in any order
+  # - "-p, --pathname" is an exception. it's additive, not a toggle. hence the
+  #   array
+
+  while [[ $# -gt 0 ]]
+  do
+    case $1 in
+      ( -D \
+      | --dry-run )
+        if $_BOOLEAN_DRYRUN
+        then
+          _BOOLEAN_DRYRUN=false
+        else
+          _BOOLEAN_DRYRUN=true
+        fi
+      ;;
+      ( -E \
+      | --error )
+        if $_BOOLEAN_ERROR
+        then
+          _BOOLEAN_ERROR=false
+        else
+          _BOOLEAN_ERROR=true
+        fi
+      ;;
+      ( -H \
+      | --hardlink )
+        if $_BOOLEAN_HARDLINK
+        then
+          _BOOLEAN_HARDLINK=false
+        else
+          _BOOLEAN_HARDLINK=true
+        fi
+      ;;
+      ( -N \
+      | --non-sparse )
+        if $_BOOLEAN_NONSPARSE
+        then
+          _BOOLEAN_NONSPARSE=false
+        else
+          _BOOLEAN_NONSPARSE=true
+        fi
+      ;;
+      ( -S \
+      | --sparse )
+        if $_BOOLEAN_SPARSE
+        then
+          _BOOLEAN_SPARSE=false
+        else
+          _BOOLEAN_SPARSE=true
+        fi
+      ;;
+      ( -U \
+      | --unlink )
+        if $_BOOLEAN_UNLINK
+        then
+          _BOOLEAN_UNLINK=false
+        else
+          _BOOLEAN_UNLINK=true
+        fi
+      ;;
+      ( -W \
+      | -w \
+      | --warning )
+        _show_warning
+      ;;
+      ( -d \
+      | --debug )
+        if $_BOOLEAN_DEBUG
+        then
+          _BOOLEAN_DEBUG=false
+        else
+          _BOOLEAN_DEBUG=true
+        fi
+      ;;
+      ( -l \
+      | --long )
+        if $_BOOLEAN_LONG
+        then
+          _BOOLEAN_LONG=false
+        else
+          _BOOLEAN_LONG=true
+        fi
+      ;;
+      ( -m \
+      | --md5sum )
+        if $_BOOLEAN_MD5SUM
+        then
+          _BOOLEAN_MD5SUM=false
+        else
+          _BOOLEAN_MD5SUM=true
+        fi
+      ;;
+      ( -n \
+      | --nanoseconds )
+        if $_BOOLEAN_NANOSECONDS
+        then
+          _BOOLEAN_NANOSECONDS=false
+        else
+          _BOOLEAN_NANOSECONDS=true
+        fi
+      ;;
+      ( -p \
+      | --pathname )
+        # - ${parameter:offset:length}
+        # - "-z string" = true if the length of string is zero
+        if [[ ${2:0:1} == - ]] \
+        || [[ -z $2 ]]
+        then
+          _show_error "pathname not specified"
+        else
+          # - keep adding paths until another option is specified or until
+          #   we've reached the end of the commandline
+          # - globs are now supported. refer to bash(1) section
+          #   "Pattern Matching" for additional details
+          # - (special thanks to dive in OFTC #slackware for sparking the idea
+          #   of adding glob support)
+          # - ${parameter:offset:length}
+          # - "-z string" = true if the length of string is zero
+          until [[ ${2:0:1} == - ]] \
+          || [[ -z $2 ]]
+          do
+            # - blindly save what was passed. it will be tested after the loop
+            _ARRAY_HOLDNAMES+=( "$2" )
+            shift
+          done
+        fi
+        # - (special thanks to karlmag in OFTC #slackware for finding the
+        #   troublemaker below: "you're shifting too much :-P")
+        #shift
+      ;;
+      ( -r \
+      | --relative )
+        if $_BOOLEAN_RELATIVE
+        then
+          _BOOLEAN_RELATIVE=false
+        else
+          _BOOLEAN_RELATIVE=true
+        fi
+      ;;
+      ( -s \
+      | --size )
+        # - ${parameter:offset:length}
+        # - "-z string" = true if the length of string is zero
+        if [[ ${2:0:1} == - ]] \
+        || [[ -z $2 ]]
+        then
+          _show_error "md5sum buffer size not specified"
+        else
+          _OPTION_MD5SUM_SIZE=$2
+        fi
+        shift
+      ;;
+      ( -v \
+      | --verbose )
+        if $_BOOLEAN_VERBOSE
+        then
+          _BOOLEAN_VERBOSE=false
+        else
+          _BOOLEAN_VERBOSE=true
+        fi
+      ;;
+      ( -x \
+      | --xdev )
+        if $_BOOLEAN_XDEV
+        then
+          _BOOLEAN_XDEV=false
+        else
+          _BOOLEAN_XDEV=true
+        fi
+      ;;
+      ( "-?" \
+      | -h \
+      | --help ) # -? must be "-?" or it matches "-<any single character>"
+        _show_help
+      ;;
+      ( -* )
+        _show_error "invalid option \"$1\" specified"
+      ;;
+      ( * )
+        _show_error "invalid parameter \"$1\" specified"
+      ;;
+    esac
+    shift
+  done
+
+  #- _parse_parameters -#
+
+  # - technically in the wrong spot, but it's a chicken or egg scenario
+  _eko_iod "#+ _parse_parameters +#"
+
+  # NOTE:
+  # - order of operations of the following 2 functions is important because of
+  #   the ranking necessary for the 3 _pathname_transform_* functions
+
+  # - validate the existence & required options of system builtins
+  # - while we're at it, set up the options for the various builtins
+  _builtin_validate_setup
+
+  # - validate the existence & required options of system binaries
+  # - while we're at it, selectively set options for some binaries
+  _binary_validate_setup
+
+  _ARRAY_ELEMENT_HN=0
+  while [[ $_ARRAY_ELEMENT_HN -lt ${#_ARRAY_HOLDNAMES[@]} ]]
+  do
+    # - process what was passed on the commandline
+    # - precedes: _pathname_validate
+    _OPTION_PATHNAME="${_ARRAY_HOLDNAMES[$_ARRAY_ELEMENT_HN]}"
+
+    # - succeeds: _OPTION_PATHNAME assignment
+    # - precedes: $_FUNCTION_TRANSFORM
+    # - ensure it's a valid pathname
+    _pathname_validate
+
+    # - succeeds: _pathname_validate
+    # - precedes: _pathname_redundant_check
+    # - transform $_OPTION_PATHNAME specified on the commandline
+    $_FUNCTION_TRANSFORM
+
+    # - succeeds: $_FUNCTION_TRANSFORM
+    # - precedes: _ARRAY_PATHNAMES assignment
+    # - ensure there are no redundant paths
+    _pathname_redundant_check
+
+    # - succeeds: _pathname_redundant_check
+    # - this entire segment is "fall through"
+    # ^ if everything passes, append $_OPTION_PATHNAME to _ARRAY_PATHNAMES
+   _ARRAY_PATHNAMES+=( "$_OPTION_PATHNAME" )
+
+    # - not really necessary, but leaves it in a predictable state
+    unset _OPTION_PATHNAME
+
+    # - ((expression))
+    # - id++ = variable post-increment
+    ((_ARRAY_ELEMENT_HN++))
+  done
+
+  #+ parameter settings (in (mostly) proper order of operation) +#
+
+  # NOTE:
+  # - the following blocks are *very* sensitive to order of operations
+
+  if $_BOOLEAN_DEBUG \
+  || $_BOOLEAN_LONG \
+  || $_BOOLEAN_VERBOSE
+  then
+    _BOOLEAN_STDOUT=false
+  fi
+
+  _eko_v "              \$_BOOLEAN_DEBUG: \"$_BOOLEAN_DEBUG\""
+  _eko_v "             \$_BOOLEAN_DRYRUN: \"$_BOOLEAN_DRYRUN\""
+  _eko_v "              \$_BOOLEAN_ERROR: \"$_BOOLEAN_ERROR\""
+  _eko_v "           \$_BOOLEAN_HARDLINK: \"$_BOOLEAN_HARDLINK\""
+  _eko_v "               \$_BOOLEAN_LONG: \"$_BOOLEAN_LONG\""
+  _eko_v "             \$_BOOLEAN_MD5SUM: \"$_BOOLEAN_MD5SUM\""
+  _eko_v "        \$_BOOLEAN_NANOSECONDS: \"$_BOOLEAN_NANOSECONDS\""
+  _eko_v "          \$_BOOLEAN_NONSPARSE: \"$_BOOLEAN_NONSPARSE\""
+  _eko_v "           \$_BOOLEAN_RELATIVE: \"$_BOOLEAN_RELATIVE\""
+  _eko_v "             \$_BOOLEAN_SPARSE: \"$_BOOLEAN_SPARSE\""
+  _eko_v "             \$_BOOLEAN_STDOUT: \"$_BOOLEAN_STDOUT\""
+  _eko_v "             \$_BOOLEAN_UNLINK: \"$_BOOLEAN_UNLINK\""
+  _eko_v "            \$_BOOLEAN_VERBOSE: \"$_BOOLEAN_VERBOSE\""
+  _eko_v "               \$_BOOLEAN_XDEV: \"$_BOOLEAN_XDEV\""
+  _eko_v "            \$_FUNCTION_MD5SUM: \"$_FUNCTION_MD5SUM\""
+  _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
+  _eko_v "                 \$_OPTIONS_CD: \"$_OPTIONS_CD\""
+  _eko_v "                 \$_OPTIONS_CP: \"$_OPTIONS_CP\""
+  _eko_v "                 \$_OPTIONS_LN: \"$_OPTIONS_LN\""
+  _eko_v "                 \$_OPTIONS_MV: \"$_OPTIONS_MV\""
+  _eko_v "                \$_OPTIONS_PWD: \"$_OPTIONS_PWD\""
+  _eko_v "                 \$_OPTIONS_RM: \"$_OPTIONS_RM\""
+  _eko_v "           \$_OPTIONS_REALPATH: \"$_OPTIONS_REALPATH\""
+  _eko_v "         \$_OPTION_MD5SUM_SIZE: \"$_OPTION_MD5SUM_SIZE\""
+  _eko_v "      \${#_ARRAY_PATHNAMES[@]}: \"${#_ARRAY_PATHNAMES[@]}\""
+  _eko_v "       \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
+
+  # NOTE:
+  # - lots of testing before we go further:
+  # - done here:
+  # - "-p" not specified at all. show help
+  # - multiple "-p" & "-r" are mutually exclusive. error exit
+  # - "-s" specified without "-m" (1/2). error exit
+  # - "-s" specified with non-numeric (2/2). error exit
+  # - "-n" specified without "-l" or "-v". error exit
+  # - "-N" specified without "-U". error exit
+  # - "-S" specified without "-U". error exit
+  # - "-H" & "-r" are mutually exclusive. error exit
+  # - "-H" & "-U" are mutually exclusive. error exit
+  # - "-N" & "-S" are mutually exclusive. error exit
+  # - "-d" & "-l" & "-m" are mutually exclusive. error exit
+  # - "-l" & "-v" are mutually exclusive. error exit
+  # - done elsewhere:
+  # - path exists?
+  # - path is a directory?
+  # - path is readable? (necessary for hardlinking/scanning/unlinking)
+  # - path is writable? (necessary for hardlinking/unlinking)
+  # ^ these 4 tests are in "function _pathname_validate"
+
+  # - I *think* this covers all the bases
+  # - these tests need to be done in a (more or less) specific order
+
+  # - "-p" not specified at all
+  if [[ ${#_ARRAY_PATHNAMES[@]} -eq 0 ]]
+  then
+    _show_help
+  fi
+
+  # - multiple "-p" & "-r" are mutually exclusive
+  if [[ ${#_ARRAY_PATHNAMES[@]} -gt 1 ]] \
+  && $_BOOLEAN_RELATIVE
+  then
+    _show_error "multiple \"-p, --pathname\" & \"-r, --relative\" are mutually exclusive"
+  fi
+
+  # - md5sum (1/2)
+  # - "-s" specified without "-m" (1/2)
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_OPTION_MD5SUM_SIZE ]] \
+  && ! $_BOOLEAN_MD5SUM
+  then
+    _show_error \""-m, --md5sum\" not specified"
+  fi
+
+  # - md5sum (2/2)
+  # - "-s" specified with non-numeric (2/2)
+  # - ensure it's a whole positive number (anything else prefixed with "-" is
+  #   caught during the parsing loop above)
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_OPTION_MD5SUM_SIZE ]] \
+  && [[ ! $_OPTION_MD5SUM_SIZE =~ ^[0-9]+$ ]]
+  then
+    _show_error "invalid md5sum buffer size \"$_OPTION_MD5SUM_SIZE\" specified"
+  fi
+
+  # - simple logic: one requires one of the others
+  # - "-n" specified without "-l" or "-v"
+  if $_BOOLEAN_NANOSECONDS \
+  && ! ( $_BOOLEAN_LONG \
+  || $_BOOLEAN_VERBOSE )
+  then
+    _show_error \""-n, --nanoseconds\" specified without \"-l, --long\" or \"-v, --verbose\""
+  fi
+
+  # - simple logic: one requires the other
+  # - "-N" specified without "-U"
+  if $_BOOLEAN_NONSPARSE \
+  && ! $_BOOLEAN_UNLINK
+  then
+    _show_error \""-N, --non-sparse\" specified without \"-U, --unlink\""
+  fi
+
+  # - simple logic: one requires the other
+  # - "-S" specified without "-U"
+  if $_BOOLEAN_SPARSE \
+  && ! $_BOOLEAN_UNLINK
+  then
+    _show_error \""-S, --sparse\" specified without \"-U, --unlink\""
+  fi
+
+  # - absolute paths will be needed in the sqlite3 db
+  # - "-H" & "-r" are mutually exclusive
+  if $_BOOLEAN_HARDLINK \
+  && $_BOOLEAN_RELATIVE
+  then
+    _show_error \""-H, --hardlink\" & \"-r, --relative\" are mutually exclusive"
+  fi
+
+  # - simple logic: these are completely opposite actions
+  # - "-H" & "-U" are mutually exclusive
+  if $_BOOLEAN_HARDLINK \
+  && $_BOOLEAN_UNLINK
+  then
+    _show_error \""-H, --hardlink\" & \"-U, --unlink\" are mutually exclusive"
+  fi
+
+  # - simple logic: these are completely opposite actions
+  # - "-N" & "-S" are mutually exclusive
+  if $_BOOLEAN_NONSPARSE \
+  && $_BOOLEAN_SPARSE
+  then
+    _show_error \""-N, --non-sparse\" & \"-S, --sparse\" are mutually exclusive"
+  fi
+
+  # - cosmetic: stdout is extremely garbled
+  # - "-d" & "-l" & "-m" are mutually exclusive
+  if $_BOOLEAN_DEBUG \
+  && $_BOOLEAN_LONG \
+  && $_BOOLEAN_MD5SUM
+  then
+    _show_error \""-d, --debug\" & \"-l, --long\" & \"-m, --md5sum\" are mutually exclusive"
+  fi
+
+  # - cosmetic: stdout is extremely garbled
+  # - "-l" & "-v" are mutually exclusive
+  if $_BOOLEAN_LONG \
+  && $_BOOLEAN_VERBOSE
+  then
+    _show_error \""-l, --long\" & \"-v, --verbose\" are mutually exclusive"
+  fi
+
+  #- parameter settings (in (mostly) proper order of operation) -#
+
+  # - this function is "fall through"
+  # ^ if everything passes, perform the scan
+  _pathnames_scan
+
+  _eko_iod "#- _parse_parameters -#"
+}
+
+function _pathname_md5sum_md5sum()
+{
+  _eko_iod "#+ _pathname_md5sum_md5sum +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # _OPTION_MD5SUM_SIZE
+  # _ST_MD5 (contrivance. not from stat(2))
+  # _ST_NAME (contrivance. not from stat(2))
+  # _ST_SIZE
+
+  # binaries:
+  # head
+  # md5sum
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_OPTION_MD5SUM_SIZE ]]
+  then
+    # - generate md5sum of the entire file
+    _ST_MD5=$(md5sum "$_ST_NAME" 2>/dev/null)
+
+    # - ${parameter/pattern/string}
+    # - strip "  <pathname>" suffix from output. keep the rest
+    _ST_MD5=${_ST_MD5/%  $_ST_NAME/}
+  else
+    # - generate md5sum of the first $_OPTION_MD5SUM_SIZE bytes of the file
+    _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null | md5sum -)
+
+    # - ${parameter/pattern/string}
+    # - strip "  -" suffix from output. keep the rest
+    _ST_MD5=${_ST_MD5/%  -/}
+  fi
+
+  _eko_iod "#- _pathname_md5sum_md5sum -#"
+}
+
+function _pathname_md5sum_openssl()
+{
+  _eko_iod "#+ _pathname_md5sum_openssl +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # _OPTION_MD5SUM_SIZE
+  # _ST_MD5 (contrivance. not from stat(2))
+  # _ST_NAME (contrivance. not from stat(2))
+  # _ST_SIZE
+
+  # binaries:
+  # head
+  # openssl (fallback to md5sum)
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_OPTION_MD5SUM_SIZE ]]
+  then
+    # - generate md5sum of the entire file
+    _ST_MD5=$(openssl dgst -md5 "$_ST_NAME" 2>/dev/null)
+
+    # - ${parameter/pattern/string}
+    # - strip "MD5(<pathname>)= " prefix from output. keep the rest
+    _ST_MD5=${_ST_MD5/#MD5($_ST_NAME)= /}
+  else
+    # - generate md5sum of the first $_OPTION_MD5SUM_SIZE bytes of the file
+    _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null | openssl dgst -md5)
+
+    # - ${parameter/pattern/string}
+    # - strip "(stdin)= " prefix from output. keep the rest
+    _ST_MD5=${_ST_MD5/#(stdin)= /}
+  fi
+
+  _eko_iod "#- _pathname_md5sum_openssl -#"
+}
+
+function _pathname_redundant_check()
+{
+  _eko_iod "#+ _pathname_redundant_check +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+  # _show_error
+
+  # variables:
+  # #
+  # @
+  # _ARRAY_ELEMENT_PN (counter)
+  # _ARRAY_PATHNAMES (single dimension indexed array)
+  # _LHS
+  # _LLEN
+  # _MIN_LEN
+  # _OPTION_PATHNAME
+  # _RHS
+  # _RLEN
+
+  # NOTE:
+  # - succeeds: $_FUNCTION_TRANSFORM
+  # - precedes: _ARRAY_PATHNAMES assignment
+  # - this function processes only path prefixes (as opposed to path suffixes)
+  #   so slow & careful is perfectly acceptable. it *must* be absolutely 100%
+  #   accurate
+  # - this function is "fall through"
+  # ^ if $_OPTION_PATHNAME passes all of the following tests, it's considered
+  #   valid
+
+  _eko_v "            \$_OPTION_PATHNAME: \"$_OPTION_PATHNAME\""
+  _eko_v "      \${#_ARRAY_PATHNAMES[@]}: \"${#_ARRAY_PATHNAMES[@]}\""
+  _eko_v "       \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
+
+  # - reassign so the original variable remains unmodified
+  # - conditionally append a trailing "/" while we're at it
+  #   (the "/" is very important)
+  if [[ "$_OPTION_PATHNAME" == / ]]
+  then
+    _LHS=/
+  else
+    _LHS="$_OPTION_PATHNAME/"
+  fi
+
+  # - get length
+  _LLEN=${#_LHS}
+
+  _ARRAY_ELEMENT_PN=0
+  while [[ $_ARRAY_ELEMENT_PN -lt ${#_ARRAY_PATHNAMES[@]} ]]
+  do
+    # - reassign so the original variable remains unmodified
+    # - conditionally append a trailing "/" while we're at it
+    #   (the "/" is very important)
+    if [[ "${_ARRAY_PATHNAMES[$_ARRAY_ELEMENT_PN]}" == / ]]
+    then
+      _RHS=/
+    else
+      _RHS="${_ARRAY_PATHNAMES[$_ARRAY_ELEMENT_PN]}/"
+    fi
+
+    # - get length
+    _RLEN=${#_RHS}
+
+    # - we want the minimum length
+    if [[ $_LLEN -lt $_RLEN ]]
+    then
+      _MIN_LEN=$_LLEN
+    else
+      _MIN_LEN=$_RLEN
+    fi
+
+    # - use reassigned variables (with "/") for the tests (above & below)
+    # - use original variables (without "/") for the reports
+
+    # NOTE:
+    # - there are several possible combinations of reports. for the moment,
+    #   "duplicate" & "child" are in use. it's simple enough for the 2nd & 3rd
+    #   reports to use only "parent" or a combination of "parent/child"
+
+    # - _LHS = option pathname, _RHS = single array pathnames element
+    # - ${parameter:offset:length}
+    if [[ "$_LHS" == "$_RHS" ]]
+    then
+      #_show_error \""${_ARRAY_PATHNAMES[$_ARRAY_ELEMENT_PN]}\" is a duplicate directory of \"$_OPTION_PATHNAME\""
+      _show_error \""$_OPTION_PATHNAME\" is a duplicate directory of \"${_ARRAY_PATHNAMES[$_ARRAY_ELEMENT_PN]}\""
+    elif [[ "$_LHS" == "${_RHS:0:$_MIN_LEN}" ]]
+    then
+      _show_error \""${_ARRAY_PATHNAMES[$_ARRAY_ELEMENT_PN]}\" is a child directory of \"$_OPTION_PATHNAME\""
+      #_show_error \""$_OPTION_PATHNAME\" is a parent directory of \"${_ARRAY_PATHNAMES[$_ARRAY_ELEMENT_PN]}\""
+    elif [[ "${_LHS:0:$_MIN_LEN}" == "$_RHS" ]]
+    then
+      #_show_error \""${_ARRAY_PATHNAMES[$_ARRAY_ELEMENT_PN]}\" is a parent directory of \"$_OPTION_PATHNAME\""
+      _show_error \""$_OPTION_PATHNAME\" is a child directory of \"${_ARRAY_PATHNAMES[$_ARRAY_ELEMENT_PN]}\""
+    fi
+
+    # - ((expression))
+    # - id++ = variable post-increment
+    ((_ARRAY_ELEMENT_PN++))
+  done
+
+  _eko_iod "#- _pathname_redundant_check -#"
+}
+
+function _pathname_transform_bruteforce()
+{
+  _eko_iod "#+ _pathname_transform_bruteforce +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # _BASENAME
+  # _DIRNAME
+  # _LINKNAME
+  # _OPTION_PATHNAME
+  # _STRING_PATHNAME
+
+  # binaries:
+  # basename (fallback with dirname/find to realpath)
+  # dirname (fallback with basename/find to realpath)
+  # find
+
+  # NOTE:
+  # - succeeds: _pathname_validate
+  # - precedes: _pathname_redundant_check
+  # - entry: possibly sloppy $_OPTION_PATHNAME from _parse_parameters
+  # - it may need cleaning up & to have the symlinks dereferenced
+  # - this function processes only path prefixes (as opposed to path suffixes)
+  #   so slow & careful is perfectly acceptable. it *must* be absolutely 100%
+  #   accurate
+
+  # NOTE:
+  # - shelling out to certain binaries causes problems with unquoted pathnames
+  #   simplest solution is to quote them all until I figure out what makes
+  #   things go *BOOM*
+
+  # NOTE:
+  # - ranking (3/3)
+
+  # goal #1: (sloppy $_OPTION_PATHNAME)
+  # - transform this:
+  #   /.////usr//local///bin/////../../../etc/X11/
+  # - to this:
+  #   /etc/X11
+
+  # goal #2: (symlink dereference)
+  # - transform this:
+  #   /pub/mirrors/slackware/slackware-current/source/a/aaa_terminfo
+  # - into this:
+  #   /data/pub/mirrors/slackware/slackware-current/source/l/ncurses
+
+  _eko_v "\$_OPTION_PATHNAME (start)    : \"$_OPTION_PATHNAME\""
+
+  #+ goal #1 +#
+  # - sanitize $_OPTION_PATHNAME
+  cd -- "$_OPTION_PATHNAME" &>/dev/null
+  _OPTION_PATHNAME=$(pwd --)
+
+  # - be tidy. restore the original pwd
+  cd -- - &>/dev/null
+
+  # - start (sanitized)
+  _eko_v "\$_OPTION_PATHNAME (sanitized): \"$_OPTION_PATHNAME\""
+  #- goal #1 -#
+
+  #+ goal #2 +#
+  # - get started
+  unset _STRING_PATHNAME
+
+  until [[ "$_OPTION_PATHNAME" == / ]]
+  do
+    # - destructively deconstruct $_OPTION_PATHNAME for pertinent information
+    # - top removed from bottom
+    _DIRNAME=$(dirname -- "$_OPTION_PATHNAME")
+    _BASENAME=$(basename -- "$_OPTION_PATHNAME")
+
+    _eko_v "\$_OPTION_PATHNAME (during)   : \"$_OPTION_PATHNAME\""
+
+    # - dual purpose: object of symbolic link or "" if file is not symbolic link
+    _LINKNAME=$(find "$_OPTION_PATHNAME" -maxdepth 0 -printf "%l" 2>/dev/null)
+
+    # - reconstruct
+    # - bottom added to top
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $_LINKNAME ]]
+    then
+      _eko_v " \$_DIRNAME \$_LINKNAME (link) : \"$_DIRNAME\" \"$_LINKNAME\""
+      _STRING_PATHNAME=$_LINKNAME/$_STRING_PATHNAME
+    else
+      _eko_v " \$_DIRNAME \$_BASENAME        : \"$_DIRNAME\" \"$_BASENAME\""
+      _STRING_PATHNAME=$_BASENAME/$_STRING_PATHNAME
+    fi
+
+    # - ascend 1 level
+    _OPTION_PATHNAME=$(dirname -- "$_OPTION_PATHNAME")
+  done
+
+  # - rebuilt (reconstructed)
+  _eko_v "\$_STRING_PATHNAME (rebuilt)  : \"$_STRING_PATHNAME\""
+
+  # - sanitize $_STRING_PATHNAME
+  # - pay attention to the "/" prefix
+  cd -- "/$_STRING_PATHNAME" &>/dev/null
+  _STRING_PATHNAME=$(pwd --)
+
+  # - be tidy. restore the original pwd
+  cd -- - &>/dev/null
+
+  # - assign to $_OPTION_PATHNAME
+  _OPTION_PATHNAME=$_STRING_PATHNAME
+
+  # - finish (transformed)
+  _eko_v "\$_OPTION_PATHNAME (finished) : \"$_OPTION_PATHNAME\""
+  #- goal #2 -#
+
+  _eko_iod "#- _pathname_transform_bruteforce -#"
+}
+
+function _pathname_transform_cd_pwd()
+{
+  _eko_iod "#+ _pathname_transform_cd_pwd +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # _OPTION_PATHNAME
+  # _OPTIONS_CD (cd options, not script options)
+  # _OPTIONS_PWD (pwd options, not script options)
+
+  # builtins:
+  # cd (in combination with pwd, fallback to basename/dirname/find/realpath)
+  # pwd (in combination with cd, fallback to basename/dirname/find/realpath)
+
+  # NOTE:
+  # - succeeds: _pathname_validate
+  # - precedes: _pathname_redundant_check
+  # - entry: possibly sloppy $_OPTION_PATHNAME from _parse_parameters
+  # - it may need cleaning up & to have the symlinks dereferenced
+  # - this function processes only path prefixes (as opposed to path suffixes)
+  #   so slow & careful is perfectly acceptable. it *must* be absolutely 100%
+  #   accurate
+
+  # NOTE:
+  # - ranking (1/3)
+
+  # goal #1: (sloppy $_OPTION_PATHNAME)
+  # - transform this:
+  #   /.////usr//local///bin/////../../../etc/X11/
+  # - to this:
+  #   /etc/X11
+
+  # goal #2: (symlink dereference)
+  # - transform this:
+  #   /pub/mirrors/slackware/slackware-current/source/a/aaa_terminfo
+  # - into this:
+  #   /data/pub/mirrors/slackware/slackware-current/source/l/ncurses
+
+  _eko_v "\$_OPTION_PATHNAME (start)    : \"$_OPTION_PATHNAME\""
+
+  #+ goal #1 & goal #2 +#
+  # - done in two simple (& technically redundant) steps
+  # - belt & suspenders. either of $_OPTIONS_CD or $_OPTIONS_PWD would get the
+  #   job done
+  cd $_OPTIONS_CD -- "$_OPTION_PATHNAME" &>/dev/null
+  _OPTION_PATHNAME=$(pwd $_OPTIONS_PWD --)
+
+  # - be tidy. restore the original pwd
+  cd -- - &>/dev/null
+  #- goal #1 & goal #2 -#
+
+  _eko_v "\$_OPTION_PATHNAME (finished) : \"$_OPTION_PATHNAME\""
+
+  _eko_iod "#- _pathname_transform_cd_pwd -#"
+}
+
+function _pathname_transform_realpath()
+{
+  _eko_iod "#+ _pathname_transform_realpath +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # _OPTION_PATHNAME
+  # _OPTIONS_REALPATH (realpath options, not script options)
+
+  # binaries:
+  # realpath
+
+  # NOTE:
+  # - succeeds: _pathname_validate
+  # - precedes: _pathname_redundant_check
+  # - entry: possibly sloppy $_OPTION_PATHNAME from _parse_parameters
+  # - it may need cleaning up & to have the symlinks dereferenced
+  # - this function processes only path prefixes (as opposed to path suffixes)
+  #   so slow & careful is perfectly acceptable. it *must* be absolutely 100%
+  #   accurate
+
+  # NOTE:
+  # - ranking (2/3)
+
+  # goal #1: (sloppy $_OPTION_PATHNAME)
+  # - transform this:
+  #   /.////usr//local///bin/////../../../etc/X11/
+  # - to this:
+  #   /etc/X11
+
+  # goal #2: (symlink dereference)
+  # - transform this:
+  #   /pub/mirrors/slackware/slackware-current/source/a/aaa_terminfo
+  # - into this:
+  #   /data/pub/mirrors/slackware/slackware-current/source/l/ncurses
+
+  _eko_v "\$_OPTION_PATHNAME (start)    : \"$_OPTION_PATHNAME\""
+
+  #+ goal #1 & goal #2 +#
+  # - done in a single step
+  # - doublequote only the pathname itself. not the binary or its options
+  _OPTION_PATHNAME=$(realpath $_OPTIONS_REALPATH -- "$_OPTION_PATHNAME")
+  #- goal #1 & goal #2 -#
+
+  _eko_v "\$_OPTION_PATHNAME (finished) : \"$_OPTION_PATHNAME\""
+
+  _eko_iod "#- _pathname_transform_realpath -#"
+}
+
+function _pathname_validate()
+{
+  _eko_iod "#+ _pathname_validate +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+  # _show_error
+
+  # variables:
+  # _OPTION_PATHNAME
+
+  # binaries:
+  # find
+
+  # NOTE:
+  # - succeeds: _OPTION_PATHNAME assignment
+  # - precedes: $_FUNCTION_TRANSFORM
+  # - performing brute force tests with "find" since it catches things that
+  #   simple tests with bash miss
+  # - this function processes only path prefixes (as opposed to path suffixes)
+  #   so slow & careful is perfectly acceptable. it *must* be absolutely 100%
+  #   accurate
+  # - this function is "fall through"
+  # ^ if $_OPTION_PATHNAME passes all of the following tests, it's considered
+  #   valid
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $(find "$_OPTION_PATHNAME" -maxdepth 0 2>/dev/null) ]]
+  then
+    _show_error \""$_OPTION_PATHNAME\" does not exist"
+  fi
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $(find "$_OPTION_PATHNAME" -type d -maxdepth 0 2>/dev/null) ]]
+  then
+    # - correctly decipher the pathname if the very last element is a symlink
+    # - take note of the explicit trailing "/". it's part of the magic
+    if [[ -n $(find "$_OPTION_PATHNAME/" -type d -maxdepth 0 2>/dev/null) ]]
+    then
+      _OPTION_PATHNAME+=/
+    else
+      _show_error \""$_OPTION_PATHNAME\" is not a directory"
+    fi
+  fi
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $(find "$_OPTION_PATHNAME" -type d -maxdepth 0 -readable 2>/dev/null) ]]
+  then
+    _show_error \""$_OPTION_PATHNAME\" is not readable"
+  fi
+
+  # - necessary for hardlinking/unlinking. not necessary for scanning
+  # - "-z string" = true if the length of string is zero
+  if ( $_BOOLEAN_HARDLINK \
+  || $_BOOLEAN_UNLINK ) \
+  && [[ -z $(find "$_OPTION_PATHNAME" -type d -maxdepth 0 -writable 2>/dev/null) ]]
+  then
+    _show_error \""$_OPTION_PATHNAME\" is not writable"
+  fi
+
+  _eko_v "            \$_OPTION_PATHNAME: \"$_OPTION_PATHNAME\" (valid)"
+
+  _eko_iod "#- _pathname_validate -#"
+}
+
+function _pathnames_scan()
+{
+  _eko_iod "#+ _pathnames_scan +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # $$
+  # @
+  # PPID
+  # _ARRAY_HOLDNAMES (single dimension indexed array)
+  # _ARRAY_PATHNAMES (single dimension indexed array)
+  # _BOOLEAN_DRYRUN
+  # _BOOLEAN_LONG
+  # _BOOLEAN_MD5SUM
+  # _BOOLEAN_NANOSECONDS
+  # _BOOLEAN_RELATIVE
+  # _BOOLEAN_STDOUT
+  # _BOOLEAN_TIMESTAMP
+  # _BOOLEAN_UNLINK
+  # _BOOLEAN_VERBOSE
+  # _FUNCTION_MD5SUM (_pathname_md5sum_md5sum _pathname_md5sum_openssl)
+  # _MY_GID
+  # _MY_UID
+  # _OPTIONS_CP (cp options, not script options)
+  # _OPTIONS_MV (mv options, not script options)
+  # _OPTIONS_READWRITE (find options. not script options)
+  # _OPTIONS_UIDGID (find options. not script options)
+  # _OPTIONS_UNLINK (find options. not script options)
+  # _OPTIONS_XDEV (find options. not script options)
+  # _SD_MTIM_HMS (contrivance. not from stat(2))
+  # _SD_MTIM_UTC (contrivance. not from stat(2))
+  # _SD_MTIM_YMD (contrivance. not from stat(2))
+  # _SD_NAME (contrivance. not from stat(2))
+  # _ST_DEV
+  # _ST_GID
+  # _ST_INO
+  # _ST_MD5 (contrivance. not from stat(2))
+  # _ST_MODE
+  # _ST_MTIM_HMS (contrivance. not from stat(2))
+  # _ST_MTIM_UTC (contrivance. not from stat(2))
+  # _ST_MTIM_YMD (contrivance. not from stat(2))
+  # _ST_NAME (contrivance. not from stat(2))
+  # _ST_NLINK
+  # _ST_SIZE
+  # _ST_UID
+  # _SU_NAME (contrivance. not from stat(2))
+
+  # binaries:
+  # cp
+  # find
+#  # ln
+  # mv
+  # sort
+  # touch
+
+  # NOTE:
+  # - no need to manipulate $IFS (now supports pathnames containing 0x09 [tab]
+  #   & 0x20 [space]. does not support pathnames containing 0x0a [linefeed])
+  # - gathers all the required stat(2) information during the scan
+
+  # NOTE:
+  # - because of the -readable/-writable magic from "find", only files that
+  #   can be unlinked are reported when "-U, --unlink" is specified. this
+  #   makes what would have been an incredibly complex task quite simple
+  # - additionally, -uid/-gid magic from "find" restricts the possibilities
+  #   even further
+
+  # NOTE:
+  # - several, but not all, _OPTIONS_* are set up here, others in
+  #   "function _binary_validate_setup"
+
+  # NOTE:
+  # - if the unlinking is interrupted for any reason, the original file will
+  #   still be in place. the worst that can happen is there will be a stray
+  #   temporary file & the parent directory's timestamp will be altered. this
+  #   is now handled by "function _trap"
+
+  # NOTE:
+  # - acquire only _SD_MTIM_* & _SD_NAME from outer find (with -printf)
+  # - acquire numerous _ST_* from inner find (with -printf)
+  # - refer to stat(2) for full descriptions of _st_* information
+
+  # NOTE:
+  # - belt & suspenders:
+  #   - outer loop with "find <other options> ! -empty"
+  #   - inner loop with "if [[ -n "$_ST_NAME" ]]"
+  # - costs nothing for the "! -empty" test & both (empty/"-n") together might
+  #   offer a minor speed increase
+  # - the "-n" conditional in the inner loop is necessary. a directory might
+  #   be "not empty" but contain only non-regular files
+  # - related to "-n" in the inner loop: "! -empty" cannot be used here as
+  #   valid zero-length files would then be skipped
+
+  # NOTE:
+  # - all of what's being done within the inner loop needs to be as
+  #   streamlined as possible. the former approach was very expensive timewise
+  #   & quite noticeable the larger the filesets became (done?)
+  # - tests are ranked by desired speed of operation, so: stdout/long/verbose
+  # - code compactness/legiblility deliberately sacrificed for code speed
+
+  # - necessary for hardlinking/unlinking & for scanning (respectively)
+  if $_BOOLEAN_HARDLINK \
+  || $_BOOLEAN_UNLINK
+  then
+    _OPTIONS_READWRITE="-readable -writable"
+  else
+    _OPTIONS_READWRITE="-readable"
+  fi
+
+  if ( $_BOOLEAN_HARDLINK \
+  || $_BOOLEAN_UNLINK ) \
+  && ( [[ $_MY_UID -ne 0 ]] \
+  || [[ $_MY_GID -ne 0 ]] )
+  then
+    # - non-root is restricted to directories to which they have write access
+    #   (handled by $_OPTIONS_READWRITE) & only their own files
+    #   (handled by $_OPTIONS_READWRITE & $_OPTIONS_UIDGID in concert)
+    # - better to be too strict than not strict enough
+    _OPTIONS_UIDGID="-uid $_MY_UID -gid $_MY_GID"
+  else
+    # - root can do anything, write access permitting
+    unset _OPTIONS_UIDGID
+  fi
+
+  # - multi-link magic
+  # - necessary for unlinking. not necessary for hardlinking/scanning
+  if $_BOOLEAN_UNLINK
+  then
+    _OPTIONS_UNLINK="-links +1"
+  else
+    unset _OPTIONS_UNLINK
+  fi
+
+  # - submount magic
+  # - optional for hardlinking/scanning/unlinking
+  # - $_ST_DEV will be preserved in the sqlite3 db, so hardlinking one or more
+  #   filesystems (deliberately including or excluding submounts) with one or
+  #   more invocations of "-p, --pathname" should be possible. "-x, --xdev"
+  #   itself, though, is an all or nothing option
+  if $_BOOLEAN_XDEV
+  then
+    _OPTIONS_XDEV="-xdev"
+  else
+    unset _OPTIONS_XDEV
+  fi
+
+  _eko_v "          \$_OPTIONS_READWRITE: \"$_OPTIONS_READWRITE\""
+  _eko_v "             \$_OPTIONS_UIDGID: \"$_OPTIONS_UIDGID\""
+  _eko_v "             \$_OPTIONS_UNLINK: \"$_OPTIONS_UNLINK\""
+  _eko_v "               \$_OPTIONS_XDEV: \"$_OPTIONS_XDEV\""
+
+  # - save the base path, cd to it, reset it to "."
+  # - only possible if $_ARRAY_PATHNAMES contains a single pathname. already
+  #   tested/trapped in "function _parse_parameters"
+  if $_BOOLEAN_RELATIVE
+  then
+    _ARRAY_HOLDNAMES="$_ARRAY_PATHNAMES"
+    cd -- "$_ARRAY_PATHNAMES" &>/dev/null
+    _ARRAY_PATHNAMES="."
+  fi
+
+  # - default = do not update directory timestamp
+  _BOOLEAN_TIMESTAMP=false
+
+  while read -r \
+  _SD_MTIM_YMD \
+  _SD_MTIM_HMS \
+  _SD_MTIM_UTC \
+  _SD_NAME
+  do
+    while read -r \
+    _ST_DEV \
+    _ST_INO \
+    _ST_MODE \
+    _ST_NLINK \
+    _ST_UID \
+    _ST_GID \
+    _ST_SIZE \
+    _ST_MTIM_YMD \
+    _ST_MTIM_HMS \
+    _ST_MTIM_UTC \
+    _ST_NAME
+    do
+      # - "-n string" = true if the length of string is non-zero
+      if [[ -n "$_ST_NAME" ]]
+      then
+
+        #+ DANGER! WILL ROBINSON! DANGER! this is live code +#
+        if ! $_BOOLEAN_DRYRUN \
+        && $_BOOLEAN_UNLINK
+        then
+          # - be as unique as possible. why such a convoluted file name?
+          # - 1: the base name *is* the original file name
+          # - 2: "scanfs" to make it easy to find stray temporary files in
+          #      case disaster strikes
+          # - 3: "$_MY_UID" for finger pointing :)
+          # - 4: "$PPID" for a degree of uniqueness coupled with the
+          #      following:
+          # - 5: "$$" for an additional degree of uniqueness in case the user
+          #      is *ahem* unwise enough to process the same directory
+          #      hierarchy simultaneously
+          _SU_NAME="${_ST_NAME}.scanfs.$_MY_UID.$PPID.$$"
+
+          # - copy the original file (with various options) to a unique file
+          # - take note of what is & what is not doublequoted
+          cp $_OPTIONS_CP -- "$_ST_NAME" "$_SU_NAME"
+
+          # - get stat(2) info of the newly created unique file, save
+          #   everything as _ST_* (except for _ST_NAME itself). this/these
+          #   (whatever) will be used in the long & verbose reports
+          read -r \
+          _ST_DEV \
+          _ST_INO \
+          _ST_MODE \
+          _ST_NLINK \
+          _ST_UID \
+          _ST_GID \
+          _ST_SIZE \
+          _ST_MTIM_YMD \
+          _ST_MTIM_HMS \
+          _ST_MTIM_UTC \
+          < \
+          <(find "$_SU_NAME" \
+          -type f \
+          -maxdepth 0 \
+          -printf "%D %i %M %n %U %G %s %TY-%Tm-%Td %TH:%TM:%TS %TZ\n" 2>/dev/null)
+
+          # - move the newly created unique file into place, overwriting the
+          #   original file
+          # - take note of what is & what is not doublequoted
+          mv $_OPTIONS_MV -- "$_SU_NAME" "$_ST_NAME"
+
+          # - since at least one file was manipulated in the current
+          #   directory, the directory's timestamp will need to be restored
+          # - flag it now, restore it immediately after processing the current
+          #   directory
+          _BOOLEAN_TIMESTAMP=true
+        fi
+        #- DANGER! WILL ROBINSON! DANGER! this is live code -#
+
+        if ! $_BOOLEAN_NANOSECONDS
+        then
+          # NOTE:
+          # - preserve nanoseconds for (optional) display
+          # - explicitly remove nanoseconds for the sqlite3 db
+          _ST_MTIM_HMS=${_ST_MTIM_HMS/.*/}
+
+          # - this seems to be the most efficient method time-wise
+          # - dump $_ST_MTIM_HMS to the sqlite3 db here
+        #else
+          # - dump ${_ST_MTIM_HMS/.*/} to the sqlite3 db here
+        fi
+
+        if $_BOOLEAN_STDOUT
+        then
+          if $_BOOLEAN_MD5SUM
+          then
+            # - generate md5sum of the file
+            $_FUNCTION_MD5SUM
+            echo "$_ST_MD5  $_ST_NAME"
+          else
+            echo "$_ST_NAME"
+          fi
+        elif $_BOOLEAN_LONG
+        then
+          if $_BOOLEAN_MD5SUM
+          then
+            # - generate md5sum of the file
+            $_FUNCTION_MD5SUM
+            printf "%4s %10s %s %4s %4s %3s %14s %s %s %s %s %s\n" \
+            $_ST_DEV $_ST_INO $_ST_MODE $_ST_NLINK $_ST_UID $_ST_GID \
+            $_ST_SIZE $_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC \
+            $_ST_MD5 \
+            "$_ST_NAME"
+          else
+            printf "%4s %10s %s %4s %4s %3s %14s %s %s %s %s\n" \
+            $_ST_DEV $_ST_INO $_ST_MODE $_ST_NLINK $_ST_UID $_ST_GID \
+            $_ST_SIZE $_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC \
+            "$_ST_NAME"
+          fi
+        elif $_BOOLEAN_VERBOSE
+        then
+          if $_BOOLEAN_MD5SUM
+          then
+            # - generate md5sum of the file
+            $_FUNCTION_MD5SUM
+            echo "
+                     \$_ST_DEV: \"$_ST_DEV\"
+                     \$_ST_INO: \"$_ST_INO\"
+                    \$_ST_MODE: \"$_ST_MODE\"
+                   \$_ST_NLINK: \"$_ST_NLINK\"
+                     \$_ST_UID: \"$_ST_UID\"
+                     \$_ST_GID: \"$_ST_GID\"
+                    \$_ST_SIZE: \"$_ST_SIZE\"
+                    \$_ST_MTIM: \"$_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC\"
+                     \$_ST_MD5: \"$_ST_MD5\"
+                    \$_ST_NAME: \"$_ST_NAME\""
+          else
+            echo "
+                     \$_ST_DEV: \"$_ST_DEV\"
+                     \$_ST_INO: \"$_ST_INO\"
+                    \$_ST_MODE: \"$_ST_MODE\"
+                   \$_ST_NLINK: \"$_ST_NLINK\"
+                     \$_ST_UID: \"$_ST_UID\"
+                     \$_ST_GID: \"$_ST_GID\"
+                    \$_ST_SIZE: \"$_ST_SIZE\"
+                    \$_ST_MTIM: \"$_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC\"
+                    \$_ST_NAME: \"$_ST_NAME\""
+          fi
+        fi
+
+      fi
+    done \
+    < \
+    <(find "$_SD_NAME" \
+    -type f \
+    -maxdepth 1 \
+    $_OPTIONS_READWRITE \
+    $_OPTIONS_UIDGID \
+    $_OPTIONS_UNLINK \
+    $_OPTIONS_XDEV \
+    -printf "%D %i %M %n %U %G %s %TY-%Tm-%Td %TH:%TM:%TS %TZ %p\n" 2>/dev/null \
+    | sort --key=11)
+
+    #+ DANGER! WILL ROBINSON! DANGER! this is live code +#
+    # - if one or more files were manipulated. the parent directory's
+    #   timestamp will need restoration
+    # - no need for additional boolean logic because the only way files
+    #   *could* be manipulated is if the parent directory is writable
+    # - there is a single (known) special case where attempting to restore the
+    #   parent directory's timestamp will fail. script run as non-root.
+    #   unlinking files in a directory that is itself mode 1777 (drwxrwxrwt) &
+    #   owned by someone other than oneself. hence the "2>/dev/null" below
+    if $_BOOLEAN_TIMESTAMP
+    then
+      # - take careful note: $_SD_* & not $_ST_* or $_SU_*
+      touch --date="$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC" "$_SD_NAME" 2>/dev/null
+
+      # - reset the flag for the next iteration
+      _BOOLEAN_TIMESTAMP=false
+    fi
+    #- DANGER! WILL ROBINSON! DANGER! this is live code -#
+
+  done \
+  < \
+  <(find "${_ARRAY_PATHNAMES[@]}" \
+  -type d \
+  ! -empty \
+  $_OPTIONS_READWRITE \
+  $_OPTIONS_XDEV \
+  -printf "%TY-%Tm-%Td %TH:%TM:%TS %TZ %p\n" 2>/dev/null \
+  | sort --key=4)
+
+  # - restore the base path
+  if $_BOOLEAN_RELATIVE
+  then
+    _ARRAY_PATHNAMES="$_ARRAY_HOLDNAMES"
+
+    # - be tidy. restore the original pwd
+    cd -- - &>/dev/null
+  fi
+
+  _eko_iod "#- _pathnames_scan -#"
+}
+
+function _show_error()
+{
+  _eko_iod "#+ _show_error +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # @
+
+  # - output to stderr, not stdout
+  # - be explicit for clarity
+  echo "Error: $@" 1>&2
+
+  _eko_iod "#- _show_error -#"
+
+  exit 1
+}
+
+function _show_help()
+{
+  _eko_iod "#+ _show_help +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # (none)
+
+  echo "Provide at least 1 parameter: <PathName> [OPTION] [[OPTION]]
+
+Mandatory parameter:
+  -p, --pathname      Pathname(s) to scan
+
+Optional parameters:
+  -D, --dry-run       Perform a trial run of the specified action
+  -E, --error         (TODO. placeholder option)
+  -H, --hardlink      Link duplicate files (TODO. placeholder option)
+  -N, --non-sparse    Explicitly force non-sparse copies when unlinking files
+  -S, --sparse        Explicitly force sparse copies when unlinking files
+  -U, --unlink        Unlink previously hardlinked files
+  -d, --debug         Display debugging information (function names/entry/exit)
+  -l, --long          Display all information in a format similar to \""ls -in\""
+  -m, --md5sum        Generate an md5sum for each file
+  -n, --nanoseconds   Display nanoseconds in long & verbose reports
+  -r, --relative      Output relative instead of absolute pathnames
+  -s, --size          Specify the maximum \""head\"" size of each file to md5sum
+  -v, --verbose       Display verbose information (variable names/contents)
+  -x, --xdev          Do not descend directories on other filesystems
+  -?, -h, --help      Display this help text, useful as it is
+  -W, -w, --warning   Display big fat warning. don't say I didn't tell you!
+
+There are 3 basic types of parameters:
+              additive: \"-p\"
+  last invocation used: \"-s\"
+                toggle: \"-D -E -H -N -S -U -d -l -m -n -r -v -x\"
+
+Note:
+  Globs are supported with \"-p, --pathname\". Refer to bash(1) section
+  \"Pattern Matching\" for specifics"
+
+  _eko_iod "#- _show_help -#"
+
+  exit 0
+}
+
+function _show_warning()
+{
+  _eko_iod "#+ _show_warning +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # (none)
+
+  echo "
+WARNING!
+
+These apply only to hardlinking & unlinking. Scanning is purely read-only.
+
+Since kernel 2.5.48, the stat(2) structure supports timestamps with
+\"second.nanosecond\" resolution. If timestamp accuracy to the nanosecond is
+a requirement on your system, DO NOT USE THIS SCRIPT. In order to function,
+this script deliberately ignores nanoseconds in timestamps in many, but not
+all, of its actions.
+
+DO NOT under ANY circumstances whatsoever modify anything within the specified
+filesystem paths while they're being processed.
+At best, nothing undesired will occur.
+At worst, old/new files will be overwritten by their new/old counterparts.
+This holds especially true for files that have previously been hardlinked.
+Consider: files with all of their hardlinked counterparts \"inside\" the paths
+being processed & also files with some of their hardlinked counterparts
+\"inside\" & \"outside\" the paths being processed.
+The behaviour is, by definition, unpredictable.
+
+TL;DR version: You break it, you get to keep both halves
+"
+
+  _eko_iod "#- _show_warning -#"
+
+  exit 0
+}
+
+function _sqlite3_test()
+{
+  _eko_iod "#+ _sqlite3_test +#"
+
+  # NOTE:
+  # - everything's up in the air at the moment, so the below listings are
+  #   deliberately prefixed with "#  #"
+
+#  # functions:
+#  # _eko_iod
+
+#  # variables:
+#  # _ST_DEV
+#  # _ST_GID
+#  # _ST_INO
+#  # _ST_MD5 (contrivance. not from stat(2))
+#  # _ST_MODE
+#  # _ST_MTIM_HMS (contrivance. not from stat(2))
+#  # _ST_MTIM_UTC (contrivance. not from stat(2))
+#  # _ST_MTIM_YMD (contrivance. not from stat(2))
+#  # _ST_NAME (contrivance. not from stat(2))
+#  # _ST_NLINK
+#  # _ST_SIZE
+#  # _ST_UID
+
+#  # binaries:
+#  # sqlite3
+
+# NOTE:
+# - this is an unused stub. keeping it for the information
+
+#+ comment block +#
+if [[ 0 == 1 ]]
+then
+
+# IDEA:
+# - when hardlinking 2 sets of previously hardlinked files & both sets have
+#   identical *link* counts, but differing *file* counts, link specifically
+#   the smaller set of files (by file count) to the larger set. reason: same
+#   link count + less files in the listing = some files are "outside" the sets
+#   being hardlinked, so preserve those pre-existing hardlinks
+# - additionally: if there are 3 or more sets of files (by link counts)
+#   - link max link count to single link (badly worded. look below)
+#   - from "bottom upwards" link those with the least number of links to those
+#     with the largest number of links (wrong?)
+#   ^ this seems incomplete/incorrect somehow. requires more thought
+# - starting over with a much clearer description:
+# - 2 sets of files with identical link counts & identical file counts & they
+#   match eachother. link 1 set to the other. doesn't matter which to which
+# - 2 sets of files with identical link counts but different file counts, link
+#   the set with a smaller file count *into* the set with a larger file count.
+#   this will preserve the unseen (pre-existing) hardlinks
+# - random strays with internally consistent file/link counts that match the
+#   larger set. link the set with the larger link count *into* the set with
+#   the smaller link count. this will group everything together
+# - what to do with 2 sets with matching file contents but different link
+#   counts *and* different file counts per set, some "inside" the paths being
+#   scanned, some "outside" the paths being scanned?
+
+# TODO:
+# - create the db
+# - call _pathnames_scan from here
+# - dump info to the db while in _pathnames_scan (in the loop)
+# - close the db
+
+# NOTE:
+# - this might be the wrong approach
+# - instead: create, populate, & close the sqlite3 db from within
+#   "function _pathnames_scan"
+
+# NOTE:
+# - use st_dev + st_name for the unique test if possible. this would allow
+#   hardlinking *within* separate filesystems from a single invocation of the
+#   script possible
+#  UNIQUE(st_dev, st_name)
+
+# NOTE:
+# - TEXT or INTEGER?
+# - from bash/find, both are easily possible. "%M" = TEXT, "%m" = INTEGER
+# - from tcl, it's INTEGER. TEXT would require more work on my part
+#  st_mode   TEXT    NOT NULL,
+#  st_mode   INTEGER NOT NULL,
+
+# NOTE:
+# - this one field will contain "$_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC"
+#   with the nanosecond portion of $_ST_MTIM_HMS removed. or not. preserving
+#   nanoseconds would be a Good Thing(TM)
+# - in case it needs doing: _ST_MTIM_HMS="${_ST_MTIM_HMS/.*/}"
+#  st_mtim   TEXT    NOT NULL,
+
+  # - "-f file" = true if file exists & is a regular file
+  if [[ ! -f scanfs.sqlite ]]
+  then
+
+# - for now, just create stuff in $PWD
+sqlite3 scanfs.sqlite << EOF
+CREATE TABLE fileinfo
+(
+  st_dev    INTEGER NOT NULL,
+  st_ino    INTEGER NOT NULL,
+  st_mode   TEXT    NOT NULL,
+  st_nlink  INTEGER NOT NULL,
+  st_uid    INTEGER NOT NULL,
+  st_gid    INTEGER NOT NULL,
+  st_size   INTEGER NOT NULL,
+  st_mtim   TEXT    NOT NULL,
+  st_md5    TEXT    NOT NULL,
+  st_name   TEXT    NOT NULL,
+  UNIQUE(st_name)
+);
+EOF
+
+  fi
+
+# - this function needs an additional output method specifically for dumping
+#   information to the sqlite3 db itself
+# - how to dump stuff to stdout & the db simultaneously? is this even needed?
+# - use of "<<" (stackoverflow example) vs "<<<" (here string). which would be
+#   easier? for that matter, which are *possible*?
+
+_pathnames_scan
+
+# - then do an sqlite3 "COMMIT;" to finish things off
+
+# from https://stackoverflow.com/questions/42245816/non-interactive-sqlite3-usage-from-bash-script/42261631
+
+#!/bin/sh
+sqlite3 test.db <<EOF
+create table n (id INTEGER PRIMARY KEY,f TEXT,l TEXT);
+insert into n (f,l) values ('john','smith');
+select * from n;
+EOF
+
+fi
+#- comment block -#
+
+  _eko_iod "#- _sqlite3_test -#"
+}
+
+#- function definitions here -#
+
+#+ start here +#
+
+# functions:
+# _parse_parameters
+
+# variables:
+# @
+
+_parse_parameters "$@"
+
+#- start here -#
+
+#- marker eof -#
+exit 0

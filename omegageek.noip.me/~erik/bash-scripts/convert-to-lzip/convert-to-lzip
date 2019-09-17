@@ -1,0 +1,604 @@
+#!/bin/sh
+
+# convert-to-lzip v2018.02.12
+
+# Copyright (C) 2017 - 2018
+# Erik Jan Tromp <alphageek@slackware.com>
+# Licensed under the GPL v2
+
+# concept:
+# - convert legacy archive formats to lzip
+# - originally designed for slackware packages & sources
+
+# 2018-02-12
+# - added support for updating both binary & text mode sums
+# - replaced 'cd "$FIL_LOC"' subshells with pushd/popd (slightly faster)
+# - made specifying compression level multiple times an error
+# - changed all invocations of 'mv' to 'mv -f' to force overwrite of
+#   unwritable (mode -w) files (archive & sum files)
+# - fixed bug where script would fail if no regex matches were found
+# - renamed function _show_error to _error_exit
+# - minor edits (style, some POSIX compliance)
+# 2018-01-30
+# - simplified appends to PATH_ARRAY
+# - refactored function _cleanup
+# 2018-01-28
+# - minor edits (style, readability)
+# - refactored function _parse_parameters (separated setup, parsing, validation)
+# - paths with spaces are now fully supported
+# 2018-01-25
+# - added '-0 .. -9' (specify compression level) option
+# - major refactoring of function _generate_sums. sums are no longer blindly
+#   regenerated. only the affected line in each sum file is changed
+# 2018-01-08
+# - minor edits to function _generate_sigs & function _generate_sums
+# 2018-01-06
+# - added '-z' (force conversion of pre-existing lz & tlz archives) option
+# 2018-01-03
+# - changed all invocations of 'rm' to 'rm -f' to force deletion of unwritable
+#   (mode -w) files (archive & sum files)
+# 2017-12-31
+# - separated '-f' (force conversion of signed/summed files) option  into '-g'
+#   (force conversion of signed archives) & '-m' (force conversion of summed
+#   archives) options
+# - optimized lzma'd tlz handler
+# - fixed false error when converting valid empty archives
+# - improved exit code handling during file conversion
+# 2017-12-30
+# - added function _cleanup & signal trap
+# - updated conversion routine to correctly handle lzma'd tlz archives
+# - changed the meaning of '-f' option. it's all or nothing now
+# - corrected 'updating:' text when updating sum files
+# 2017-12-29
+# - added '-a' (convert all archives) option. use with caution
+# - added sha(1|224|256|384|512) routines to function _generate_sums
+# - moved md5 routine to function _generate_sums
+# - added '-f' (force conversion of signed/summed files) option
+#   with this option, per-file sums (not signatures) are automatically updated
+# - removed calls to pushd/popd
+# 2017-12-28
+# - first limited release
+
+function _cleanup() {
+  echo "cleaning up" >&2
+
+  if [ -e "$FIL_LOC/$FIL_NAM.$FIL_EXT.$$" ]
+  then
+    rm -f "$FIL_LOC/$FIL_NAM.$FIL_EXT.$$"
+    touch -d "$TIMESTAMP" "$FIL_LOC" # restore directory timestamp
+  fi
+  if [ -e "$FIL_LOC/$FIL_NAM.$FIL_EXT.$FIL_SUM.$$" ]
+  then
+    rm -f "$FIL_LOC/$FIL_NAM.$FIL_EXT.$FIL_SUM.$$"
+    touch -d "$TIMESTAMP" "$FIL_LOC" # restore directory timestamp
+  fi
+  if [ -e "$FIL_LOC/$FIL_NAM.$FIL_SUM.$$" ]
+  then
+    rm -f "$FIL_LOC/$FIL_NAM.$FIL_SUM.$$"
+    touch -d "$TIMESTAMP" "$FIL_LOC" # restore directory timestamp
+  fi
+
+  _error_exit "user abort"
+}
+trap _cleanup INT TERM
+
+function _error_exit() {
+  echo "error: $1" >&2
+  exit 1
+}
+
+# placeholder
+function _generate_sigs() {
+  for FIL_SIG in asc sig sign
+  do
+    case $FIL_SIG in
+      asc)
+        COMMAND=true
+      ;;
+      sig)
+        COMMAND=true
+      ;;
+      sign)
+        COMMAND=true
+      ;;
+    esac
+
+    # matches may be in either of the 2 following forms:
+    # - path/to/file.cmp.sig
+    # - path/to/file.sig
+
+    if [ -e "$FIL_LOC/$FIL_NAM.$FIL_CMP.$FIL_SIG" ]
+    then
+      echo "  ignoring: $FIL_LOC/$FIL_NAM.$FIL_CMP.$FIL_SIG"
+    fi
+    if [ -e "$FIL_LOC/$FIL_NAM.$FIL_SIG" ]
+    then
+      echo "  ignoring: $FIL_LOC/$FIL_NAM.$FIL_SIG"
+    fi
+  done
+}
+
+function _generate_sums() {
+  for FIL_SUM in md5 sha1 sha224 sha256 sha384 sha512
+  do
+    case $FIL_SUM in
+      md5)
+        COMMAND=md5sum
+      ;;
+      sha1)
+        COMMAND="shasum -a1"
+      ;;
+      sha224)
+        COMMAND="shasum -a224"
+      ;;
+      sha256)
+        COMMAND="shasum -a256"
+      ;;
+      sha384)
+        COMMAND="shasum -a384"
+      ;;
+      sha512)
+        COMMAND="shasum -a512"
+      ;;
+    esac
+
+    # matches may be in either of the 2 following forms:
+    # - path/to/file.cmp.sum
+    # - path/to/file.sum
+    # do not blindly regenerate sum file. only replace the affected line itself
+    # - duplicate sum file (simple 'cp'. don't preserve attributes & whatnot)
+    # - remove old sum from sum file (binary &/or text, whichever is detected)
+    # - append new sum to sum file (binary &/or text, whichever was detected)
+    # - restore sum file's timestamp
+    # - move sum file into place (rename or overwrite)
+    # - conditionally delete old sum file
+
+    if [ -e "$FIL_LOC/$FIL_NAM.$FIL_CMP.$FIL_SUM" ]
+    then
+      echo "  updating: $FIL_LOC/$FIL_NAM.$FIL_CMP.$FIL_SUM"
+      pushd "$FIL_LOC" &> /dev/null
+        cp "$FIL_NAM.$FIL_CMP.$FIL_SUM" "$FIL_NAM.$FIL_EXT.$FIL_SUM.$$"
+        egrep -q " [*]$FIL_NAM[.]$FIL_CMP$" "$FIL_NAM.$FIL_EXT.$FIL_SUM.$$"
+        if [ $? -eq 0 ]
+        then
+          sed -i "/ [*]$FIL_NAM[.]$FIL_CMP$/d" "$FIL_NAM.$FIL_EXT.$FIL_SUM.$$"
+          $COMMAND -b "$FIL_NAM.$FIL_EXT" >> "$FIL_NAM.$FIL_EXT.$FIL_SUM.$$"
+        fi
+        egrep -q "  $FIL_NAM[.]$FIL_CMP$" "$FIL_NAM.$FIL_EXT.$FIL_SUM.$$"
+        if [ $? -eq 0 ]
+        then
+          sed -i "/  $FIL_NAM[.]$FIL_CMP$/d" "$FIL_NAM.$FIL_EXT.$FIL_SUM.$$"
+          $COMMAND -t "$FIL_NAM.$FIL_EXT" >> "$FIL_NAM.$FIL_EXT.$FIL_SUM.$$"
+        fi
+        touch -r "$FIL_NAM.$FIL_CMP.$FIL_SUM" "$FIL_NAM.$FIL_EXT.$FIL_SUM.$$"
+        mv -f "$FIL_NAM.$FIL_EXT.$FIL_SUM.$$" "$FIL_NAM.$FIL_EXT.$FIL_SUM"
+        if [ $FIL_CMP != $FIL_EXT ]
+        then
+          rm -f "$FIL_NAM.$FIL_CMP.$FIL_SUM"
+        fi
+      popd &> /dev/null
+    fi
+    if [ -e "$FIL_LOC/$FIL_NAM.$FIL_SUM" ]
+    then
+      echo "  updating: $FIL_LOC/$FIL_NAM.$FIL_SUM"
+      pushd "$FIL_LOC" &> /dev/null
+        cp "$FIL_NAM.$FIL_SUM" "$FIL_NAM.$FIL_SUM.$$"
+        egrep -q " [*]$FIL_NAM[.]$FIL_CMP$" "$FIL_NAM.$FIL_SUM.$$"
+        if [ $? -eq 0 ]
+        then
+          sed -i "/ [*]$FIL_NAM[.]$FIL_CMP$/d" "$FIL_NAM.$FIL_SUM.$$"
+          $COMMAND -b "$FIL_NAM.$FIL_EXT" >> "$FIL_NAM.$FIL_SUM.$$"
+        fi
+        egrep -q "  $FIL_NAM[.]$FIL_CMP$" "$FIL_NAM.$FIL_SUM.$$"
+        if [ $? -eq 0 ]
+        then
+          sed -i "/  $FIL_NAM[.]$FIL_CMP$/d" "$FIL_NAM.$FIL_SUM.$$"
+          $COMMAND -t "$FIL_NAM.$FIL_EXT" >> "$FIL_NAM.$FIL_SUM.$$"
+        fi
+        touch -r "$FIL_NAM.$FIL_SUM" "$FIL_NAM.$FIL_SUM.$$"
+        mv -f "$FIL_NAM.$FIL_SUM.$$" "$FIL_NAM.$FIL_SUM"
+      popd &> /dev/null
+    fi
+  done
+}
+
+function _parse_parameters() {
+  while [ $# -gt 0 ]
+  do
+    case "$1" in
+      -[0-9])
+        if [ -n "$LEVEL" ]
+        then
+          _error_exit "compression level cannot be specified multiple times"
+        else
+          LEVEL=$1
+        fi
+      ;;
+      -a)
+        CONVERT_ALL=true
+      ;;
+      -d)
+        DRY_RUN=true
+      ;;
+      -g)
+        SKIP_SIGS=false
+      ;;
+      -l) # force usage of lzip (not recommended)
+        LZIP=lzip
+      ;;
+      -m)
+        SKIP_SUMS=false
+      ;;
+      -p)
+        CONVERT_PACKAGES=true
+      ;;
+      -s)
+        CONVERT_SOURCES=true
+      ;;
+      -z)
+        SKIP_LZ=false
+      ;;
+      '-?'|-h) # -? must be '-?' or it matches '-<any single character>'
+        _show_help
+      ;;
+      -*)
+        _error_exit "invalid parameter: '$1'"
+      ;;
+      *)
+        PATH_ARRAY+=("${1/%\//}")
+      ;;
+    esac
+    shift
+  done
+}
+
+function _process_files() {
+  if [ $2 = all ]
+  then
+    REGEX=".*[.]\(Z\|bz2\|gz\|lz\|lzma\|t[bglx]z\|xz\)"
+  fi
+  if [ $2 = packages ]
+  then
+    REGEX=".*-.*-\(fw\|i.86\|noarch\|x86\|x86_64\)-.*[.]t[bglx]z"
+  fi
+  if [ $2 = sources ]
+  then
+    # ignore pre-existing *.t[bglx]z archives
+    # too much work for too little gain. maybe next time
+    # (as of 2017-12-14, there are 5 matches for *.tgz in the slackware-14.2
+    # sources. if they really need to be converted, they can be done manually)
+    REGEX=".*[.]tar[.]\(Z\|bz2\|gz\|lz\|lzma\|xz\)"
+  fi
+
+  echo "processing: $1 ($2)"
+
+  while read FILE
+  do
+    # there may be no matches. be graceful about it
+    if [ -z "$FILE" ]
+    then
+      echo "no matches found"
+      continue
+    fi
+
+    # split $FILE into:
+    #  file location
+    #  file name (less compression extension)
+    #  compression extension
+    FIL_LOC=${FILE%/*}     # path/to/file.cmp > path/to
+    FIL_NAM=${FILE##*/}    # path/to/file.cmp >         file.cmp
+    FIL_CMP=${FIL_NAM##*.} #         file.cmp >              cmp
+    FIL_NAM=${FIL_NAM%.*}  #         file.cmp >         file
+
+    # set extension for converted file based on original compression extension
+    if [[ " tbz tgz tlz txz " =~ " $FIL_CMP " ]]
+    then
+      FIL_EXT=tlz
+    else
+      FIL_EXT=lz
+    fi
+
+    # note:
+    # FILE, FIL_LOC, & FIL_NAM may contain spaces
+    # FIL_CMP & FIL_EXT may not contain spaces
+
+    if [ $SKIP_LZ = true ]
+    then
+      # do not convert pre-existing *.lz or *.tlz archives
+
+      SKIPPED=false
+      if [[ " lz tlz " =~ " $FIL_CMP " ]]
+      then
+        SKIPPED=$FIL_CMP
+      fi
+      if [ $SKIPPED != false ]
+      then
+        echo "  skipping: $FIL_LOC/$FIL_NAM.$FIL_CMP ($SKIPPED)"
+        continue
+      fi
+    fi
+
+    if [ $SKIP_SIGS = true ]
+    then
+      # do not convert archives if they're signed
+      # below is brute force for readability/maintainability
+      # if there are multiple possible extension matches, the first is used
+      # matches may be in either of the 2 following forms:
+      # - path/to/file.cmp.extension
+      # - path/to/file.extension
+
+      SKIPPED=false
+      if [ -e "$FIL_LOC/$FIL_NAM.$FIL_CMP.asc" ] \
+      || [ -e "$FIL_LOC/$FIL_NAM.asc" ]
+      then
+        SKIPPED=asc
+      elif [ -e "$FIL_LOC/$FIL_NAM.$FIL_CMP.sig" ] \
+      || [ -e "$FIL_LOC/$FIL_NAM.sig" ]
+      then
+        SKIPPED=sig
+      elif [ -e "$FIL_LOC/$FIL_NAM.$FIL_CMP.sign" ] \
+      || [ -e "$FIL_LOC/$FIL_NAM.sign" ]
+      then
+        SKIPPED=sign
+      fi
+      if [ $SKIPPED != false ]
+      then
+        echo "  skipping: $FIL_LOC/$FIL_NAM.$FIL_CMP ($SKIPPED)"
+        continue
+      fi
+    fi
+
+    if [ $SKIP_SUMS = true ]
+    then
+      # do not convert archives if they're summed
+      # below is brute force for readability/maintainability
+      # if there are multiple possible extension matches, the first is used
+      # matches may be in either of the 2 following forms:
+      # - path/to/file.cmp.extension
+      # - path/to/file.extension
+
+      SKIPPED=false
+      if [ -e "$FIL_LOC/$FIL_NAM.$FIL_CMP.md5" ] \
+      || [ -e "$FIL_LOC/$FIL_NAM.md5" ]
+      then
+        SKIPPED=md5
+      elif [ -e "$FIL_LOC/$FIL_NAM.$FIL_CMP.sha1" ] \
+      || [ -e "$FIL_LOC/$FIL_NAM.sha1" ]
+      then
+        SKIPPED=sha1
+      elif [ -e "$FIL_LOC/$FIL_NAM.$FIL_CMP.sha224" ] \
+      || [ -e "$FIL_LOC/$FIL_NAM.sha224" ]
+      then
+        SKIPPED=sha224
+      elif [ -e "$FIL_LOC/$FIL_NAM.$FIL_CMP.sha256" ] \
+      || [ -e "$FIL_LOC/$FIL_NAM.sha256" ]
+      then
+        SKIPPED=sha256
+      elif [ -e "$FIL_LOC/$FIL_NAM.$FIL_CMP.sha384" ] \
+      || [ -e "$FIL_LOC/$FIL_NAM.sha384" ]
+      then
+        SKIPPED=sha384
+      elif [ -e "$FIL_LOC/$FIL_NAM.$FIL_CMP.sha512" ] \
+      || [ -e "$FIL_LOC/$FIL_NAM.sha512" ]
+      then
+        SKIPPED=sha512
+      fi
+      if [ $SKIPPED != false ]
+      then
+        echo "  skipping: $FIL_LOC/$FIL_NAM.$FIL_CMP ($SKIPPED)"
+        continue
+      fi
+    fi
+
+    echo "converting: $FIL_LOC/$FIL_NAM.$FIL_CMP"
+
+    # skip processing if -d specified
+    if [ $DRY_RUN = true ]
+    then
+      continue
+    fi
+
+    # choose your weapon
+    case $FIL_CMP in
+      Z)
+        DECOMP=compress
+      ;;
+      bz2|tbz)
+        DECOMP=bzip2
+      ;;
+      gz|tgz)
+        DECOMP=gzip
+      ;;
+      lz|tlz)
+        DECOMP=$LZIP
+      ;;
+      lzma)
+        DECOMP=lzma
+      ;;
+      xz|txz)
+        DECOMP=xz
+      ;;
+    esac
+
+    TIMESTAMP=$(date -r "$FIL_LOC") # preserve directory timestamp
+
+    # convert legacy format archive to lzip
+
+    $DECOMP -dc "$FIL_LOC/$FIL_NAM.$FIL_CMP" 2> /dev/null \
+    | $LZIP $LEVEL > "$FIL_LOC/$FIL_NAM.$FIL_EXT.$$" 2> /dev/null
+    read -r DEC_EXIT REC_EXIT <<< $(echo ${PIPESTATUS[*]})
+
+    # deal with decompression failures:
+
+    # special case: tlz could be lzip or lzma. reset DECOMP & retry
+    # it's less expensive time-wise to assume each tlz is lzip & try again
+    # with lzma on error than it is to test each tlz with file beforehand
+    if [ $FIL_CMP = tlz ] && [ $DEC_EXIT -ne 0 ]
+    then
+      DECOMP=lzma
+      $DECOMP -dc "$FIL_LOC/$FIL_NAM.$FIL_CMP" 2> /dev/null \
+      | $LZIP $LEVEL > "$FIL_LOC/$FIL_NAM.$FIL_EXT.$$" 2> /dev/null
+      read -r DEC_EXIT REC_EXIT <<< $(echo ${PIPESTATUS[*]})
+    fi
+
+    if [ $DEC_EXIT -ne 0 ]
+    then
+      # decompression failed. report & tidy up
+      echo "decompression failed: $DECOMP returned exit code $DEC_EXIT"
+      rm -f "$FIL_LOC/$FIL_NAM.$FIL_EXT.$$"
+    else
+      # decompression succeeded. test for recompression success/fail
+
+      # plzip only: specify threads on error
+      # - prior to 1.7-rc1b, not always entered. still quite random
+      # - as of 1.7-rc1b, never entered
+      # - if entered, always via exit code 1
+      # - if entered, always succeeds
+      # - this routine stays (safety first)
+      if [ $LZIP = plzip ] && [ $REC_EXIT -ne 0 ]
+      then
+        THREADS=$(plzip --help | grep -- "--threads=" | tr -cd "0-9")
+        while [ $THREADS -ge 1 ] && [ $REC_EXIT -ne 0 ]
+        do
+          echo "recompression failed: $LZIP returned exit code $REC_EXIT - retrying with $THREADS threads"
+          $DECOMP -dc "$FIL_LOC/$FIL_NAM.$FIL_CMP" 2> /dev/null \
+          | $LZIP $LEVEL -n$THREADS > "$FIL_LOC/$FIL_NAM.$FIL_EXT.$$" 2> /dev/null
+          read -r DEC_EXIT REC_EXIT <<< $(echo ${PIPESTATUS[*]})
+          ((THREADS--)) # decrement
+        done
+      fi
+
+      if [ $REC_EXIT -ne 0 ]
+      then
+        # recompression failed. report & tidy up
+        echo "recompression failed: $LZIP returned exit code $REC_EXIT"
+        rm -f "$FIL_LOC/$FIL_NAM.$FIL_EXT.$$"
+      else
+        # recompression succeeded. tidy up
+        touch -r "$FIL_LOC/$FIL_NAM.$FIL_CMP" "$FIL_LOC/$FIL_NAM.$FIL_EXT.$$"
+        mv -f "$FIL_LOC/$FIL_NAM.$FIL_EXT.$$" "$FIL_LOC/$FIL_NAM.$FIL_EXT"
+        if [ $FIL_CMP != $FIL_EXT ]
+        then
+          rm -f "$FIL_LOC/$FIL_NAM.$FIL_CMP"
+        fi
+        # if there are sigs (asc, sig, sign), ignore (but show) them
+        _generate_sigs
+        # if there are sums (md5 or sha*), update them
+        _generate_sums
+      fi
+    fi
+
+    touch -d "$TIMESTAMP" "$FIL_LOC" # restore directory timestamp
+  done <<< "$(find "$1" -type f -regex $REGEX | sort)"
+}
+
+function _show_help() {
+  cat << EOF
+provide at least 2 parameters: [path to process] [OPTION] [[OPTION]]
+
+mandatory parameters:
+  path(s) to process  #  must be a valid directory
+  -a                  #  convert all archives (cannot be specified with '-p'
+                      #  or '-s') (use with caution)
+  -p                  #  convert packages (can be specified with '-s')
+  -s                  #  convert sources (can be specified with '-p')
+
+optional parameters:
+  -0 .. -9            #  specify compression level (default '-9')
+  -d                  #  dry-run
+  -g                  #  force conversion of signed archives
+  -l                  #  force usage of lzip (not recommended)
+  -m                  #  force conversion of summed archives
+  -z                  #  force conversion of pre-existing lz & tlz archives
+  -?|-h               #  show this help text
+
+notes:
+  - path(s) can be specified multiple times
+  - compression level cannot be specified multiple times
+  - archive conversion is performed directly in the specified path(s)
+    if you wish to preserve the original path(s), copy them elsewhere
+    (cp -al old_path/ new_path/) & process new_path/
+  - if '-g' is specified, per-archive signatures are displayed but otherwise
+    ignored when found
+  - if '-m' is specified, per-archive sums are updated when found
+  - this script is hardlink-friendly
+EOF
+  exit 1
+}
+
+#+ start here +#
+
+# must have at least 2 parameters (any order)
+if [ $# -lt 2 ]
+then
+  _show_help
+fi
+
+# parameter defaults
+declare -a PATH_ARRAY # indexed. keep it simple
+CONVERT_ALL=false
+CONVERT_PACKAGES=false
+CONVERT_SOURCES=false
+DRY_RUN=false
+LEVEL=""
+LZIP=plzip # prefer plzip
+SKIP_LZ=true
+SKIP_SIGS=true
+SKIP_SUMS=true
+
+_parse_parameters "$@"
+
+# set default it no override provided
+LEVEL=${LEVEL:-"-9"}
+
+# validate -a, -p, -s
+if [ $CONVERT_ALL = false ] \
+&& [ $CONVERT_PACKAGES = false ] \
+&& [ $CONVERT_SOURCES = false ]
+then
+  _error_exit "'-a', '-p', or '-s' must be specified"
+fi
+if [ $CONVERT_ALL = true ] \
+&& ( [ $CONVERT_PACKAGES = true ] \
+|| [ $CONVERT_SOURCES = true ] )
+then
+  _error_exit "'-a' cannot be specified with '-p' or '-s'"
+fi
+
+# validate path(s)
+# be very strict: directories only. anything else fails
+for i in ${!PATH_ARRAY[@]}
+do
+  if [ ! -d "${PATH_ARRAY[$i]}" ] \
+  || [ -h "${PATH_ARRAY[$i]}" ]
+  then
+    _error_exit "invalid directory: '${PATH_ARRAY[$i]}'"
+  fi
+done
+
+# do we have the commands we need?
+for COMMAND in bzip2 compress gzip lzma $LZIP md5sum shasum xz
+do
+  which $COMMAND &> /dev/null
+  if [ $? -ne 0 ]
+  then
+    _error_exit "command not found: '$COMMAND'"
+  fi
+done
+
+# get to work
+for i in ${!PATH_ARRAY[@]}
+do
+  if [ $CONVERT_ALL = true ]
+  then
+    _process_files "${PATH_ARRAY[$i]}" all
+  fi
+  if [ $CONVERT_PACKAGES = true ]
+  then
+    _process_files "${PATH_ARRAY[$i]}" packages
+  fi
+  if [ $CONVERT_SOURCES = true ]
+  then
+    _process_files "${PATH_ARRAY[$i]}" sources
+  fi
+done

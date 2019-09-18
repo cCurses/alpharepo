@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# scanfs v2019.09.17
+# scanfs v2019.09.18
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -19,9 +19,14 @@
 #   that is solved, everything else will fall into place
 # - shitwall some of the ideas that have been suggested by others. at the very
 #   least, having a properly populated sqlite3 db (regardless of how
-#   inefficiently is was populated) will provide me with the required data to
+#   inefficiently it is generated) will provide me with the required data to
 #   work on the routine(s) that would follow
 
+# 2019-09-18
+# - altered all 3 invocations of "read" as follows:
+#  was: while read -r -- \
+#   is: while read $_OPTIONS_READ -- \
+# - "function _builtin_validate_setup" added "read" for "-r"
 # 2019-09-17
 # - "function _builtin_validate_setup" & "function _binary_validate_setup"
 #   altered the "cd"/"pwd", "realpath", & "basename"/"dirname" tests for
@@ -44,8 +49,8 @@
 #  was: _BINARY_OPTION=--date=STRING
 #   is: _BINARY_OPTION=--date
 # - added "--" to all invocations of "basename", "cd", "cp", "dirname",
-#   "head", "md5sum", "mv", "pwd", "realpath", & "rm". possibly overkill in a
-#   few spots, but better to have too many than too few
+#   "head", "md5sum", "mv", "pwd", "read", "realpath", & "rm". possibly
+#   overkill in a few spots, but better to have too many than too few
 # ^ NOTE: don't forget "ln" when the time comes
 # - "function _pathname_md5sum_md5sum" tested 3 approaches to acquire md5sums
 #   of "-s, --size" bytes of files. results:
@@ -249,6 +254,7 @@
 # NOTE: (system builtin use & abuse)
   # cd (in combination with pwd, fallback to basename/dirname/find/realpath)
   # pwd (in combination with cd, fallback to basename/dirname/find/realpath)
+  # read
 # NOTE: (system binary use & abuse)
   # basename (fallback with dirname/find to realpath)
   # cp
@@ -322,6 +328,7 @@
   # _OPTIONS_LN (ln options, not script options)
   # _OPTIONS_MV (mv options, not script options)
   # _OPTIONS_PWD (pwd options, not script options)
+  # _OPTIONS_READ (read options, not script options)
   # _OPTIONS_READWRITE (find options. not script options)
   # _OPTIONS_REALPATH (realpath options, not script options)
   # _OPTIONS_RM (rm options, not script options)
@@ -362,6 +369,7 @@
 # _OPTIONS_MV (mv options, not script options)
 # _OPTIONS_PWD (pwd options, not script options)
 # _OPTIONS_REALPATH (realpath options, not script options)
+# _OPTIONS_READ (read options, not script options)
 # _OPTIONS_READWRITE (find options. not script options)
 # _OPTIONS_RM (rm options, not script options)
 # _OPTIONS_UIDGID (find options. not script options)
@@ -404,6 +412,7 @@
 # _OPTIONS_MV (mv options, not script options)
 # _OPTIONS_PWD (pwd options, not script options)
 # _OPTIONS_REALPATH (realpath options, not script options)
+# _OPTIONS_READ (read options, not script options)
 # _OPTIONS_READWRITE (find options. not script options)
 # _OPTIONS_RM (rm options, not script options)
 # _OPTIONS_UIDGID (find options. not script options)
@@ -421,6 +430,7 @@ unset _OPTIONS_CP
 unset _OPTIONS_LN
 unset _OPTIONS_MV
 unset _OPTIONS_PWD
+unset _OPTIONS_READ
 unset _OPTIONS_READWRITE
 unset _OPTIONS_REALPATH
 unset _OPTIONS_RM
@@ -1184,10 +1194,12 @@ function _builtin_validate_setup()
   # _FUNCTION_TRANSFORM (_pathname_transform_bruteforce _pathname_transform_cd_pwd _pathname_transform_realpath)
   # _OPTIONS_CD (cd options, not script options)
   # _OPTIONS_PWD (pwd options, not script options)
+  # _OPTIONS_READ (read options, not script options)
 
   # builtins:
   # cd (in combination with pwd, fallback to basename/dirname/find/realpath)
   # pwd (in combination with cd, fallback to basename/dirname/find/realpath)
+  # read
 
   # NOTE:
   # - rather than test a given builtin's version (or more accurately, test a
@@ -1200,7 +1212,7 @@ function _builtin_validate_setup()
   #   otherwise parse the help text for descriptions of specific features
 
   # NOTE:
-  # - technically speaking, we only need one of the following tests to succeed
+  # - technically speaking, we only need 1 of the following 2 tests to succeed
 
   # - be explicit for clarity. we'll be testing this variable in
   #   "function _binary_validate_setup"
@@ -1262,6 +1274,27 @@ function _builtin_validate_setup()
     _FUNCTION_TRANSFORM=_pathname_transform_cd_pwd
     _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
   fi
+
+  #+ read +#
+  # - "help read". stdout
+  #   "-r"
+  # - called in "function _pathnames_scan"
+  # - _OPTIONS_READ is set
+
+  _BUILTIN_NAME=read
+  _BUILTIN_HELP=$(echo $(help $_BUILTIN_NAME 2>&1))
+  if [[ $_BUILTIN_HELP =~ "no help topics match" ]]
+  then
+    _show_error "required builtin \"$_BUILTIN_NAME\" not supported"
+  else
+    _BUILTIN_OPTION=-r
+    if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
+    then
+      _OPTIONS_READ=$_BUILTIN_OPTION
+      _eko_v "               \$_OPTIONS_READ: \"$_OPTIONS_READ\""
+    fi
+  fi
+  #- read -#
 
   _eko_iod "#- _builtin_validate_setup -#"
 }
@@ -1670,6 +1703,7 @@ function _parse_parameters()
   _eko_v "                 \$_OPTIONS_LN: \"$_OPTIONS_LN\""
   _eko_v "                 \$_OPTIONS_MV: \"$_OPTIONS_MV\""
   _eko_v "                \$_OPTIONS_PWD: \"$_OPTIONS_PWD\""
+  _eko_v "               \$_OPTIONS_READ: \"$_OPTIONS_READ\""
   _eko_v "                 \$_OPTIONS_RM: \"$_OPTIONS_RM\""
   _eko_v "           \$_OPTIONS_REALPATH: \"$_OPTIONS_REALPATH\""
   _eko_v "         \$_OPTION_MD5SUM_SIZE: \"$_OPTION_MD5SUM_SIZE\""
@@ -2309,6 +2343,7 @@ function _pathnames_scan()
   # _MY_UID
   # _OPTIONS_CP (cp options, not script options)
   # _OPTIONS_MV (mv options, not script options)
+  # _OPTIONS_READ (read options, not script options)
   # _OPTIONS_READWRITE (find options. not script options)
   # _OPTIONS_UIDGID (find options. not script options)
   # _OPTIONS_UNLINK (find options. not script options)
@@ -2448,13 +2483,13 @@ function _pathnames_scan()
   # - default = do not update directory timestamp
   _BOOLEAN_TIMESTAMP=false
 
-  while read -r \
+  while read $_OPTIONS_READ -- \
   _SD_MTIM_YMD \
   _SD_MTIM_HMS \
   _SD_MTIM_UTC \
   _SD_NAME
   do
-    while read -r \
+    while read $_OPTIONS_READ -- \
     _ST_DEV \
     _ST_INO \
     _ST_MODE \
@@ -2494,7 +2529,7 @@ function _pathnames_scan()
           # - get stat(2) info of the newly created unique file, save
           #   everything as _ST_* (except for _ST_NAME itself). this/these
           #   (whatever) will be used in the long & verbose reports
-          read -r \
+          read $_OPTIONS_READ -- \
           _ST_DEV \
           _ST_INO \
           _ST_MODE \

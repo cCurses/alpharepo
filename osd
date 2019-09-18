@@ -598,6 +598,8 @@ function _builtin_validate_setup()
     then
       _OPTIONS_READ=$_BUILTIN_OPTION
       _eko_v "         \$_OPTIONS_READ: \"$_OPTIONS_READ\""
+    else
+      _show_error \""$_BUILTIN_NAME\" does not support \"$_BUILTIN_OPTION\""
     fi
   fi
   #- read -#

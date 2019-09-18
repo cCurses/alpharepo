@@ -1292,6 +1292,8 @@ function _builtin_validate_setup()
     then
       _OPTIONS_READ=$_BUILTIN_OPTION
       _eko_v "               \$_OPTIONS_READ: \"$_OPTIONS_READ\""
+    else
+      _show_error \""$_BUILTIN_NAME\" does not support \"$_BUILTIN_OPTION\""
     fi
   fi
   #- read -#
@@ -1623,16 +1625,17 @@ function _parse_parameters()
   # - technically in the wrong spot, but it's a chicken or egg scenario
   _eko_iod "#+ _parse_parameters +#"
 
+#+
   # NOTE:
   # - order of operations of the following 2 functions is important because of
   #   the ranking necessary for the 3 _pathname_transform_* functions
 
   # - validate the existence & required options of system builtins
-  # - while we're at it, set up the options for the various builtins
+  # - while we're at it, set up the options for the various builtins if needed
   _builtin_validate_setup
 
   # - validate the existence & required options of system binaries
-  # - while we're at it, selectively set options for some binaries
+  # - while we're at it, set up the options for the various binaries if needed
   _binary_validate_setup
 
   _ARRAY_ELEMENT_HN=0

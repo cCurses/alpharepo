@@ -1764,7 +1764,7 @@ function _parse_parameters()
   _eko_iod "#+ _parse_parameters +#"
 
   # - validate the existence & required options of system binaries
-  # - while we're at it, perform simplistic setup for wmctrl
+  # - while we're at it, set up the options for the various binaries if needed
   _binary_validate_setup
 
   #+ parameter settings (in (mostly) proper order of operation) +#

@@ -564,6 +564,7 @@ function _binary_validate_setup()
 
   # functions:
   # _eko_iod
+  # _eko_v
   # _pathname_md5sum_md5sum (_FUNCTION_MD5SUM)
   # _pathname_md5sum_openssl (_FUNCTION_MD5SUM)
   # _pathname_transform_bruteforce (_FUNCTION_TRANSFORM)
@@ -1161,6 +1162,7 @@ function _builtin_validate_setup()
 
   # functions:
   # _eko_iod
+  # _eko_v
   # _pathname_transform_cd_pwd (_FUNCTION_TRANSFORM)
   # _show_error
 

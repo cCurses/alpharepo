@@ -11,6 +11,17 @@
 # - scan the named filesystem segment(s) & report findings in various formats
 # - optionally unlink files that were previously hardlinked
 
+# TODO:
+# - figure out hardlinking
+# - the first & greatest hurdle is coming up with an *efficient* method of
+#   populating an sqlite3 db (aka: as fast as possible while retaining 100%
+#   accuracy) during the filesystem scan in "function _pathnames_scan". once
+#   that is solved, everything else will fall into place
+# - shitwall some of the ideas that have been suggested by others. at the very
+#   least, having a properly populated sqlite3 db (regardless of how
+#   inefficiently is was populated) will provide me with the required data to
+#   work on the routine(s) that would follow
+
 # 2019-09-17
 # - "function _builtin_validate_setup" & "function _binary_validate_setup"
 #   altered the "cd"/"pwd", "realpath", & "basename"/"dirname" tests for
@@ -1818,14 +1829,14 @@ function _pathname_md5sum_md5sum()
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_MD5SUM_SIZE ]]
   then
-    # - generate md5sum of the entire file
+    # - generate md5sum of the file (full)
     _ST_MD5=$(md5sum -- "$_ST_NAME" 2>/dev/null)
 
     # - ${parameter/pattern/string}
     # - strip "  <pathname>" suffix from output. keep the rest
     _ST_MD5=${_ST_MD5/%  $_ST_NAME/}
   else
-    # - generate md5sum of the first $_OPTION_MD5SUM_SIZE bytes of the file
+    # - generate md5sum of the file ($_OPTION_MD5SUM_SIZE)
     _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE -- "$_ST_NAME" 2>/dev/null | md5sum -- -)
 
     # - ${parameter/pattern/string}
@@ -1856,14 +1867,14 @@ function _pathname_md5sum_openssl()
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_MD5SUM_SIZE ]]
   then
-    # - generate md5sum of the entire file
+    # - generate md5sum of the file (full)
     _ST_MD5=$(openssl dgst -md5 "$_ST_NAME" 2>/dev/null)
 
     # - ${parameter/pattern/string}
     # - strip "MD5(<pathname>)= " prefix from output. keep the rest
     _ST_MD5=${_ST_MD5/#MD5($_ST_NAME)= /}
   else
-    # - generate md5sum of the first $_OPTION_MD5SUM_SIZE bytes of the file
+    # - generate md5sum of the file ($_OPTION_MD5SUM_SIZE)
     _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE -- "$_ST_NAME" 2>/dev/null | openssl dgst -md5)
 
     # - ${parameter/pattern/string}
@@ -2530,7 +2541,7 @@ function _pathnames_scan()
         then
           if $_BOOLEAN_MD5SUM
           then
-            # - generate md5sum of the file
+            # - generate md5sum of the file (full or $_OPTION_MD5SUM_SIZE)
             $_FUNCTION_MD5SUM
             echo "$_ST_MD5  $_ST_NAME"
           else
@@ -2540,7 +2551,7 @@ function _pathnames_scan()
         then
           if $_BOOLEAN_MD5SUM
           then
-            # - generate md5sum of the file
+            # - generate md5sum of the file (full or $_OPTION_MD5SUM_SIZE)
             $_FUNCTION_MD5SUM
             printf "%4s %10s %s %4s %4s %3s %14s %s %s %s %s %s\n" \
             $_ST_DEV $_ST_INO $_ST_MODE $_ST_NLINK $_ST_UID $_ST_GID \
@@ -2557,7 +2568,7 @@ function _pathnames_scan()
         then
           if $_BOOLEAN_MD5SUM
           then
-            # - generate md5sum of the file
+            # - generate md5sum of the file (full or $_OPTION_MD5SUM_SIZE)
             $_FUNCTION_MD5SUM
             echo "
                      \$_ST_DEV: \"$_ST_DEV\"

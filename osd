@@ -16,7 +16,7 @@
 # - remove dependency on "which"
 
 # 2019-09-18
-# - "function _display_xauthority_acquire" altered calling syntax to "ps/find"
+# - "function _display_xauthority_acquire" altered calling syntax to "ps/grep"
 #  was: <<< \
 #  was: "$(ps ax --format=user,command | grep -- "/[X].* -auth ")"
 #   is: < \

@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# osd v2019.09.18
+# osd v2019.09.19
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -11,10 +11,19 @@
 # - perform on screen display via popup message using desired text
 
 # TODO:
-# - handlers for $_AVAILABLE_KDIALOG, $_AVAILABLE_NOTIFYSEND, &
-#   $_AVAILABLE_XMESSAGE. allow for override?
-# - remove dependency on "which"
+# - allow for override of a specific utility (if it's available)?
 
+# 2019-09-19
+# - moved the "kdialog, notify-send, & xmessage unavailable" report from
+#   "function _attempt_osd" to "function _binary_validate_setup" where it
+#   belongs
+# - "function _binary_validate_setup" removed "which"
+# - "function _attempt_osd" completely rewrote the logic of ranking kdialog,
+#   notify-send, & xmessage
+# - "function _binary_validate_setup" altered the setup of kdialog,
+#   notify-send, & xmessage. removed all references to _AVAILABLE_KDIALOG,
+#   _AVAILABLE_NOTIFYSEND, & _AVAILABLE_XMESSAGE. introduced _BINARY_KDIALOG,
+#   _BINARY_NOTIFYSEND, & _BINARY_XMESSAGE
 # 2019-09-18
 # - "function _display_xauthority_acquire" altered calling syntax to "ps/grep"
 #  was: <<< \
@@ -110,7 +119,6 @@
   # notify-send (fallback to kdialog & xmessage)
   # ps
   # sed
-  # which
   # xmessage (fallback to kdialog & notify-send)
 # NOTE: (system & script variable use & abuse)
 # - system variables are always in the form "FOO"
@@ -130,15 +138,14 @@
 # @
 # - ephemeral variables. here today, gone tomorrow (keeping track for myself)
 # - better to have too many than too few
-  # _AVAILABLE_KDIALOG
-  # _AVAILABLE_NOTIFYSEND
-  # _AVAILABLE_XMESSAGE
   # _BINARY_HELP
+  # _BINARY_KDIALOG
   # _BINARY_NAME
+  # _BINARY_NOTIFYSEND
   # _BINARY_OPTION
+  # _BINARY_XMESSAGE
   # _BOOLEAN_DEBUG
   # _BOOLEAN_VERBOSE
-  # _COMMAND
   # _EXIT_CODE
   # _HISTORY
   # _HOME
@@ -198,17 +205,13 @@ function _attempt_osd()
   # variables:
   # ?
   # DISPLAY
-  # _COMMAND
+  # _BINARY_KDIALOG
+  # _BINARY_NOTIFYSEND
+  # _BINARY_XMESSAGE
   # _EXIT_CODE
   # _HISTORY
   # _OPTION_MESSAGE
   # _OPTION_TIMEOUT
-
-  # binaries:
-  # kdialog (fallback to notify-send & xmessage)
-  # notify-send (fallback to kdialog & xmessage)
-  # which
-  # xmessage (fallback to kdialog & notify-send)
 
   # NOTE:
   # - all 3 of the following OSD utilities ship with stock slackware
@@ -245,41 +248,43 @@ function _attempt_osd()
   # - notify-send & xmessage: full ifconfig output displayed. this is good
   # - kdialog: ifconfig output not displayed at all. this is bad
 
-  # - descending order of preference: notify-send, xmessage, kdialog, nothing
+  # NOTE:
+  # - descending order of preference: notify-send, xmessage, kdialog
   # - xmessage isn't as pretty as kdialog, but it behaves itself. hence the
   #   ranking
-  if _COMMAND=notify-send
-  which -- $_COMMAND &>/dev/null
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_BINARY_NOTIFYSEND ]]
   then
-    _eko_v "              \$_COMMAND: \"$_COMMAND\""
+    _eko_v "    \$_BINARY_NOTIFYSEND: \"$_BINARY_NOTIFYSEND\""
     _eko_v "       \$_OPTION_MESSAGE: \"$_OPTION_MESSAGE\""
     _eko_v "       \$_OPTION_TIMEOUT: \"$_OPTION_TIMEOUT\""
 
     # - $((expression))
-    $_COMMAND --expire-time=$(( $_OPTION_TIMEOUT * 1000 )) -- "$_OPTION_MESSAGE"
+    $_BINARY_NOTIFYSEND --expire-time=$(( $_OPTION_TIMEOUT * 1000 )) -- "$_OPTION_MESSAGE"
     _EXIT_CODE=$?
 
     _eko_v "            \$_EXIT_CODE: \"$_EXIT_CODE\""
-  elif _COMMAND=xmessage
-  which -- $_COMMAND &>/dev/null
+  # - "-n string" = true if the length of string is non-zero
+  elif [[ -n $_BINARY_XMESSAGE ]]
   then
-    _eko_v "              \$_COMMAND: \"$_COMMAND\""
+    _eko_v "      \$_BINARY_XMESSAGE: \"$_BINARY_XMESSAGE\""
     _eko_v "       \$_OPTION_MESSAGE: \"$_OPTION_MESSAGE\""
     _eko_v "       \$_OPTION_TIMEOUT: \"$_OPTION_TIMEOUT\""
 
     # NOTE:
     # - the "&" is absolutely required
-    # - no buttons, so to close it, use what's available in the titlebar
+    # - no buttons. to close it, use what's available in the titlebar
     # - "--" is not supported
 
-    $_COMMAND -buttons "" -timeout $_OPTION_TIMEOUT "$_OPTION_MESSAGE" &
+    $_BINARY_XMESSAGE -buttons "" -timeout $_OPTION_TIMEOUT "$_OPTION_MESSAGE" &
     _EXIT_CODE=$?
 
     _eko_v "            \$_EXIT_CODE: \"$_EXIT_CODE\""
-  elif _COMMAND=kdialog
-  which -- $_COMMAND &>/dev/null
+  # - "-n string" = true if the length of string is non-zero
+  elif [[ -n $_BINARY_KDIALOG ]]
   then
-    _eko_v "              \$_COMMAND: \"$_COMMAND\""
+    _eko_v "       \$_BINARY_KDIALOG: \"$_BINARY_KDIALOG\""
     _eko_v "       \$_OPTION_MESSAGE: \"$_OPTION_MESSAGE\""
     _eko_v "       \$_OPTION_TIMEOUT: \"$_OPTION_TIMEOUT\""
 
@@ -297,12 +302,10 @@ function _attempt_osd()
     # - the "&" seems to be required. sometimes. when in doubt, keep it
     # - "--" is pretty much useless with kdialog
 
-    $_COMMAND --passivepopup "$_OPTION_MESSAGE" $_OPTION_TIMEOUT &
+    $_BINARY_KDIALOG --passivepopup "$_OPTION_MESSAGE" $_OPTION_TIMEOUT &
     _EXIT_CODE=$?
 
     _eko_v "            \$_EXIT_CODE: \"$_EXIT_CODE\""
-  else
-    _show_error \""notify-send\", \"kdialog\", & \"xmessage\" unavailable"
   fi
 
   # - OSD succeeded, prevent multiple OSD popups on this display
@@ -324,12 +327,12 @@ function _binary_validate_setup()
   # _show_error
 
   # variables:
-  # _AVAILABLE_KDIALOG
-  # _AVAILABLE_NOTIFYSEND
-  # _AVAILABLE_XMESSAGE
   # _BINARY_HELP
+  # _BINARY_KDIALOG
   # _BINARY_NAME
+  # _BINARY_NOTIFYSEND
   # _BINARY_OPTION
+  # _BINARY_XMESSAGE
 
   # binaries:
   # grep
@@ -337,7 +340,6 @@ function _binary_validate_setup()
   # notify-send (fallback to kdialog & xmessage)
   # ps
   # sed
-  # which
   # xmessage (fallback to kdialog & notify-send)
 
   # NOTE:
@@ -375,46 +377,46 @@ function _binary_validate_setup()
   # - "kdialog --help". stdout
   #   "--passivepopup"
   # - called in "function _attempt_osd"
-  # - _AVAILABLE_KDIALOG is set
+  # - _BINARY_KDIALOG is set/unset
 
   _BINARY_NAME=kdialog
   _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
-    _AVAILABLE_KDIALOG=false
+    unset _BINARY_KDIALOG
   else
     _BINARY_OPTION=--passivepopup
     if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
     then
-      _AVAILABLE_KDIALOG=true
+      _BINARY_KDIALOG=$_BINARY_NAME
     else
-      _AVAILABLE_KDIALOG=false
+      unset _BINARY_KDIALOG
     fi
   fi
-  _eko_v "    \$_AVAILABLE_KDIALOG: \"$_AVAILABLE_KDIALOG\""
+  _eko_v "       \$_BINARY_KDIALOG: \"$_BINARY_KDIALOG\""
   #- kdialog -#
 
   #+ notify-send +#
   # - "notify-send --help". stdout
   #   "-t" (use "--expire-time=TIME") ("=" is optional, use "=" for uniformity)
   # - called in "function _attempt_osd"
-  # - _AVAILABLE_NOTIFYSEND is set
+  # - _BINARY_NOTIFYSEND is set/unset
 
   _BINARY_NAME=notify-send
   _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
-    _AVAILABLE_NOTIFYSEND=false
+    unset _BINARY_NOTIFYSEND
   else
     _BINARY_OPTION=--expire-time=TIME
     if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
     then
-      _AVAILABLE_NOTIFYSEND=true
+      _BINARY_NOTIFYSEND=$_BINARY_NAME
     else
-      _AVAILABLE_NOTIFYSEND=false
+      unset _BINARY_NOTIFYSEND
     fi
   fi
-  _eko_v " \$_AVAILABLE_NOTIFYSEND: \"$_AVAILABLE_NOTIFYSEND\""
+  _eko_v "    \$_BINARY_NOTIFYSEND: \"$_BINARY_NOTIFYSEND\""
   #- notify-send -#
 
   # NOTE:
@@ -491,18 +493,6 @@ function _binary_validate_setup()
   fi
   #- sed -#
 
-  #+ which +#
-  # - "which --help". stdout
-  # - called in "function _attempt_osd"
-
-  _BINARY_NAME=which
-  _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
-  if [[ $_BINARY_HELP =~ "command not found" ]]
-  then
-    _show_error "required binary \"$_BINARY_NAME\" not found"
-  fi
-  #- which -#
-
   # NOTE:
   # - xmessage is a troublemaker. if $DISPLAY is unset, the most it will do is
   #   dump "Error: Can't open display: " to stderr in all situations, even
@@ -516,27 +506,27 @@ function _binary_validate_setup()
   #   "-buttons"
   #   "-timeout"
   # - called in "function _attempt_osd"
-  # - _AVAILABLE_XMESSAGE is set
+  # - _BINARY_XMESSAGE is set/unset
 
   _BINARY_NAME=xmessage
   _BINARY_HELP=$(echo $($_BINARY_NAME -help 2>&1))
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
-    _AVAILABLE_XMESSAGE=false
+    unset _BINARY_XMESSAGE
   else
     _BINARY_OPTION=-buttons
     if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
     then
-      _AVAILABLE_XMESSAGE=true
+      _BINARY_XMESSAGE=$_BINARY_NAME
       _BINARY_OPTION=-timeout
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
-        _AVAILABLE_XMESSAGE=true
+        _BINARY_XMESSAGE=$_BINARY_NAME
       else
-        _AVAILABLE_XMESSAGE=false
+        unset _BINARY_XMESSAGE
       fi
     else
-      _AVAILABLE_XMESSAGE=false
+      unset _BINARY_XMESSAGE
     fi
   fi
 
@@ -545,10 +535,18 @@ function _binary_validate_setup()
   #   version ??? which shipped with slackware 2.1
   if [[ $_BINARY_HELP =~ "Error: Can't open display:" ]]
   then
-    _AVAILABLE_XMESSAGE=true
+    _BINARY_XMESSAGE=$_BINARY_NAME
   fi
-  _eko_v "   \$_AVAILABLE_XMESSAGE: \"$_AVAILABLE_XMESSAGE\""
+  _eko_v "      \$_BINARY_XMESSAGE: \"$_BINARY_XMESSAGE\""
   #- xmessage -#
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_BINARY_KDIALOG ]] \
+  && [[ -z $_BINARY_NOTIFYSEND ]] \
+  && [[ -z $_BINARY_XMESSAGE ]]
+  then
+    _show_error \""kdialog\", \"notify-send\", & \"xmessage\" unavailable"
+  fi
 
   _eko_iod "#- _binary_validate_setup -#"
 }

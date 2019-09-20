@@ -963,6 +963,9 @@ function _parse_parameters()
   # - ${parameter:=word}
   _OPTION_TIMEOUT=${_OPTION_TIMEOUT:=5}
 
+  _eko_v "       \$_BINARY_KDIALOG: \"$_BINARY_KDIALOG\""
+  _eko_v "    \$_BINARY_NOTIFYSEND: \"$_BINARY_NOTIFYSEND\""
+  _eko_v "      \$_BINARY_XMESSAGE: \"$_BINARY_XMESSAGE\""
   _eko_v "        \$_BOOLEAN_DEBUG: \"$_BOOLEAN_DEBUG\""
   _eko_v "      \$_BOOLEAN_VERBOSE: \"$_BOOLEAN_VERBOSE\""
   _eko_v "       \$_OPTION_MESSAGE: \"$_OPTION_MESSAGE\""

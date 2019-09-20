@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# move-window v2019.08.12
+# move-window v2019.09.20
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -10,9 +10,19 @@
 # concept:
 # - move selected window to desired position on desktop
 
-# TODO:
-# - remove all #'d lines dealing with unnecessary doublequoting
+# 2019-09-20
 
+# - "function function _get_window_undecorated_geometry" altered calling
+#    syntax to "echo/sed"
+#  was: <<< \
+#  was: $(echo $_OUTPUT_XWININFO_ID | sed --expression='s/.*Width: \(.*\) Height: \(.*\) Depth:.*/\1 \2/g')
+#   is: < \
+#   is: <(echo $_OUTPUT_XWININFO_ID | sed --expression='s/.*Width: \(.*\) Height: \(.*\) Depth:.*/\1 \2/g')
+# - removed all #'d lines dealing with unnecessary doublequoting
+# - NOTE: (to self) refer to the 2019-08-12 savepoint for the "before" version
+# - added "--" to all invocations of "read". possibly overkill in a few spots,
+#   but better to have too many than too few
+# - "function _builtin_validate_setup" added for "read -r"
 # 2019-08-12
 # - "function _binary_validate_setup" altered _BINARY_HELP assignment & tests
 #   for each binary
@@ -84,22 +94,6 @@
 # 2019-05-18
 # - coding begins almost from scratch. using some ideas learned from writing
 #   "obx-window"
-
-# TODO:
-# [erik@beryllium ~]$ move-window
-# Select the window to move: 
-# Error: invalid Window ID "0x4b0" (root window) specified
-# vs
-# [erik@beryllium ~]$ move-window -id 0x4b0
-# Error: invalid Window ID "0x4b0" specified
-# - is it possible to get the window type (like #1) in report #2?
-
-# "function _pass_fail_by_window_type" gives #1 above
-# "function _pass_fail_by_window_id" gives #2 above
-
-# IDEA:
-# - for above, it's rather obvious, but see if those 2 functions can somehow
-#   be combined
 
 # TODO:
 # - somehow figure out how to get rid of the dependency on wmctrl
@@ -182,6 +176,7 @@
   # _BINARY_HELP
   # _BINARY_NAME
   # _BINARY_OPTION
+  # _BINARY_WMCTRL
   # _BOOLEAN_DEBUG
   # _BOOLEAN_DRYRUN
   # _BOOLEAN_FORCE
@@ -219,6 +214,7 @@
   # _NET_WORKAREA_CARDINAL
   # _NET_WORKAREA_H
   # _NET_WORKAREA_W
+  # _OPTIONS_READ (read options, not script options)
   # _OPTION_WINDOW_COORDINATES
   # _OPTION_WINDOW_ID
   # _OUTPUT_XPROP_ID
@@ -231,12 +227,12 @@
   # _WINDOW_DECORATED_Y
   # _WINDOW_UNDECORATED_X
   # _WINDOW_UNDECORATED_Y
-  # _WMCTRL_BINARY
   # _WORKAREA_BORDER_B
   # _WORKAREA_BORDER_L
   # _WORKAREA_BORDER_R
   # _WORKAREA_BORDER_T
-# _WMCTRL_BINARY
+# _BINARY_WMCTRL
+# _OPTIONS_READ (read options, not script options)
 # NOTE: (script function use & abuse)
 # - script functions are always in the form "_foo"
     # _eko_iod
@@ -275,7 +271,11 @@
 
 #+ setup here +#
 
-# (none)
+# variables:
+# _OPTIONS_READ (read options, not script options)
+
+# - doing this here so we get no suprises in "function _builtin_validate_setup"
+unset _OPTIONS_READ
 
 #- setup here -#
 
@@ -296,7 +296,7 @@ function _binary_validate_setup()
   # _BINARY_HELP
   # _BINARY_NAME
   # _BINARY_OPTION
-  # _WMCTRL_BINARY
+  # _BINARY_WMCTRL
 
   # binaries:
   # sed
@@ -357,9 +357,9 @@ function _binary_validate_setup()
   _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
-    _WMCTRL_BINARY=false
+    _BINARY_WMCTRL=false
   else
-    _WMCTRL_BINARY=$_BINARY_NAME
+    _BINARY_WMCTRL=$_BINARY_NAME
 
     _BINARY_OPTION=-i
     if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
@@ -379,6 +379,7 @@ function _binary_validate_setup()
       _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
     fi
   fi
+  _eko_v "                   \$_BINARY_WMCTRL: \"$_BINARY_WMCTRL\""
   #- wmctrl -#
 
   #+ xprop +#
@@ -427,6 +428,60 @@ function _binary_validate_setup()
   #- xwininfo -#
 
   _eko_iod "#- _binary_validate_setup -#"
+}
+
+function _builtin_validate_setup()
+{
+  _eko_iod "#+ _builtin_validate_setup +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+  # _show_error
+
+  # variables:
+  # _BUILTIN_HELP
+  # _BUILTIN_NAME
+  # _BUILTIN_OPTION
+  # _OPTIONS_READ (read options, not script options)
+
+  # builtins:
+  # read
+
+  # NOTE:
+  # - rather than test a given builtin's version (or more accurately, test a
+  #   given version of bash itself) in hopes of figuring out which features it
+  #   supports, test its supported feature set directly. not only is this much
+  #   simpler to do, it's possible to test only those features that are
+  #   explicitly used in the script
+  # - how? get the builtin to dump its embedded help text & parse the result
+  # - this can be used as a dual test. no help text = unsupported builtin,
+  #   otherwise parse the help text for descriptions of specific features
+
+  #+ read +#
+  # - "help read". stdout
+  #   "-r"
+  # - called in "function _pathnames_scan"
+  # - _OPTIONS_READ is set
+
+  _BUILTIN_NAME=read
+  _BUILTIN_HELP=$(echo $(help $_BUILTIN_NAME 2>&1))
+  if [[ $_BUILTIN_HELP =~ "no help topics match" ]]
+  then
+    _show_error "required builtin \"$_BUILTIN_NAME\" not supported"
+  else
+    _BUILTIN_OPTION=-r
+    if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
+    then
+      _OPTIONS_READ=$_BUILTIN_OPTION
+      _eko_v "                    \$_OPTIONS_READ: \"$_OPTIONS_READ\""
+    else
+      _show_error \""$_BUILTIN_NAME\" does not support \"$_BUILTIN_OPTION\""
+    fi
+  fi
+  #- read -#
+
+  _eko_iod "#- _builtin_validate_setup -#"
 }
 
 function _coordinates_calculate()
@@ -529,6 +584,7 @@ function _coordinates_force()
   # _get_net_desktop_geometry_cardinal
 
   # variables:
+  # _BINARY_WMCTRL
   # _COMMAND
   # _CORNERS
   # _NET_CLIENT_LIST_WINDOW
@@ -536,7 +592,6 @@ function _coordinates_force()
   # _NET_DESKTOP_GEOMETRY_W
   # _OPTION_WINDOW_ID
   # _OUTPUT_XWININFO_ID
-  # _WMCTRL_BINARY
 
   # binaries:
   # sed
@@ -546,7 +601,6 @@ function _coordinates_force()
 
   for _OPTION_WINDOW_ID in $_NET_CLIENT_LIST_WINDOW
   do
-#    _OUTPUT_XWININFO_ID="$(xwininfo -id $_OPTION_WINDOW_ID)"
     _OUTPUT_XWININFO_ID=$(xwininfo -id $_OPTION_WINDOW_ID)
 
     # - remove everything else. why? there's a non-zero chance that the
@@ -564,7 +618,7 @@ function _coordinates_force()
       # - don't be fancy. simply place window at X/Y of 0/0
       # - slight problem with this. some applications (hello TigerVNC) don't
       #   report (or improperly report) their window decorations
-     #_COMMAND="$_WMCTRL_BINARY -i -r $_OPTION_WINDOW_ID -e 0,0,0,-1,-1"
+      #_COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 0,0,0,-1,-1"
 
       # - on second thought, be slightly fancy
       # - place window (using its raw X/Y dimensions. aka: ignore any
@@ -574,7 +628,7 @@ function _coordinates_force()
       # - this is a simple rescue operation. all that's needed is to make
       #   unreachable windows reachable. the user can manipulate things later
       # - $((expression))
-      _COMMAND="$_WMCTRL_BINARY -i -r $_OPTION_WINDOW_ID -e 0,$(( $_NET_DESKTOP_GEOMETRY_W / 2 )),$(( $_NET_DESKTOP_GEOMETRY_H / 2 )),-1,-1"
+      _COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 0,$(( $_NET_DESKTOP_GEOMETRY_W / 2 )),$(( $_NET_DESKTOP_GEOMETRY_H / 2 )),-1,-1"
 
       _eko_v "                           command: \"$_COMMAND\""
 
@@ -678,8 +732,13 @@ function _coordinates_validate()
   # _WORKAREA_BORDER_R
   # _WORKAREA_BORDER_T
 
+  # IDEA:
+  # - disable/remove "error exits" #2 & #4
+  # - rely on "force to fits" #1 & #3
+
   #+ error exits +#
 
+  # - (1/4)
   # - non-numeric X coordinate?
   # - negative included
   if [[ ! $_COORDINATE_X =~ ^-?[0-9]+$ ]]
@@ -687,6 +746,7 @@ function _coordinates_validate()
     _show_error "non-numeric X coordinate \"$_COORDINATE_X\" specified"
   fi
 
+  # - (2/4)
   # - numeric X coordinate that is not -1?
   # - negative included
   if [[ $_COORDINATE_X =~ ^-[0-9]+$ ]] \
@@ -695,6 +755,7 @@ function _coordinates_validate()
     _show_error "invalid X coordinate \"$_COORDINATE_X\" specified"
   fi
 
+  # - (3/4)
   # - non-numeric Y coordinate?
   # - negative included
   if [[ ! $_COORDINATE_Y =~ ^-?[0-9]+$ ]]
@@ -702,6 +763,7 @@ function _coordinates_validate()
     _show_error "non-numeric Y coordinate \"$_COORDINATE_Y\" specified"
   fi
 
+  # - (4/4)
   # - numeric Y coordinate that is not -1?
   # - negative included
   if [[ $_COORDINATE_Y =~ ^-[0-9]+$ ]] \
@@ -712,8 +774,9 @@ function _coordinates_validate()
 
   #- error exits -#
 
-  #+ force to fit +#
+  #+ force to fits +#
 
+  # - (1/4)
   # - force X coordinate to fit within usable or overall desktop X
   # - left (special case: -1)
   # - technically unnecessary. already caught in the error exit block above
@@ -723,6 +786,7 @@ function _coordinates_validate()
     _COORDINATE_X=$_WORKAREA_BORDER_L
   fi
 
+  # - (2/4)
   # - force X coordinate to fit within usable or overall desktop X
   # - right
   # - $((expression))
@@ -732,6 +796,7 @@ function _coordinates_validate()
     _COORDINATE_X=$((   $_NET_DESKTOP_GEOMETRY_W                        - $_WINDOW_DECORATED_X - $_WORKAREA_BORDER_R       ))
   fi
 
+  # - (3/4)
   # - force Y coordinate to fit within usable or overall desktop Y
   # - top (special case: -1)
   # - technically unnecessary. already caught in the error exit block above
@@ -741,6 +806,7 @@ function _coordinates_validate()
     _COORDINATE_Y=$_WORKAREA_BORDER_T
   fi
 
+  # - (4/4)
   # - force Y coordinate to fit within usable or overall desktop Y
   # - bottom
   # - $((expression))
@@ -750,7 +816,7 @@ function _coordinates_validate()
     _COORDINATE_Y=$((   $_NET_DESKTOP_GEOMETRY_H                        - $_WINDOW_DECORATED_Y - $_WORKAREA_BORDER_B       ))
   fi
 
-  #- force to fit -#
+  #- force to fits -#
 
   #+ tweaks +#
 
@@ -889,7 +955,6 @@ function _get_net_active_window_window()
   # "_NET_ACTIVE_WINDOW(WINDOW): window id # "
   # "0xa0005d"
 
-#  _NET_ACTIVE_WINDOW_WINDOW="$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_ACTIVE_WINDOW(WINDOW): window id # /!d ; s/.* # //g')"
   _NET_ACTIVE_WINDOW_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_ACTIVE_WINDOW(WINDOW): window id # /!d ; s/.* # //g')
 
   _eko_v "        \$_NET_ACTIVE_WINDOW_WINDOW: \"$_NET_ACTIVE_WINDOW_WINDOW\""
@@ -918,7 +983,6 @@ function _get_net_client_list_window()
   # etc, etc
   # "0x3600099"
 
-#  _NET_CLIENT_LIST_WINDOW="$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d ; s/\(.* # \|,\)//g')"
   _NET_CLIENT_LIST_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d ; s/\(.* # \|,\)//g')
 
   _eko_v "          \$_NET_CLIENT_LIST_WINDOW: \"$_NET_CLIENT_LIST_WINDOW\""
@@ -946,7 +1010,6 @@ function _get_net_current_desktop_cardinal()
   # "_NET_CURRENT_DESKTOP(CARDINAL) = "
   # "0"
 
-#  _NET_CURRENT_DESKTOP_CARDINAL="$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CURRENT_DESKTOP(CARDINAL) = /!d ; s/.* = //g')"
   _NET_CURRENT_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CURRENT_DESKTOP(CARDINAL) = /!d ; s/.* = //g')
 
   _eko_v "    \$_NET_CURRENT_DESKTOP_CARDINAL: \"$_NET_CURRENT_DESKTOP_CARDINAL\""
@@ -976,18 +1039,15 @@ function _get_net_desktop_geometry_cardinal()
   # "1920, "
   # "1080"
 
-#  _NET_DESKTOP_GEOMETRY_CARDINAL="$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_GEOMETRY(CARDINAL) = /!d ; s/\(.* = \|,\)//g')"
   _NET_DESKTOP_GEOMETRY_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_GEOMETRY(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
 
   _eko_v "   \$_NET_DESKTOP_GEOMETRY_CARDINAL: \"$_NET_DESKTOP_GEOMETRY_CARDINAL\""
 
-  read -r \
+  read $_OPTIONS_READ -- \
   _NET_DESKTOP_GEOMETRY_W \
   _NET_DESKTOP_GEOMETRY_H \
   <<< \
   $_NET_DESKTOP_GEOMETRY_CARDINAL
-#  $(echo $_NET_DESKTOP_GEOMETRY_CARDINAL)
-#  "$(echo $_NET_DESKTOP_GEOMETRY_CARDINAL)"
 
   _eko_v "          \$_NET_DESKTOP_GEOMETRY_W: \"$_NET_DESKTOP_GEOMETRY_W\""
   _eko_v "          \$_NET_DESKTOP_GEOMETRY_H: \"$_NET_DESKTOP_GEOMETRY_H\""
@@ -1039,7 +1099,6 @@ function _get_net_desktop_names_utf8_string()
   # ""VII", "
   # ""VIII""
 
-#  _NET_DESKTOP_NAMES_UTF8_STRING="$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_NAMES(UTF8_STRING) = /!d ; s/\(.* = \|,\)//g')"
   _NET_DESKTOP_NAMES_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_NAMES(UTF8_STRING) = /!d ; s/\(.* = \|,\)//g')
 
   _eko_v "   \$_NET_DESKTOP_NAMES_UTF8_STRING: \"$_NET_DESKTOP_NAMES_UTF8_STRING\""
@@ -1141,7 +1200,6 @@ function _get_net_desktop_viewport_cardinal()
   # "0, 0, "
   # "0, 0"
 
-#  _NET_DESKTOP_VIEWPORT_CARDINAL="$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_VIEWPORT(CARDINAL) = /!d ; s/\(.* = \|,\)//g')"
   _NET_DESKTOP_VIEWPORT_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_VIEWPORT(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
 
   _eko_v "   \$_NET_DESKTOP_VIEWPORT_CARDINAL: \"$_NET_DESKTOP_VIEWPORT_CARDINAL\""
@@ -1165,13 +1223,12 @@ function _get_net_desktop_viewport_cardinal()
     # - $((expression))
     shift $(( $_NET_CURRENT_DESKTOP_CARDINAL * 2 ))
 
-    read -r \
+    read $_OPTIONS_READ -- \
     _NET_DESKTOP_VIEWPORT_X \
     _NET_DESKTOP_VIEWPORT_Y \
     _XX0 \
     <<< \
     $@
-#    "$@"
 
     _eko_v "          \$_NET_DESKTOP_VIEWPORT_X: \"$_NET_DESKTOP_VIEWPORT_X\""
     _eko_v "          \$_NET_DESKTOP_VIEWPORT_Y: \"$_NET_DESKTOP_VIEWPORT_Y\""
@@ -1210,20 +1267,17 @@ function _get_net_frame_extents_cardinal()
   # "22, "
   # "6"
 
-#  _NET_FRAME_EXTENTS_CARDINAL="$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_FRAME_EXTENTS(CARDINAL) = /!d ; s/\(.* = \|,\)//g')"
   _NET_FRAME_EXTENTS_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_FRAME_EXTENTS(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
 
   _eko_v "      \$_NET_FRAME_EXTENTS_CARDINAL: \"$_NET_FRAME_EXTENTS_CARDINAL\""
 
-  read -r \
+  read $_OPTIONS_READ -- \
   _NET_FRAME_EXTENTS_L \
   _NET_FRAME_EXTENTS_R \
   _NET_FRAME_EXTENTS_T \
   _NET_FRAME_EXTENTS_B \
   <<< \
   $_NET_FRAME_EXTENTS_CARDINAL
-#  $(echo $_NET_FRAME_EXTENTS_CARDINAL)
-#  "$(echo $_NET_FRAME_EXTENTS_CARDINAL)"
 
   _eko_v "             \$_NET_FRAME_EXTENTS_L: \"$_NET_FRAME_EXTENTS_L\""
   _eko_v "             \$_NET_FRAME_EXTENTS_R: \"$_NET_FRAME_EXTENTS_R\""
@@ -1252,7 +1306,6 @@ function _get_net_number_of_desktops_cardinal()
   # "_NET_NUMBER_OF_DESKTOPS(CARDINAL) = "
   # "8"
 
-#  _NET_NUMBER_OF_DESKTOPS_CARDINAL="$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_NUMBER_OF_DESKTOPS(CARDINAL) = /!d ; s/.* = //g')"
   _NET_NUMBER_OF_DESKTOPS_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_NUMBER_OF_DESKTOPS(CARDINAL) = /!d ; s/.* = //g')
 
   _eko_v " \$_NET_NUMBER_OF_DESKTOPS_CARDINAL: \"$_NET_NUMBER_OF_DESKTOPS_CARDINAL\""
@@ -1275,7 +1328,6 @@ function _get_net_wm_desktop_cardinal()
   # binaries:
   # sed
 
-#  _NET_WM_DESKTOP_CARDINAL="$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_DESKTOP(CARDINAL) = /!d ; s/.* = //g')"
   _NET_WM_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_DESKTOP(CARDINAL) = /!d ; s/.* = //g')
 
   _eko_v "         \$_NET_WM_DESKTOP_CARDINAL: \"$_NET_WM_DESKTOP_CARDINAL\""
@@ -1301,7 +1353,6 @@ function _get_net_wm_name_utf8_string()
   # NOTE:
   # - we need this for "function _coordinates_kludge"
 
-#  _NET_WM_NAME_UTF8_STRING="$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_NAME(UTF8_STRING) = /!d ; s/.* = //g')"
   _NET_WM_NAME_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_NAME(UTF8_STRING) = /!d ; s/.* = //g')
 
   _eko_v "         \$_NET_WM_NAME_UTF8_STRING: \"$_NET_WM_NAME_UTF8_STRING\""
@@ -1341,7 +1392,6 @@ function _get_net_wm_state_atom()
   #   _NET_WM_STATE_BELOW, ATOM
   #   _NET_WM_STATE_DEMANDS_ATTENTION, ATOM
 
-#  _NET_WM_STATE_ATOM="$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_STATE(ATOM) = /!d ; s/\(.* = \|,\)//g')"
   _NET_WM_STATE_ATOM=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_STATE(ATOM) = /!d ; s/\(.* = \|,\)//g')
 
   _eko_v "               \$_NET_WM_STATE_ATOM: \"$_NET_WM_STATE_ATOM\""
@@ -1396,7 +1446,6 @@ function _get_net_workarea_cardinal()
   # "0, 0, 1852, 1056, "
   # "0, 0, 1852, 1056"
 
-#  _NET_WORKAREA_CARDINAL="$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_WORKAREA(CARDINAL) = /!d ; s/\(.* = \|,\)//g')"
   _NET_WORKAREA_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_WORKAREA(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
 
   _eko_v "           \$_NET_WORKAREA_CARDINAL: \"$_NET_WORKAREA_CARDINAL\""
@@ -1430,7 +1479,7 @@ function _get_net_workarea_cardinal()
     # - $((expression))
     shift $(( $_NET_CURRENT_DESKTOP_CARDINAL * 4 ))
 
-    read -r \
+    read $_OPTIONS_READ -- \
     _NET_WORKAREA_X \
     _NET_WORKAREA_Y \
     _NET_WORKAREA_W \
@@ -1438,7 +1487,6 @@ function _get_net_workarea_cardinal()
     _XX0 \
     <<< \
     $@
-#    "$@"
 
     _eko_v "                  \$_NET_WORKAREA_X: \"$_NET_WORKAREA_X\""
     _eko_v "                  \$_NET_WORKAREA_Y: \"$_NET_WORKAREA_Y\""
@@ -1526,27 +1574,18 @@ function _get_window_undecorated_geometry()
 
   # - assign default value if unset
   # - ${parameter:=word}
-#  _OUTPUT_XWININFO_ID=${_OUTPUT_XWININFO_ID:="$(xwininfo -id "$_OPTION_WINDOW_ID")"}
-#  _OUTPUT_XWININFO_ID=${_OUTPUT_XWININFO_ID:="$(xwininfo -id $_OPTION_WINDOW_ID)"}
   _OUTPUT_XWININFO_ID=${_OUTPUT_XWININFO_ID:=$(xwininfo -id $_OPTION_WINDOW_ID)}
-#echo "$_OUTPUT_XWININFO_ID"
-#echo $_OUTPUT_XWININFO_ID
 
   # NOTE:
   # - no doublequotes around $_OUTPUT_XWININFO_ID
   # - there is no spacing to preserve, so the lack of doublequotes is of
   #   no consequence
-  # - keeping the old sed invocation here as an example
 
-  read -r \
+  read $_OPTIONS_READ -- \
   _WINDOW_UNDECORATED_X \
   _WINDOW_UNDECORATED_Y \
-  <<< \
-  $(echo $_OUTPUT_XWININFO_ID | sed --expression='s/.*Width: \(.*\) Height: \(.*\) Depth:.*/\1 \2/g')
-#  "$(echo $_OUTPUT_XWININFO_ID | sed --expression='s/.*Width: \(.*\) Height: \(.*\) Depth:.*/\1 \2/g')"
-#  <<< \
-#  $(echo $_OUTPUT_XWININFO_ID | sed --silent --expression='s/.*Width: \(.*\) Height: \(.*\) Depth:.*/\1 \2/p')
-##  "$(echo $_OUTPUT_XWININFO_ID | sed --silent --expression='s/.*Width: \(.*\) Height: \(.*\) Depth:.*/\1 \2/p')"
+  < \
+  <(echo $_OUTPUT_XWININFO_ID | sed --expression='s/.*Width: \(.*\) Height: \(.*\) Depth:.*/\1 \2/g')
 
   _eko_v "            \$_WINDOW_UNDECORATED_X: \"$_WINDOW_UNDECORATED_X\""
   _eko_v "            \$_WINDOW_UNDECORATED_Y: \"$_WINDOW_UNDECORATED_Y\""
@@ -1600,6 +1639,7 @@ function _parse_parameters()
   # variables:
   # #
   # 1
+  # _BINARY_WMCTRL
   # _BOOLEAN_DEBUG
   # _BOOLEAN_DRYRUN
   # _BOOLEAN_FORCE
@@ -1610,7 +1650,6 @@ function _parse_parameters()
   # _OPTION_WINDOW_COORDINATES
   # _OPTION_WINDOW_ID
   # _OUTPUT_XPROP_ROOT
-  # _WMCTRL_BINARY
 
   # binaries:
   # xprop
@@ -1624,7 +1663,7 @@ function _parse_parameters()
   # - default: true
   # - *not* toggled in while/do/done loop like the others
   # - set to false immediately after the while/do/done loop if either
-  #   _BOOLEAN_DEBUG or _BOOLEAN_VERBOSE are true
+  #   $_BOOLEAN_DEBUG or $_BOOLEAN_VERBOSE are true
 
   #+ parameter defaults +#
 
@@ -1763,6 +1802,14 @@ function _parse_parameters()
   # - technically in the wrong spot, but it's a chicken or egg scenario
   _eko_iod "#+ _parse_parameters +#"
 
+
+  # NOTE:
+  # - order of operations of the following 2 functions is unimportant
+
+  # - validate the existence & required options of system builtins
+  # - while we're at it, set up the options for the various builtins if needed
+  _builtin_validate_setup
+
   # - validate the existence & required options of system binaries
   # - while we're at it, set up the options for the various binaries if needed
   _binary_validate_setup
@@ -1785,9 +1832,10 @@ function _parse_parameters()
   # - cheap & easy way to do a dry-run
   if $_BOOLEAN_DRYRUN
   then
-    _WMCTRL_BINARY=true
+    _BINARY_WMCTRL=true
   fi
 
+  _eko_v "                   \$_BINARY_WMCTRL: \"$_BINARY_WMCTRL\""
   _eko_v "                   \$_BOOLEAN_DEBUG: \"$_BOOLEAN_DEBUG\""
   _eko_v "                  \$_BOOLEAN_DRYRUN: \"$_BOOLEAN_DRYRUN\""
   _eko_v "                   \$_BOOLEAN_FORCE: \"$_BOOLEAN_FORCE\""
@@ -1797,7 +1845,6 @@ function _parse_parameters()
   _eko_v "                 \$_BOOLEAN_VERBOSE: \"$_BOOLEAN_VERBOSE\""
   _eko_v "       \$_OPTION_WINDOW_COORDINATES: \"$_OPTION_WINDOW_COORDINATES\""
   _eko_v "                \$_OPTION_WINDOW_ID: \"$_OPTION_WINDOW_ID\""
-  _eko_v "                   \$_WMCTRL_BINARY: \"$_WMCTRL_BINARY\""
 
   #- parameter settings (in (mostly) proper order of operation) -#
 
@@ -1807,7 +1854,6 @@ function _parse_parameters()
 
   # - we'll be using this information for a lot of things (several of the
   #   _get_net_* functions). just grab everything once
-#  _OUTPUT_XPROP_ROOT="$(xprop -root)"
   _OUTPUT_XPROP_ROOT=$(xprop -root)
 
   # - get full list of Window IDs
@@ -1938,24 +1984,17 @@ function _pass_fail_by_window_type()
   # - notify-send notification popup, likely others
   #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_NOTIFICATION.*"
 
-#  _OUTPUT_XPROP_ID="$(xprop -id "$_OPTION_WINDOW_ID")"
-#  _OUTPUT_XPROP_ID="$(xprop -id $_OPTION_WINDOW_ID)"
   _OUTPUT_XPROP_ID=$(xprop -id $_OPTION_WINDOW_ID)
-#echo "$_OUTPUT_XPROP_ID"
-#echo $_OUTPUT_XPROP_ID
 
   # - "-n string" = true if the length of string is non-zero
-#  if [[ -n "$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d')" ]]
   if [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d') ]]
   then
     _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (root window) specified"
   # - "-n string" = true if the length of string is non-zero
-#  elif [[ -n "$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DOCK.*/!d')" ]]
   elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DOCK.*/!d') ]]
   then
     _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (dock) specified"
   # - "-n string" = true if the length of string is non-zero
-#  elif [[ -n "$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_NOTIFICATION.*/!d')" ]]
   elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_NOTIFICATION.*/!d') ]]
   then
     _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (notification popup) specified"
@@ -1973,6 +2012,7 @@ function _set_window_position()
   # _eko_v
 
   # variables:
+  # _BINARY_WMCTRL
   # _BOOLEAN_DRYRUN
   # _BOOLEAN_MAXIMIZED_X (window state. not script option)
   # _BOOLEAN_MAXIMIZED_Y (window state. not script option)
@@ -1996,7 +2036,6 @@ function _set_window_position()
   # _WINDOW_DECORATED_Y
   # _WINDOW_UNDECORATED_X
   # _WINDOW_UNDECORATED_Y
-  # _WMCTRL_BINARY
   # _WORKAREA_BORDER_B
   # _WORKAREA_BORDER_L
   # _WORKAREA_BORDER_R
@@ -2007,7 +2046,7 @@ function _set_window_position()
   # - experimented with "-b add,above". something's not going as expected so
   #   it's not used in $_COMMAND below
   # - $((expression))
-  _COMMAND="$_WMCTRL_BINARY -i -r $_OPTION_WINDOW_ID -e 0,$(( $_COORDINATE_X + $_KLUDGE_X )),$(( $_COORDINATE_Y + $_KLUDGE_Y )),-1,-1"
+  _COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 0,$(( $_COORDINATE_X + $_KLUDGE_X )),$(( $_COORDINATE_Y + $_KLUDGE_Y )),-1,-1"
 
   _eko_v "                         window id: $_OPTION_WINDOW_ID
                        window name: $_NET_WM_NAME_UTF8_STRING
@@ -2031,7 +2070,7 @@ function _set_window_position()
     # - next: the command to explicitly raise & give focus to the window
     # - "-i -a" order is important
     # - don't use "-R". it causes the window to become "unsticky"
-    _COMMAND="$_WMCTRL_BINARY -i -a $_OPTION_WINDOW_ID"
+    _COMMAND="$_BINARY_WMCTRL -i -a $_OPTION_WINDOW_ID"
 
     _eko_v "            wmctrl command (raise): $_COMMAND"
 
@@ -2122,24 +2161,13 @@ function _window_id_acquire()
   _eko_S_en "Select the window to move: "
 
   # - acquire Window ID via point'n'click
-#  _OUTPUT_XWININFO_ID="$(xwininfo)"
   _OUTPUT_XWININFO_ID=$(xwininfo)
 
   _eko_S ""
-#echo "$_OUTPUT_XWININFO_ID"
-#echo $_OUTPUT_XWININFO_ID
 
-#  _OPTION_WINDOW_ID="$(echo "$_OUTPUT_XWININFO_ID" | sed --expression='/.*Window id:/!d ; s/\(.*id: \)\|\( .*\)//g')"
-#  _OPTION_WINDOW_ID=$(echo "$_OUTPUT_XWININFO_ID" | sed --expression='/.*Window id:/!d ; s/\(.*id: \)\|\( .*\)//g')
   _OPTION_WINDOW_ID=$(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Window id:/!d ; s/\(.*id: \)\|\( .*\)//g')
-#echo "$_OPTION_WINDOW_ID"
-#echo $_OPTION_WINDOW_ID
 
-#  _OUTPUT_XPROP_ID="$(xprop -id "$_OPTION_WINDOW_ID")"
-#  _OUTPUT_XPROP_ID="$(xprop -id $_OPTION_WINDOW_ID)"
   _OUTPUT_XPROP_ID=$(xprop -id $_OPTION_WINDOW_ID)
-#echo "$_OUTPUT_XPROP_ID"
-#echo $_OUTPUT_XPROP_ID
 
   _eko_v "                \$_OPTION_WINDOW_ID: \"$_OPTION_WINDOW_ID\""
 
@@ -2155,11 +2183,11 @@ function _window_id_acquire()
 
 # variables:
 # @
-# _WMCTRL_BINARY
+# _BINARY_WMCTRL
 
 _parse_parameters "$@"
 
-if [[ $_WMCTRL_BINARY == false ]]
+if [[ $_BINARY_WMCTRL == false ]]
 then
   echo "binary \"wmctrl\" not found, faked it with \"false\" instead"
 fi

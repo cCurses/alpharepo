@@ -11,9 +11,8 @@
 # - move selected window to desired position on desktop
 
 # 2019-09-20
-
-# - "function function _get_window_undecorated_geometry" altered calling
-#    syntax to "echo/sed"
+# - "function _get_window_undecorated_geometry" altered calling syntax to
+#   "echo/sed"
 #  was: <<< \
 #  was: $(echo $_OUTPUT_XWININFO_ID | sed --expression='s/.*Width: \(.*\) Height: \(.*\) Depth:.*/\1 \2/g')
 #   is: < \

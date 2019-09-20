@@ -1014,7 +1014,6 @@ function _binary_validate_setup()
     #- mv -#
   fi # $_BOOLEAN_UNLINK
 
-#+
   # - "-z string" = true if the length of string is zero
   if [[ -z $_FUNCTION_TRANSFORM ]]
   then
@@ -1625,7 +1624,6 @@ function _parse_parameters()
   # - technically in the wrong spot, but it's a chicken or egg scenario
   _eko_iod "#+ _parse_parameters +#"
 
-#+
   # NOTE:
   # - order of operations of the following 2 functions is important because of
   #   the ranking necessary for the 3 _pathname_transform_* functions

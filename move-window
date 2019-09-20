@@ -1658,21 +1658,25 @@ function _parse_parameters()
 
   # NOTE:
   # - _BOOLEAN_STDOUT is special. it's quite simple to set up initially
+
+  # - _BOOLEAN_STDOUT
   # - companion functions: _eko_S/_eko_S_en
   # - default: true
   # - *not* toggled in while/do/done loop like the others
-  # - set to false immediately after the while/do/done loop if either
-  #   $_BOOLEAN_DEBUG or $_BOOLEAN_VERBOSE are true
+  # - immediately *after* the while/do/done loop _BOOLEAN_STDOUT is set to
+  #   false if either $_BOOLEAN_DEBUG or $_BOOLEAN_VERBOSE are true
 
   #+ parameter defaults +#
 
-  _BOOLEAN_DEBUG=false
-  _BOOLEAN_DRYRUN=false
-  _BOOLEAN_FORCE=false
-  _BOOLEAN_OVERALL=false
-  _BOOLEAN_RAISE=false
-  _BOOLEAN_STDOUT=true
-  _BOOLEAN_VERBOSE=false
+#+ marker boolean +#
+  _BOOLEAN_DEBUG=false   # display
+  _BOOLEAN_DRYRUN=false  # control
+  _BOOLEAN_FORCE=false   # action
+  _BOOLEAN_OVERALL=false # control
+  _BOOLEAN_RAISE=false   # action
+  _BOOLEAN_STDOUT=true   # display
+  _BOOLEAN_VERBOSE=false # display
+#- marker boolean -#
   unset _OPTION_WINDOW_COORDINATES
   unset _OPTION_WINDOW_ID
 
@@ -1801,7 +1805,6 @@ function _parse_parameters()
   # - technically in the wrong spot, but it's a chicken or egg scenario
   _eko_iod "#+ _parse_parameters +#"
 
-
   # NOTE:
   # - order of operations of the following 2 functions is unimportant
 
@@ -1821,7 +1824,9 @@ function _parse_parameters()
   if $_BOOLEAN_DEBUG \
   || $_BOOLEAN_VERBOSE
   then
-    _BOOLEAN_STDOUT=false
+#+ marker boolean +#
+    _BOOLEAN_STDOUT=false  # display
+#- marker boolean -#
   fi
 
   # - assign default value if unset

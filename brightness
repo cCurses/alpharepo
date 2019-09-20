@@ -1188,27 +1188,33 @@ function _parse_parameters()
   # - _BOOLEAN_STDOUT
   # ^ are special. they're quite simple to set up initially
 
-  # - _BOOLEAN_STDOUT
-  # - companion functions: _eko_S/_eko_S_en
-  # - default: true
-  # - *not* toggled in while/do/done loop like the others
-
   # - _BOOLEAN_QUIET
   # - companion functions: none
   # - default: false
   # - toggled in while/do/done loop like the others
   # - option "-q, --quiet"
-  # - immediately *after* while/do/done loop sets all _BOOLEAN_* if true
+  # - immediately *after* the while/do/done loop all _BOOLEAN_* (except
+  #   _BOOLEAN_ALL & _BOOLEAN_TEST) are set to false if $_BOOLEAN_QUIET is
+  #   true
+
+  # - _BOOLEAN_STDOUT
+  # - companion functions: _eko_S/_eko_S_en
+  # - default: true
+  # - *not* toggled in while/do/done loop like the others
+  # - immediately *after* the while/do/done loop _BOOLEAN_STDOUT is set to
+  #   false if either $_BOOLEAN_DEBUG or $_BOOLEAN_VERBOSE are true
 
   #+ parameter defaults +#
 
-  _BOOLEAN_ALL=false
-  _BOOLEAN_DEBUG=false
-  _BOOLEAN_LIST=false
-  _BOOLEAN_QUIET=false
-  _BOOLEAN_STDOUT=true
-  _BOOLEAN_TEST=false
-  _BOOLEAN_VERBOSE=false
+#+ marker boolean +#
+  _BOOLEAN_ALL=false     # action
+  _BOOLEAN_DEBUG=false   # display
+  _BOOLEAN_LIST=false    # display
+  _BOOLEAN_QUIET=false   # display
+  _BOOLEAN_STDOUT=true   # display
+  _BOOLEAN_TEST=false    # action
+  _BOOLEAN_VERBOSE=false # display
+#- marker boolean -#
   unset _RAW_NUMERIC
   unset _THIS_BACKLIGHT_TYPE
 
@@ -1319,7 +1325,9 @@ function _parse_parameters()
   if $_BOOLEAN_DEBUG \
   || $_BOOLEAN_VERBOSE
   then
-    _BOOLEAN_STDOUT=false
+#+ marker boolean +#
+    _BOOLEAN_STDOUT=false  # display
+#- marker boolean -#
   fi
 
   _eko_v "          \$_BOOLEAN_ALL: \"$_BOOLEAN_ALL\""
@@ -1334,13 +1342,15 @@ function _parse_parameters()
 
   if $_BOOLEAN_QUIET
   then
-    _BOOLEAN_ALL=false
-    _BOOLEAN_DEBUG=false
-    _BOOLEAN_LIST=false
-    _BOOLEAN_QUIET=false
-    _BOOLEAN_STDOUT=false
-    #_BOOLEAN_TEST=false
-    _BOOLEAN_VERBOSE=false
+#+ marker boolean +#
+    #_BOOLEAN_ALL=false     # action
+    _BOOLEAN_DEBUG=false   # display
+    _BOOLEAN_LIST=false    # display
+    _BOOLEAN_QUIET=false   # display
+    _BOOLEAN_STDOUT=false  # display
+    #_BOOLEAN_TEST=false    # action
+    _BOOLEAN_VERBOSE=false # display
+#- marker boolean -#
   fi
 
   if $_BOOLEAN_LIST

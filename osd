@@ -861,8 +861,10 @@ function _parse_parameters()
 
   #+ parameter defaults +#
 
-  _BOOLEAN_DEBUG=false
-  _BOOLEAN_VERBOSE=false
+#+ marker boolean +#
+  _BOOLEAN_DEBUG=false   # display
+  _BOOLEAN_VERBOSE=false # display
+#- marker boolean -#
   unset _OPTION_MESSAGE
   unset _OPTION_TIMEOUT
 

@@ -1399,28 +1399,33 @@ function _parse_parameters()
 
   # NOTE:
   # - _BOOLEAN_STDOUT is special. it's quite simple to set up initially
+
+  # - _BOOLEAN_STDOUT
   # - companion functions: none. used directly in "function _pathnames_scan"
   # - default: true
   # - *not* toggled in while/do/done loop like the others
-  # - set to false immediately after the while/do/done loop if any of
-  #   $_BOOLEAN_DEBUG, $_BOOLEAN_LONG, or $_BOOLEAN_VERBOSE are true
+  # - immediately *after* the while/do/done loop _BOOLEAN_STDOUT is set to
+  #   false if any of $_BOOLEAN_DEBUG, $_BOOLEAN_LONG, or $_BOOLEAN_VERBOSE
+  #   are true
 
   #+ parameter defaults +#
 
-  _BOOLEAN_DEBUG=false
-  _BOOLEAN_DRYRUN=false
-  _BOOLEAN_ERROR=false
-  _BOOLEAN_HARDLINK=false
-  _BOOLEAN_LONG=false
-  _BOOLEAN_MD5SUM=false
-  _BOOLEAN_NANOSECONDS=false
-  _BOOLEAN_NONSPARSE=false
-  _BOOLEAN_RELATIVE=false
-  _BOOLEAN_SPARSE=false
-  _BOOLEAN_STDOUT=true
-  _BOOLEAN_UNLINK=false
-  _BOOLEAN_VERBOSE=false
-  _BOOLEAN_XDEV=false
+#+ marker boolean +#
+  _BOOLEAN_DEBUG=false       # display
+  _BOOLEAN_DRYRUN=false      # control
+  _BOOLEAN_ERROR=false       # undefined
+  _BOOLEAN_HARDLINK=false    # action
+  _BOOLEAN_LONG=false        # display
+  _BOOLEAN_MD5SUM=false      # action
+  _BOOLEAN_NANOSECONDS=false # display
+  _BOOLEAN_NONSPARSE=false   # action
+  _BOOLEAN_RELATIVE=false    # action
+  _BOOLEAN_SPARSE=false      # action
+  _BOOLEAN_STDOUT=true       # display
+  _BOOLEAN_UNLINK=false      # action
+  _BOOLEAN_VERBOSE=false     # display
+  _BOOLEAN_XDEV=false        # action
+#- marker boolean -#
   unset _ARRAY_HOLDNAMES
   unset _ARRAY_PATHNAMES
   unset _OPTION_MD5SUM_SIZE
@@ -1680,7 +1685,9 @@ function _parse_parameters()
   || $_BOOLEAN_LONG \
   || $_BOOLEAN_VERBOSE
   then
-    _BOOLEAN_STDOUT=false
+#+ marker boolean +#
+    _BOOLEAN_STDOUT=false      # display
+#- marker boolean -#
   fi
 
   _eko_v "              \$_BOOLEAN_DEBUG: \"$_BOOLEAN_DEBUG\""

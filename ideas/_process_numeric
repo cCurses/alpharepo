@@ -1,0 +1,167 @@
+#!/bin/bash
+#+ marker sof +#
+
+function _parse_parameters()
+{
+  #+ _parse_parameters +#
+
+  # functions:
+  # _process_numeric
+
+  # variables:
+  # #
+  # 1
+  # _RAW_NUMERIC
+
+  #+ parameter defaults +#
+
+  unset _RAW_NUMERIC
+
+  #- parameter defaults -#
+
+  while [[ $# -gt 0 ]]
+  do
+    case $1 in
+      ( *[0-9]* )
+        _RAW_NUMERIC=$1
+      ;;
+    esac
+    shift
+  done
+
+  #+ parameter settings (in (mostly) proper order of operation) +#
+
+  echo "         \$_RAW_NUMERIC: \"$_RAW_NUMERIC\""
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_RAW_NUMERIC ]]
+  then
+    #_process_numeric $_RAW_NUMERIC
+    _process_numeric
+  fi
+
+  #- parameter settings (in (mostly) proper order of operation) -#
+
+  #- _parse_parameters -#
+}
+
+function _process_numeric()
+{
+  #+ _process_numeric +#
+
+  # variables:
+  # #
+  # _CHAR
+  # _OFFSET
+  # _PARAMETER_NUMERIC
+  # _PARAMETER_PERCENT
+  # _PARAMETER_PLUSMINUS
+  # _RAW_NUMERIC
+
+  # NOTE:
+  # - to even *get* to this routine, at least one numeric is present
+
+  # - we start with this
+  _PARAMETER_NUMERIC=$_RAW_NUMERIC
+
+  echo "   \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (raw)"
+
+  # - trim all non-numerics from both ends, starting with the left
+  _OFFSET=0
+  # - ${#parameter}
+  # - ${parameter:offset:length}
+  while [[ $_OFFSET -lt ${#_PARAMETER_NUMERIC} ]] \
+  && [[ ! ${_PARAMETER_NUMERIC:$_OFFSET:1} =~ [0-9] ]]
+  do
+    # - ((expression))
+    # - id++ = variable post-increment
+    ((_OFFSET++))
+  done
+  # - ${parameter:offset}
+  _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:$_OFFSET}
+  echo "   \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim left)"
+
+  # - trim all non-numerics from both ends, & then the right
+  # - ${#parameter}
+  _OFFSET=${#_PARAMETER_NUMERIC}
+  # - ${parameter:offset:length}
+  # - $((expression))
+  while [[ $_OFFSET -gt 0 ]] \
+  && [[ ! ${_PARAMETER_NUMERIC:$(( $_OFFSET - 1 )):1} =~ [0-9] ]]
+  do
+    # - ((expression))
+    # - id-- = variable post-decrement
+    ((_OFFSET--))
+  done
+  # - ${parameter:offset:length}
+  _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0:$_OFFSET}
+  echo "   \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim right)"
+
+  # - validate what remains
+  # - if there are non-numerics *within* $_PARAMETER_NUMERIC, that's a fail
+  if [[ $_PARAMETER_NUMERIC =~ ^[0-9]+$ ]]
+  then
+    echo "                status: pass"
+  else
+    echo "                status: fail"
+    echo "invalid parameter \"$_PARAMETER_NUMERIC\" specified"
+    exit 1
+  fi
+
+  # - we've made it this far. scan $_RAW_NUMERIC looking for any of
+  #   "%+-0123456789" to build all 3 _PARAMETER_* below from scratch
+  # - anything else is an error
+  _OFFSET=0
+  unset _PARAMETER_NUMERIC
+  unset _PARAMETER_PERCENT
+  unset _PARAMETER_PLUSMINUS
+  # - ${#parameter}
+  while [[ $_OFFSET -lt ${#_RAW_NUMERIC} ]]
+  do
+    # - ${parameter:offset:length}
+    _CHAR=${_RAW_NUMERIC:$_OFFSET:1}
+
+    if [[ $_CHAR == % ]]
+    then
+      _PARAMETER_PERCENT=$_CHAR
+    elif [[ $_CHAR == [+-] ]]
+    then
+      _PARAMETER_PLUSMINUS=$_CHAR
+    elif [[ $_CHAR == [0-9] ]]
+    then
+      _PARAMETER_NUMERIC+=$_CHAR
+    else
+      echo "invalid character \"$_CHAR\" in \"$_RAW_NUMERIC\" specified"
+      exit 1
+    fi
+
+    # - ((expression))
+    # - id++ = variable post-increment
+    ((_OFFSET++))
+  done
+
+  # - we finish with this
+  # - numerics (mandatory), percent (if present), plus/minus (if present) all
+  #   tucked safely away in separate variables for later use
+  echo "   \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (finished)"
+  echo "   \$_PARAMETER_PERCENT: \"$_PARAMETER_PERCENT\" (finished)"
+  echo " \$_PARAMETER_PLUSMINUS: \"$_PARAMETER_PLUSMINUS\" (finished)"
+  echo "               example: \"$_PARAMETER_NUMERIC$_PARAMETER_PERCENT$_PARAMETER_PLUSMINUS\""
+
+  #- _process_numeric -#
+}
+
+#+ start here +#
+
+# functions:
+# _parse_parameters
+
+# variables:
+# @
+
+_parse_parameters "$@"
+
+#- start here -#
+
+#- marker eof -#
+exit 0

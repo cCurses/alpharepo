@@ -1129,7 +1129,7 @@ function _parse_parameters()
         fi
       ;;
       ( *[0-9]* )
-       _RAW_NUMERIC=$1
+        _RAW_NUMERIC=$1
       ;;
       ( "-?" \
       | -h \

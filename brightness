@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# brightness v2019.08.30
+# brightness v2019.09.23
 
 # Copyright (C) 2017 - 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -34,6 +34,11 @@
 #   discovering backlight types (replacing the oddball cd/echo method in use
 #   now)
 
+# 2019-09-23
+# - "function _process_numeric" rewrote how non-numerics are trimmed from raw
+#   _PARAMETER_NUMERIC. added _BOOLEAN_NEW & _BOOLEAN_OLD (not selectable from
+#   the commandline) so both routines can coexist until I decide the new
+#   approach is not broken in some way
 # 2019-08-30
 # - "function _backlight_types_display" updated the calculations for accuracy
 #  was: _CURRENT_PERCENT=$(( $ACTUAL_BRIGHTNESS * 100 / $MAX_BRIGHTNESS ))
@@ -1388,12 +1393,34 @@ function _process_numeric()
 
   # variables:
   # #
+  # _BOOLEAN_NEW (only used internally for testing)
+  # _BOOLEAN_OLD (only used internally for testing)
   # _CHAR
   # _OFFSET
   # _PARAMETER_NUMERIC
   # _PARAMETER_PERCENT
   # _PARAMETER_PLUSMINUS
   # _RAW_NUMERIC
+
+  #+ marker testing +#
+# - disable "new" & enable "old"
+#  _BOOLEAN_NEW=false
+#  _BOOLEAN_OLD=true
+# - enable "new" & disable "old"
+#
+  _BOOLEAN_NEW=true
+#
+  _BOOLEAN_OLD=false
+
+  # interesting tidbit:
+  # in "function _parse_parameters":
+  # if "_process_numeric $_RAW_NUMERIC" is used, both variables can be used
+  # if "_process_numeric" is used, only _RAW_NUMERIC can be used
+#  _eko_v
+#  _eko_v "                    \$@: \"$@\""
+#  _eko_v "         \$_RAW_NUMERIC: \"$_RAW_NUMERIC\""
+#  _eko_v
+  #- marker testing -#
 
   # NOTE:
   # - to even *get* to this routine, at least one numeric is present
@@ -1403,36 +1430,88 @@ function _process_numeric()
 
   _eko_v "    \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (raw)"
 
-  # - trim all non-numerics from both ends, starting with the left
-  _OFFSET=0
-  # - ${#parameter}
-  # - ${parameter:offset:length}
-  while [[ $_OFFSET -lt ${#_PARAMETER_NUMERIC} ]] \
-  && [[ ! ${_PARAMETER_NUMERIC:$_OFFSET:1} =~ [0-9] ]]
-  do
-    # - ((expression))
-    # - id++ = variable post-increment
-    ((_OFFSET++))
-  done
-  # - ${parameter:offset}
-  _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:$_OFFSET}
-  _eko_v "    \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim left)"
+  if $_BOOLEAN_NEW
+  then
+    # - trim all non-numerics from both ends, starting with the left
 
-  # - trim all non-numerics from both ends, & then the right
-  # - ${#parameter}
-  _OFFSET=${#_PARAMETER_NUMERIC}
-  # - ${parameter:offset:length}
-  # - $((expression))
-  while [[ $_OFFSET -gt 0 ]] \
-  && [[ ! ${_PARAMETER_NUMERIC:$(( $_OFFSET - 1 )):1} =~ [0-9] ]]
-  do
-    # - ((expression))
-    # - id-- = variable post-decrement
-    ((_OFFSET--))
-  done
-  # - ${parameter:offset:length}
-  _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0:$_OFFSET}
-  _eko_v "    \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim right)"
+    # - single character from the left
+#    _eko_v "${_PARAMETER_NUMERIC:0:1}"
+    # - what remains
+#    _eko_v "${_PARAMETER_NUMERIC:1}"
+
+    # - ${parameter:offset:length}
+    while [[ ${_PARAMETER_NUMERIC:0:1} != [0-9] ]]
+    do
+      # - ${parameter:offset}
+      _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:1}
+#
+      _eko_v "<   \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim left)"
+    done
+    _eko_v "    \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim left)"
+  fi
+
+  if $_BOOLEAN_OLD
+  then
+    # - trim all non-numerics from both ends, starting with the left
+
+    _OFFSET=0
+    # - ${#parameter}
+    # - ${parameter:offset:length}
+    while [[ $_OFFSET -lt ${#_PARAMETER_NUMERIC} ]] \
+    && [[ ! ${_PARAMETER_NUMERIC:$_OFFSET:1} =~ [0-9] ]]
+    do
+      # - ((expression))
+      # - id++ = variable post-increment
+      ((_OFFSET++))
+#
+      _eko_v "<              \$_OFFSET: \"$_OFFSET\" (trim left)"
+    done
+    # - ${parameter:offset}
+    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:$_OFFSET}
+    _eko_v "    \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim left)"
+  fi
+
+  if $_BOOLEAN_NEW
+  then
+    # - trim all non-numerics from both ends, & then the right
+
+    # - single character from the right (the space *must* be present)
+#    _eko_v "${_PARAMETER_NUMERIC: -1:1}"
+    # - what remains
+#    _eko_v "${_PARAMETER_NUMERIC:0: -1}" (the space *must* be present)
+
+    # - ${parameter:offset:length}
+    while [[ ${_PARAMETER_NUMERIC: -1:1} != [0-9] ]]
+    do
+      # - ${parameter:offset:length}
+      _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0: -1}
+#
+      _eko_v ">   \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim right)"
+    done
+    _eko_v "    \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim right)"
+  fi
+
+  if $_BOOLEAN_OLD
+  then
+    # - trim all non-numerics from both ends, & then the right
+
+    # - ${#parameter}
+    _OFFSET=${#_PARAMETER_NUMERIC}
+    # - ${parameter:offset:length}
+    # - $((expression))
+    while [[ $_OFFSET -gt 0 ]] \
+    && [[ ! ${_PARAMETER_NUMERIC:$(( $_OFFSET - 1 )):1} =~ [0-9] ]]
+    do
+      # - ((expression))
+      # - id-- = variable post-decrement
+      ((_OFFSET--))
+#
+      _eko_v ">              \$_OFFSET: \"$_OFFSET\" (trim right)"
+    done
+    # - ${parameter:offset:length}
+    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0:$_OFFSET}
+    _eko_v "    \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim right)"
+  fi
 
   # - validate what remains
   # - if there are non-numerics *within* $_PARAMETER_NUMERIC, that's a fail

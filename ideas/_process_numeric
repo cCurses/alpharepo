@@ -1,6 +1,14 @@
 #!/bin/bash
 #+ marker sof +#
 
+# concept:
+# - extract the following in any order, then present them in a fixed order
+#   - numerics (mandatory)
+#   - %        (optional)
+#   - +/-      (optional)
+# - "function _process_numeric" is used in both my "brightness" & "volume"
+#   scripts
+
 function _parse_parameters()
 {
   #+ _parse_parameters +#
@@ -11,10 +19,14 @@ function _parse_parameters()
   # variables:
   # #
   # 1
+  # _BOOLEAN_NEW
+  # _BOOLEAN_OLD
   # _RAW_NUMERIC
 
   #+ parameter defaults +#
 
+  _BOOLEAN_NEW=false
+  _BOOLEAN_OLD=false
   unset _RAW_NUMERIC
 
   #- parameter defaults -#
@@ -22,6 +34,24 @@ function _parse_parameters()
   while [[ $# -gt 0 ]]
   do
     case $1 in
+      ( -n \
+      | --new )
+        if $_BOOLEAN_NEW
+        then
+          _BOOLEAN_NEW=false
+        else
+          _BOOLEAN_NEW=true
+        fi
+      ;;
+      ( -o \
+      | --old )
+        if $_BOOLEAN_OLD
+        then
+          _BOOLEAN_OLD=false
+        else
+          _BOOLEAN_OLD=true
+        fi
+      ;;
       ( *[0-9]* )
         _RAW_NUMERIC=$1
       ;;
@@ -31,7 +61,17 @@ function _parse_parameters()
 
   #+ parameter settings (in (mostly) proper order of operation) +#
 
+  echo "         \$_BOOLEAN_NEW: \"$_BOOLEAN_NEW\""
+  echo "         \$_BOOLEAN_OLD: \"$_BOOLEAN_OLD\""
   echo "         \$_RAW_NUMERIC: \"$_RAW_NUMERIC\""
+  echo
+
+  if ! $_BOOLEAN_NEW \
+  && ! $_BOOLEAN_OLD
+  then
+    echo "specify either \"-n, --new\" or \"-o, --old\""
+    exit 1
+  fi
 
   # - "-n string" = true if the length of string is non-zero
   if [[ -n $_RAW_NUMERIC ]]
@@ -58,44 +98,103 @@ function _process_numeric()
   # _PARAMETER_PLUSMINUS
   # _RAW_NUMERIC
 
+  # interesting tidbit:
+  # - if "_process_numeric $_RAW_NUMERIC" is used, both variables can be used
+  # - if "_process_numeric" is used, only _RAW_NUMERIC can be used
+#  echo "                    \$@: \"$@\""
+#  echo "         \$_RAW_NUMERIC: \"$_RAW_NUMERIC\""
+#  echo
+
   # NOTE:
   # - to even *get* to this routine, at least one numeric is present
 
   # - we start with this
+  # - do all manipulations on/with/to _PARAMETER_NUMERIC
+  # - _RAW_NUMERIC must remain unaltered (it will be used for tests later)
   _PARAMETER_NUMERIC=$_RAW_NUMERIC
 
   echo "   \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (raw)"
 
-  # - trim all non-numerics from both ends, starting with the left
-  _OFFSET=0
-  # - ${#parameter}
-  # - ${parameter:offset:length}
-  while [[ $_OFFSET -lt ${#_PARAMETER_NUMERIC} ]] \
-  && [[ ! ${_PARAMETER_NUMERIC:$_OFFSET:1} =~ [0-9] ]]
-  do
-    # - ((expression))
-    # - id++ = variable post-increment
-    ((_OFFSET++))
-  done
-  # - ${parameter:offset}
-  _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:$_OFFSET}
-  echo "   \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim left)"
+  if $_BOOLEAN_NEW
+  then
+    # - trim all non-numerics from both ends, starting with the left
 
-  # - trim all non-numerics from both ends, & then the right
-  # - ${#parameter}
-  _OFFSET=${#_PARAMETER_NUMERIC}
-  # - ${parameter:offset:length}
-  # - $((expression))
-  while [[ $_OFFSET -gt 0 ]] \
-  && [[ ! ${_PARAMETER_NUMERIC:$(( $_OFFSET - 1 )):1} =~ [0-9] ]]
-  do
-    # - ((expression))
-    # - id-- = variable post-decrement
-    ((_OFFSET--))
-  done
-  # - ${parameter:offset:length}
-  _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0:$_OFFSET}
-  echo "   \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim right)"
+    #+#########################################################################
+    # - single character from the left
+#    echo "${_PARAMETER_NUMERIC:0:1}"
+    # - what remains
+#    echo "${_PARAMETER_NUMERIC:1}"
+
+    # - ${parameter:offset:length}
+    while [[ ${_PARAMETER_NUMERIC:0:1} != [0-9] ]]
+    do
+      # - ${parameter:offset}
+      _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:1}
+      echo "<  \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim left)"
+    done
+    #-#########################################################################
+  fi
+
+  if $_BOOLEAN_OLD
+  then
+    # - trim all non-numerics from both ends, starting with the left
+
+    _OFFSET=0
+    # - ${#parameter}
+    # - ${parameter:offset:length}
+    while [[ $_OFFSET -lt ${#_PARAMETER_NUMERIC} ]] \
+    && [[ ! ${_PARAMETER_NUMERIC:$_OFFSET:1} =~ [0-9] ]]
+    do
+      # - ((expression))
+      # - id++ = variable post-increment
+      ((_OFFSET++))
+      echo "<             \$_OFFSET: \"$_OFFSET\" (trim left)"
+    done
+    # - ${parameter:offset:length}
+    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:$_OFFSET}
+    echo "<  \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim left)"
+  fi
+
+  if $_BOOLEAN_NEW
+  then
+    # - trim all non-numerics from both ends, & then the right
+
+    #+#########################################################################
+    # - single character from the right (the space *must* be present)
+#    echo "${_PARAMETER_NUMERIC: -1:1}"
+    # - what remains
+#    echo "${_PARAMETER_NUMERIC:0: -1}" (the space *must* be present)
+
+    # - ${parameter:offset:length}
+    while [[ ${_PARAMETER_NUMERIC: -1:1} != [0-9] ]]
+    do
+      # - ${parameter:offset:length}
+      _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0: -1}
+      echo ">  \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim right)"
+    done
+    #-#########################################################################
+  fi
+
+  if $_BOOLEAN_OLD
+  then
+    # - trim all non-numerics from both ends, & then the right
+
+    # - ${#parameter}
+    _OFFSET=${#_PARAMETER_NUMERIC}
+    # - ${parameter:offset:length}
+    # - $((expression))
+    while [[ $_OFFSET -gt 0 ]] \
+    && [[ ! ${_PARAMETER_NUMERIC:$(( $_OFFSET - 1 )):1} =~ [0-9] ]]
+    do
+      # - ((expression))
+      # - id-- = variable post-decrement
+      ((_OFFSET--))
+      echo ">             \$_OFFSET: \"$_OFFSET\" (trim right)"
+    done
+    # - ${parameter:offset:length}
+    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0:$_OFFSET}
+    echo ">  \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim right)"
+  fi
 
   # - validate what remains
   # - if there are non-numerics *within* $_PARAMETER_NUMERIC, that's a fail

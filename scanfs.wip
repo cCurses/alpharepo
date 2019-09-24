@@ -1151,7 +1151,7 @@ function _binary_validate_setup()
     # - called in "function _pathnames_scan"
     # - $_BOOLEAN_HARDLINK is true/false (TODO. not yet implemented)
     # - $_BOOLEAN_UNLINK is true/false
-    # - $_BOOLEAN_TIMESTAMP is true/false (set in "function _pathnames_scan")
+    # - $_BOOLEAN_TIMESTAMP is true/false (set/unset in "function _pathnames_scan")
     # - $_SD_MTIM_HMS is referenced in "function _trap"
     # - $_SD_MTIM_UTC is referenced in "function _trap"
     # - $_SD_MTIM_YMD is referenced in "function _trap"

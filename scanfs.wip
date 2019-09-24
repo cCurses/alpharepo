@@ -646,8 +646,8 @@ function _binary_validate_setup()
   #   tests differ subtly but significantly, but the end result is the same
 
   # NOTE:
-  # - ordering: by standalone binary or by the first named in fallback binary
-  #   pairs (TODO: update this description)
+  # - ordering: by standalone binary or by the first named in ranked binary
+  #   sequences (pairs or triplets)
   # - each set is explicitly wrapped in $_BOOLEAN_* tests as appropriate. it's
   #   much easier to maintain & at the same time *still* test only those
   #   binaries & options used for specific actions
@@ -1151,7 +1151,7 @@ function _binary_validate_setup()
     # - called in "function _pathnames_scan"
     # - $_BOOLEAN_HARDLINK is true/false (TODO. not yet implemented)
     # - $_BOOLEAN_UNLINK is true/false
-    # - $_BOOLEAN_TIMESTAMP is true/false (set/unset in "function _pathnames_scan")
+    # - $_BOOLEAN_TIMESTAMP is true/false (set in "function _pathnames_scan")
     # - $_SD_MTIM_HMS is referenced in "function _trap"
     # - $_SD_MTIM_UTC is referenced in "function _trap"
     # - $_SD_MTIM_YMD is referenced in "function _trap"

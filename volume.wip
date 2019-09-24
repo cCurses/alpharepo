@@ -1269,9 +1269,10 @@ function _process_numeric()
   _BOOLEAN_OLD=false
 
   # interesting tidbit:
-  # in "function _parse_parameters":
-  # if "_process_numeric $_RAW_NUMERIC" is used, both variables can be used
-  # if "_process_numeric" is used, only _RAW_NUMERIC can be used
+  # - in "function _parse_parameters":
+  # - call "_process_numeric $_RAW_NUMERIC" = both variables can be referenced
+  # - call "_process_numeric" = only _RAW_NUMERIC can be referenced
+
 #  _eko_v
 #  _eko_v "                    \$@: \"$@\""
 #  _eko_v "         \$_RAW_NUMERIC: \"$_RAW_NUMERIC\""

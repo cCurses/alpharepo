@@ -1,0 +1,49 @@
+#!/bin/sh
+
+MODE=$(basename $0)
+MODE=${MODE/fan-/}
+
+# deal with sys entries that tend to migrate between subsequent hibernates
+FAN1_INPUT=$(ls /sys/devices/platform/eeepc/hwmon/hwmon*/fan1_input 2> /dev/null)
+PWM1=$(ls /sys/devices/platform/eeepc/hwmon/hwmon*/pwm1 2> /dev/null)
+PWM1_ENABLE=$(ls /sys/devices/platform/eeepc/hwmon/hwmon*/pwm1_enable 2> /dev/null)
+#TEMP=$(ls /sys/devices/virtual/hwmon/hwmon*/temp1_input 2> /dev/null)
+TEMP=$(ls /sys/devices/virtual/thermal/thermal_zone*/temp 2> /dev/null)
+
+if [ -z "$FAN1_INPUT" -o -z "$PWM1" -o -z "$PWM1_ENABLE" -o -z "$TEMP" ] ; then
+  echo "missing sys entry. aborting"
+  echo " fan1_input: $FAN1_INPUT"
+  echo "       pwm1: $PWM1"
+  echo "pwm1_enable: $PWM1_ENABLE"
+  echo "       temp: $TEMP"
+  exit 1
+fi
+
+if [ $MODE == default ] ; then
+  echo 0 > $PWM1
+  echo 2 > $PWM1_ENABLE
+  echo 0 > $PWM1
+fi
+
+if [ $MODE == full ] ; then
+  echo 255 > $PWM1
+  echo 1 > $PWM1_ENABLE
+  echo 255 > $PWM1
+fi
+
+if [ $MODE == off ] ; then
+  echo 0 > $PWM1
+  echo 1 > $PWM1_ENABLE
+  echo 0 > $PWM1
+fi
+
+if [ $MODE == set ] ; then
+  echo $1 > $PWM1
+  echo 1 > $PWM1_ENABLE
+  echo $1 > $PWM1
+fi
+
+echo " fan1_input: $(cat $FAN1_INPUT)"
+echo "       pwm1: $(cat $PWM1)"
+echo "pwm1_enable: $(cat $PWM1_ENABLE)"
+echo "       temp: $(cat $TEMP)"

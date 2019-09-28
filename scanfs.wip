@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# scanfs v2019.09.18
+# scanfs v2019.09.28
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -10,6 +10,10 @@
 # concept:
 # - scan the named filesystem segment(s) & report findings in various formats
 # - optionally unlink files that were previously hardlinked
+
+# TODO:
+# - possibly use printf elsewhere (everywhere?) (verbose output for settings?)
+# ^ this will require a complete rethink of how _eko_v currently does things
 
 # TODO:
 # - figure out hardlinking
@@ -22,6 +26,19 @@
 #   inefficiently it is generated) will provide me with the required data to
 #   work on the routine(s) that would follow
 
+# 2019-09-28
+# - "function _pathnames_scan" replaced the usage of "echo" with "printf" in
+#   the "stdout" & "verbose" output modes, following the example set by the
+#   "long" output mode. there is no change in performance, but it does make
+#   future maintenance simpler
+# - "function _pathname_md5sum_md5sum" added doublequoting (100% required)
+#  was: _ST_MD5=${_ST_MD5/%  $_ST_NAME/}
+#   is: _ST_MD5=${_ST_MD5/%  "$_ST_NAME"/}
+# - "function _pathname_md5sum_openssl" added doublequoting (100% required)
+#  was: _ST_MD5=${_ST_MD5/#MD5($_ST_NAME)= /}
+#   is: _ST_MD5=${_ST_MD5/#MD5("$_ST_NAME")= /}
+# - NOTE: (to self) remove at a later time what can be removed in terms of
+#   comments wrapped in #+ old +#/#- old -#/#+ new +#/#- new -#
 # 2019-09-18
 # - altered all 3 invocations of "read" as follows:
 #  was: while read -r -- \
@@ -51,7 +68,7 @@
 # - added "--" to all invocations of "basename", "cd", "cp", "dirname",
 #   "head", "md5sum", "mv", "pwd", "read", "realpath", & "rm". possibly
 #   overkill in a few spots, but better to have too many than too few
-# ^ NOTE: don't forget "ln" when the time comes
+# ^ NOTE: (to self) don't forget "ln" when the time comes
 # - "function _pathname_md5sum_md5sum" tested 3 approaches to acquire md5sums
 #   of "-s, --size" bytes of files. results:
 # 1 fastest & functional. retained:
@@ -1876,7 +1893,12 @@ function _pathname_md5sum_md5sum()
 
     # - ${parameter/pattern/string}
     # - strip "  <pathname>" suffix from output. keep the rest
-    _ST_MD5=${_ST_MD5/%  $_ST_NAME/}
+#+ old +#
+#    _ST_MD5=${_ST_MD5/%  $_ST_NAME/}
+#- old -#
+#+ new +#
+    _ST_MD5=${_ST_MD5/%  "$_ST_NAME"/}
+#- new -#
   else
     # - generate md5sum of the file ($_OPTION_MD5SUM_SIZE)
     _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE -- "$_ST_NAME" 2>/dev/null | md5sum -- -)
@@ -1914,7 +1936,12 @@ function _pathname_md5sum_openssl()
 
     # - ${parameter/pattern/string}
     # - strip "MD5(<pathname>)= " prefix from output. keep the rest
-    _ST_MD5=${_ST_MD5/#MD5($_ST_NAME)= /}
+#+ old +#
+#    _ST_MD5=${_ST_MD5/#MD5($_ST_NAME)= /}
+#- old -#
+#+ new +#
+    _ST_MD5=${_ST_MD5/#MD5("$_ST_NAME")= /}
+#- new -#
   else
     # - generate md5sum of the file ($_OPTION_MD5SUM_SIZE)
     _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE -- "$_ST_NAME" 2>/dev/null | openssl dgst -md5)
@@ -2586,9 +2613,19 @@ function _pathnames_scan()
           then
             # - generate md5sum of the file (full or $_OPTION_MD5SUM_SIZE)
             $_FUNCTION_MD5SUM
-            echo "$_ST_MD5  $_ST_NAME"
+#+ old +#
+#            echo "$_ST_MD5  $_ST_NAME"
+#- old -#
+#+ new +#
+            printf "%s  %s\n" $_ST_MD5 "$_ST_NAME"
+#- new -#
           else
-            echo "$_ST_NAME"
+#+ old +#
+#            echo "$_ST_NAME"
+#- old -#
+#+ new +#
+            printf "%s\n" "$_ST_NAME"
+#- new -#
           fi
         elif $_BOOLEAN_LONG
         then
@@ -2613,28 +2650,57 @@ function _pathnames_scan()
           then
             # - generate md5sum of the file (full or $_OPTION_MD5SUM_SIZE)
             $_FUNCTION_MD5SUM
-            echo "
-                     \$_ST_DEV: \"$_ST_DEV\"
-                     \$_ST_INO: \"$_ST_INO\"
-                    \$_ST_MODE: \"$_ST_MODE\"
-                   \$_ST_NLINK: \"$_ST_NLINK\"
-                     \$_ST_UID: \"$_ST_UID\"
-                     \$_ST_GID: \"$_ST_GID\"
-                    \$_ST_SIZE: \"$_ST_SIZE\"
-                    \$_ST_MTIM: \"$_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC\"
-                     \$_ST_MD5: \"$_ST_MD5\"
-                    \$_ST_NAME: \"$_ST_NAME\""
+#+ old +#
+#            echo "
+#                     \$_ST_DEV: \"$_ST_DEV\"
+#                     \$_ST_INO: \"$_ST_INO\"
+#                    \$_ST_MODE: \"$_ST_MODE\"
+#                   \$_ST_NLINK: \"$_ST_NLINK\"
+#                     \$_ST_UID: \"$_ST_UID\"
+#                     \$_ST_GID: \"$_ST_GID\"
+#                    \$_ST_SIZE: \"$_ST_SIZE\"
+#                    \$_ST_MTIM: \"$_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC\"
+#                     \$_ST_MD5: \"$_ST_MD5\"
+#                    \$_ST_NAME: \"$_ST_NAME\""
+#- old -#
+#+ new +#
+            printf "\n%30s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n" \
+            \$_ST_DEV: \""$_ST_DEV\"" \
+            \$_ST_INO: \""$_ST_INO \"" \
+            \$_ST_MODE: \""$_ST_MODE\"" \
+            \$_ST_NLINK: \""$_ST_NLINK\"" \
+            \$_ST_UID: \""$_ST_UID\"" \
+            \$_ST_GID: \""$_ST_GID\"" \
+            \$_ST_SIZE: \""$_ST_SIZE\"" \
+            \$_ST_MTIM: \""$_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC\"" \
+            \$_ST_MD5: \""$_ST_MD5\"" \
+            \$_ST_NAME: \""$_ST_NAME\""
+#- new -#
           else
-            echo "
-                     \$_ST_DEV: \"$_ST_DEV\"
-                     \$_ST_INO: \"$_ST_INO\"
-                    \$_ST_MODE: \"$_ST_MODE\"
-                   \$_ST_NLINK: \"$_ST_NLINK\"
-                     \$_ST_UID: \"$_ST_UID\"
-                     \$_ST_GID: \"$_ST_GID\"
-                    \$_ST_SIZE: \"$_ST_SIZE\"
-                    \$_ST_MTIM: \"$_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC\"
-                    \$_ST_NAME: \"$_ST_NAME\""
+#+ old +#
+#            echo "
+#                     \$_ST_DEV: \"$_ST_DEV\"
+#                     \$_ST_INO: \"$_ST_INO\"
+#                    \$_ST_MODE: \"$_ST_MODE\"
+#                   \$_ST_NLINK: \"$_ST_NLINK\"
+#                     \$_ST_UID: \"$_ST_UID\"
+#                     \$_ST_GID: \"$_ST_GID\"
+#                    \$_ST_SIZE: \"$_ST_SIZE\"
+#                    \$_ST_MTIM: \"$_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC\"
+#                    \$_ST_NAME: \"$_ST_NAME\""
+#- old -#
+#+ new +#
+            printf "\n%30s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n" \
+            \$_ST_DEV: \""$_ST_DEV\"" \
+            \$_ST_INO: \""$_ST_INO\"" \
+            \$_ST_MODE: \""$_ST_MODE\"" \
+            \$_ST_NLINK: \""$_ST_NLINK\"" \
+            \$_ST_UID: \""$_ST_UID\"" \
+            \$_ST_GID: \""$_ST_GID\"" \
+            \$_ST_SIZE: \""$_ST_SIZE\"" \
+            \$_ST_MTIM: \""$_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC\"" \
+            \$_ST_NAME: \""$_ST_NAME\""
+#- new -#
           fi
         fi
 

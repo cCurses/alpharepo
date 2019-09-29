@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# scanfs v2019.09.28
+# scanfs v2019.09.30
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -10,6 +10,70 @@
 # concept:
 # - scan the named filesystem segment(s) & report findings in various formats
 # - optionally unlink files that were previously hardlinked
+
+# TODO:
+# - finish with the remaining _pathname_openssl_*sum functions
+# - additional code cleanup
+# - ensure the changelog has been accurately updated
+# - ensure the builtin/binary/variable/function listings are complete
+
+#+ assorted notes +#
+
+# variables:
+#+ delete +# (not yet)
+# 1_3_2
+# _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum & lots more)
+# ^ 12 functions in total (list them all by name: search in less & nano)
+
+# _FUNCTION_MD5SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum)
+# _FUNCTION_SHA1SUM (_pathname_sha1sum_sha1sum _pathname_openssl_sha1sum)
+# _FUNCTION_SHA224SUM (_pathname_sha224sum_sha224sum _pathname_openssl_sha224sum)
+# _FUNCTION_SHA256SUM (_pathname_sha256sum_sha256sum _pathname_openssl_sha256sum)
+# _FUNCTION_SHA384SUM (_pathname_sha384sum_sha384sum _pathname_openssl_sha384sum)
+# _FUNCTION_SHA512SUM (_pathname_sha512sum_sha512sum _pathname_openssl_sha512sum)
+#- delete -# (not yet)
+
+# 1_3_2 (sorted)
+#+ keep for now +#
+# _pathname_md5sum_md5sum
+# _pathname_openssl_md5sum
+# _pathname_openssl_sha1sum
+# _pathname_openssl_sha224sum
+# _pathname_openssl_sha256sum
+# _pathname_openssl_sha384sum
+# _pathname_openssl_sha512sum
+# _pathname_sha1sum_sha1sum
+# _pathname_sha224sum_sha224sum
+# _pathname_sha256sum_sha256sum
+# _pathname_sha384sum_sha384sum
+# _pathname_sha512sum_sha512sum
+#- keep for now -#
+
+# function _binary_validate_setup()
+#     #+ head +#
+# ^ add some lines describing where it's called
+
+# _FUNCTION_SUM points to one of the many md5 or sha sum functions
+# - something feels wrong/incomplete about this. explore later
+# - the following variable was the missing ingredient
+# - for internal use only *guffaw*
+# _BOOLEAN_SUM (add) (done)
+
+# - we have the first 2. add the rest
+  # _pathname_md5sum_md5sum (_FUNCTION_SUM) (done)
+  # _pathname_openssl_md5sum (_FUNCTION_SUM) (done)
+  # _pathname_openssl_sha1sum (_FUNCTION_SUM) (pending)
+  # _pathname_openssl_sha224sum (_FUNCTION_SUM) (pending)
+  # _pathname_openssl_sha256sum (_FUNCTION_SUM) (pending)
+  # _pathname_openssl_sha384sum (_FUNCTION_SUM) (pending)
+  # _pathname_openssl_sha512sum (_FUNCTION_SUM) (pending)
+  # _pathname_sha1sum_sha1sum (_FUNCTION_SUM) (done)
+  # _pathname_sha224sum_sha224sum (_FUNCTION_SUM) (done)
+  # _pathname_sha256sum_sha256sum (_FUNCTION_SUM) (done)
+  # _pathname_sha384sum_sha384sum (_FUNCTION_SUM) (done)
+  # _pathname_sha512sum_sha512sum (_FUNCTION_SUM) (done)
+
+#- assorted notes -#
 
 # TODO:
 # - possibly use printf elsewhere (everywhere?) (verbose output for settings?)
@@ -26,6 +90,55 @@
 #   inefficiently it is generated) will provide me with the required data to
 #   work on the routine(s) that would follow
 
+#foobar
+# 2019-09-30
+# - "function _parse_parameters" added the following variable:
+#  add: _BOOLEAN_SUM
+# ^ it's a catch-all variable for use in "function _pathnames_scan" to signify
+#   that one of the many sum routines should be called. word this better :(
+# - added the following functions:
+#  add: function _pathname_openssl_sha1sum() (pending)
+#  add: function _pathname_openssl_sha224sum() (pending)
+#  add: function _pathname_openssl_sha256sum() (pending)
+#  add: function _pathname_openssl_sha384sum() (pending)
+#  add: function _pathname_openssl_sha512sum() (pending)
+#  add: function _pathname_sha1sum_sha1sum() (done)
+#  add: function _pathname_sha224sum_sha224sum() (done)
+#  add: function _pathname_sha256sum_sha256sum() (done)
+#  add: function _pathname_sha384sum_sha384sum() (done)
+#  add: function _pathname_sha512sum_sha512sum() (done)
+# - "function _show_help" reordered the option/description list to group the
+#   various sum routines together
+# - "function _show_help" added the following lines:
+#  add: -1, --sha1sum       Generate an sha1sum for each file (TODO. unimplemented)
+#  add: -224, --sha224sum   Generate an sha224sum for each file (TODO. unimplemented)
+#  add: -256, --sha256sum   Generate an sha256sum for each file (TODO. unimplemented)
+#  add: -384, --sha384sum   Generate an sha384sum for each file (TODO. unimplemented)
+#  add: -512, --sha512sum   Generate an sha512sum for each file (TODO. unimplemented)
+# - "function _show_help" changed the following line:
+#  was: -s, --size          Specify the maximum \""head\"" size of each file to md5sum
+#   is: -s, --size          Specify the maximum \""head\"" size of each file to sum
+# - changed the following lines in "function _pathname_md5sum_md5sum", &
+#   "function _pathname_openssl_md5sum"
+#  was: # - generate md5sum of the file (full)
+#   is: # - generate sum of the file (full)
+#  was: # - generate md5sum of the file ($_OPTION_SUM_SIZE)
+#   is: # - generate sum of the file ($_OPTION_SUM_SIZE)
+# - changed the following line in "function _pathnames_scan"
+#  was: # - generate md5sum of the file (full or $_OPTION_SUM_SIZE)
+#   is: # - generate sum of the file (full or $_OPTION_SUM_SIZE)
+# - renamed the following variables globally:
+#  was: _FUNCTION_MD5SUM
+#   is: _FUNCTION_SUM
+#  was: _OPTION_MD5SUM_SIZE
+#   is: _OPTION_SUM_SIZE
+#  was: _ST_MD5
+#   is: _ST_SUM
+# - renamed the following function globally:
+#  was: _pathname_md5sum_openssl
+#   is: _pathname_openssl_md5sum
+# ^ the renamings listed above have deliberately *not* been done in the
+#   changelog entries. only in the "live" code
 # 2019-09-28
 # - "function _pathnames_scan" replaced the usage of "echo" with "printf" in
 #   the "stdout" & "verbose" output modes, following the example set by the
@@ -282,9 +395,14 @@
   # ln
   # md5sum
   # mv
-  # openssl (fallback to md5sum)
+  # openssl (fallback to supported *sum variants: md5 & sha1/224/256/384/512)
   # realpath
   # rm
+  # sha1sum
+  # sha224sum
+  # sha256sum
+  # sha384sum
+  # sha512sum
   # sort
   # touch
 # NOTE: (system & script variable use & abuse)
@@ -322,8 +440,14 @@
   # _BOOLEAN_NANOSECONDS
   # _BOOLEAN_NONSPARSE
   # _BOOLEAN_RELATIVE
+  # _BOOLEAN_SHA1SUM
+  # _BOOLEAN_SHA224SUM
+  # _BOOLEAN_SHA256SUM
+  # _BOOLEAN_SHA384SUM
+  # _BOOLEAN_SHA512SUM
   # _BOOLEAN_SPARSE
   # _BOOLEAN_STDOUT
+  # _BOOLEAN_SUM
   # _BOOLEAN_TIMESTAMP
   # _BOOLEAN_UNLINK
   # _BOOLEAN_VERBOSE
@@ -332,7 +456,7 @@
   # _BUILTIN_NAME
   # _BUILTIN_OPTION
   # _DIRNAME
-  # _FUNCTION_MD5SUM (_pathname_md5sum_md5sum _pathname_md5sum_openssl)
+  # _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum & lots more)
   # _FUNCTION_TRANSFORM (_pathname_transform_bruteforce _pathname_transform_cd_pwd _pathname_transform_realpath)
   # _LHS
   # _LINKNAME
@@ -352,8 +476,8 @@
   # _OPTIONS_UIDGID (find options. not script options)
   # _OPTIONS_UNLINK (find options. not script options)
   # _OPTIONS_XDEV (find options. not script options)
-  # _OPTION_MD5SUM_SIZE
   # _OPTION_PATHNAME
+  # _OPTION_SUM_SIZE
   # _RHS
   # _RLEN
   # _SD_MTIM_HMS (contrivance. not from stat(2))
@@ -364,7 +488,6 @@
   # _ST_DEV
   # _ST_GID
   # _ST_INO
-  # _ST_MD5 (contrivance. not from stat(2))
   # _ST_MODE
   # _ST_MTIM_HMS (contrivance. not from stat(2))
   # _ST_MTIM_UTC (contrivance. not from stat(2))
@@ -372,11 +495,12 @@
   # _ST_NAME (contrivance. not from stat(2))
   # _ST_NLINK
   # _ST_SIZE
+  # _ST_SUM (contrivance. not from stat(2))
   # _ST_UID
   # _SU_NAME (contrivance. not from stat(2))
 # _ARRAY_HOLDNAMES (single dimension indexed array)
 # _ARRAY_PATHNAMES (single dimension indexed array)
-# _FUNCTION_MD5SUM (_pathname_md5sum_md5sum _pathname_md5sum_openssl)
+# _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum & lots more)
 # _FUNCTION_TRANSFORM (_pathname_transform_bruteforce _pathname_transform_cd_pwd _pathname_transform_realpath)
 # _MY_GID
 # _MY_UID
@@ -398,9 +522,19 @@
   # _builtin_validate_setup
   # _eko_iod
   # _eko_v
-  # _pathname_md5sum_md5sum (_FUNCTION_MD5SUM)
-  # _pathname_md5sum_openssl (_FUNCTION_MD5SUM)
+  # _pathname_md5sum_md5sum (_FUNCTION_SUM)
+  # _pathname_openssl_md5sum (_FUNCTION_SUM)
+  # _pathname_openssl_sha1sum (_FUNCTION_SUM) (pending)
+  # _pathname_openssl_sha224sum (_FUNCTION_SUM) (pending)
+  # _pathname_openssl_sha256sum (_FUNCTION_SUM) (pending)
+  # _pathname_openssl_sha384sum (_FUNCTION_SUM) (pending)
+  # _pathname_openssl_sha512sum (_FUNCTION_SUM) (pending)
   # _pathname_redundant_check
+  # _pathname_sha1sum_sha1sum (_FUNCTION_SUM) (pending)
+  # _pathname_sha224sum_sha224sum (_FUNCTION_SUM) (pending)
+  # _pathname_sha256sum_sha256sum (_FUNCTION_SUM) (pending)
+  # _pathname_sha384sum_sha384sum (_FUNCTION_SUM) (pending)
+  # _pathname_sha512sum_sha512sum (_FUNCTION_SUM) (pending)
   # _pathname_transform_bruteforce (_FUNCTION_TRANSFORM)
   # _pathname_transform_cd_pwd (_FUNCTION_TRANSFORM)
   # _pathname_transform_realpath (_FUNCTION_TRANSFORM)
@@ -419,7 +553,7 @@
 # TZ
 # _ARRAY_HOLDNAMES (single dimension indexed array)
 # _ARRAY_PATHNAMES (single dimension indexed array)
-# _FUNCTION_MD5SUM (_pathname_md5sum_md5sum _pathname_md5sum_openssl)
+# _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum & lots more)
 # _FUNCTION_TRANSFORM (_pathname_transform_bruteforce _pathname_transform_cd_pwd _pathname_transform_realpath)
 # _MY_GID
 # _MY_UID
@@ -438,7 +572,7 @@
 
 # - doing this here so we get no suprises in "function _binary_validate_setup",
 #   "function _builtin_validate_setup", & "function _pathnames_scan"
-unset _FUNCTION_MD5SUM
+unset _FUNCTION_SUM
 unset _FUNCTION_TRANSFORM
 unset _MY_GID
 unset _MY_UID
@@ -603,8 +737,18 @@ function _binary_validate_setup()
   # functions:
   # _eko_iod
   # _eko_v
-  # _pathname_md5sum_md5sum (_FUNCTION_MD5SUM)
-  # _pathname_md5sum_openssl (_FUNCTION_MD5SUM)
+  # _pathname_md5sum_md5sum (_FUNCTION_SUM)
+  # _pathname_openssl_md5sum (_FUNCTION_SUM)
+  # _pathname_openssl_sha1sum (_FUNCTION_SUM) (pending)
+  # _pathname_openssl_sha224sum (_FUNCTION_SUM) (pending)
+  # _pathname_openssl_sha256sum (_FUNCTION_SUM) (pending)
+  # _pathname_openssl_sha384sum (_FUNCTION_SUM) (pending)
+  # _pathname_openssl_sha512sum (_FUNCTION_SUM) (pending)
+  # _pathname_sha1sum_sha1sum (_FUNCTION_SUM) (pending)
+  # _pathname_sha224sum_sha224sum (_FUNCTION_SUM) (pending)
+  # _pathname_sha256sum_sha256sum (_FUNCTION_SUM) (pending)
+  # _pathname_sha384sum_sha384sum (_FUNCTION_SUM) (pending)
+  # _pathname_sha512sum_sha512sum (_FUNCTION_SUM) (pending)
   # _pathname_transform_bruteforce (_FUNCTION_TRANSFORM)
   # _pathname_transform_realpath (_FUNCTION_TRANSFORM)
   # _show_error
@@ -616,10 +760,15 @@ function _binary_validate_setup()
   # _BOOLEAN_HARDLINK
   # _BOOLEAN_MD5SUM
   # _BOOLEAN_NONSPARSE
+  # _BOOLEAN_SHA1SUM
+  # _BOOLEAN_SHA224SUM
+  # _BOOLEAN_SHA256SUM
+  # _BOOLEAN_SHA384SUM
+  # _BOOLEAN_SHA512SUM
   # _BOOLEAN_SPARSE
   # _BOOLEAN_UNLINK
   # _BOOLEAN_XDEV
-  # _FUNCTION_MD5SUM (_pathname_md5sum_md5sum _pathname_md5sum_openssl)
+  # _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum & lots more)
   # _FUNCTION_TRANSFORM (_pathname_transform_bruteforce _pathname_transform_cd_pwd _pathname_transform_realpath)
   # _MY_GID
   # _MY_UID
@@ -628,7 +777,7 @@ function _binary_validate_setup()
   # _OPTIONS_MV (mv options, not script options)
   # _OPTIONS_RM (rm options, not script options)
   # _OPTIONS_REALPATH (realpath options, not script options)
-  # _OPTION_MD5SUM_SIZE
+  # _OPTION_SUM_SIZE
 
   # binaries:
   # basename (fallback with dirname/find to realpath)
@@ -640,9 +789,14 @@ function _binary_validate_setup()
   # id
   # md5sum
   # mv
-  # openssl (fallback to md5sum)
+  # openssl (fallback to supported *sum variants: md5 & sha1/224/256/384/512)
   # realpath
   # rm
+  # sha1sum
+  # sha224sum
+  # sha256sum
+  # sha384sum
+  # sha512sum
   # sort
   # touch
 
@@ -674,7 +828,7 @@ function _binary_validate_setup()
   #   "function _pathnames_scan"
 
   # - be explicit for clarity. we'll be testing this variable further below
-  unset _FUNCTION_MD5SUM
+  unset _FUNCTION_SUM
 
   if $_BOOLEAN_UNLINK
   then
@@ -761,7 +915,7 @@ function _binary_validate_setup()
   # - called in "function _pathname_transform_bruteforce"
   # - called in "function _pathname_validate"
   # - called in "function _pathnames_scan"
-  # - $_BOOLEAN_HARDLINK is true/false (TODO. not yet implemented)
+  # - $_BOOLEAN_HARDLINK is true/false (TODO. unimplemented)
   # - $_BOOLEAN_UNLINK is true/false
   # - $_BOOLEAN_XDEV is true/false
 
@@ -847,15 +1001,26 @@ function _binary_validate_setup()
 
   # - "-n string" = true if the length of string is non-zero
   if $_BOOLEAN_MD5SUM \
-  && [[ -n $_OPTION_MD5SUM_SIZE ]]
+  && [[ -n $_OPTION_SUM_SIZE ]]
   then
     #+ head +#
     # - "head --help". stdout
     #   "-c" (use "--bytes") ("=" is optional, use "=" for uniformity)
     # - called in "function _pathname_md5sum_md5sum"
-    # - called in "function _pathname_md5sum_openssl"
+    # - called in "function _pathname_openssl_md5sum"
+    # - called in "function _pathname_openssl_sha1sum" (pending)
+    # - called in "function _pathname_openssl_sha224sum" (pending)
+    # - called in "function _pathname_openssl_sha256sum" (pending)
+    # - called in "function _pathname_openssl_sha384sum" (pending)
+    # - called in "function _pathname_openssl_sha512sum" (pending)
+    # - called in "function _pathname_sha1sum_sha1sum" (pending)
+    # - called in "function _pathname_sha224sum_sha224sum" (pending)
+    # - called in "function _pathname_sha256sum_sha256sum" (pending)
+    # - called in "function _pathname_sha384sum_sha384sum" (pending)
+    # - called in "function _pathname_sha512sum_sha512sum" (pending)
+
     # - $_BOOLEAN_MD5SUM is true
-    # - $_OPTION_MD5SUM_SIZE is non-zero length
+    # - $_OPTION_SUM_SIZE is non-zero length
 
     _BINARY_NAME=head
     _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
@@ -871,7 +1036,7 @@ function _binary_validate_setup()
       fi
     fi
     #- head -#
-  fi # $_BOOLEAN_MD5SUM $_OPTION_MD5SUM_SIZE
+  fi # $_BOOLEAN_MD5SUM $_OPTION_SUM_SIZE
 
   if $_BOOLEAN_HARDLINK \
   || $_BOOLEAN_UNLINK
@@ -881,7 +1046,7 @@ function _binary_validate_setup()
     #   "-g" (use "--group")
     #   "-u" (use "--user")
     # - called in "function _binary_validate_setup" (this function)
-    # - $_BOOLEAN_HARDLINK is true/false (TODO. not yet implemented)
+    # - $_BOOLEAN_HARDLINK is true/false (TODO. unimplemented)
     # - $_BOOLEAN_UNLINK is true/false
     # - _MY_GID is set
     # - _MY_UID is set
@@ -921,7 +1086,7 @@ function _binary_validate_setup()
     # - "ln --help". stdout
     #   "-f" (use "--force")
     # - called in "function _pathnames_scan"
-    # - $_BOOLEAN_HARDLINK is true (TODO. not yet implemented)
+    # - $_BOOLEAN_HARDLINK is true (TODO. unimplemented)
     # - _OPTIONS_LN is set
 
     _BINARY_NAME=ln
@@ -944,34 +1109,36 @@ function _binary_validate_setup()
 
   # - "-z string" = true if the length of string is zero
   if $_BOOLEAN_MD5SUM \
-  && [[ -z $_FUNCTION_MD5SUM ]]
+  && [[ -z $_FUNCTION_SUM ]]
   then
     #+ md5sum +#
     # - "md5sum --help". stdout
     # - called in "function _pathname_md5sum_md5sum"
     # - $_BOOLEAN_MD5SUM is true
-    # - _FUNCTION_MD5SUM is set to _pathname_md5sum_md5sum (1/2)
+    # - _FUNCTION_SUM is set to _pathname_md5sum_md5sum (1/2)
 
     _BINARY_NAME=md5sum
+#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
-      _FUNCTION_MD5SUM=_pathname_md5sum_md5sum
-      _eko_v "            \$_FUNCTION_MD5SUM: \"$_FUNCTION_MD5SUM\""
+      _FUNCTION_SUM=_pathname_md5sum_md5sum
+      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
     fi
     #- md5sum -#
-  fi # $_BOOLEAN_MD5SUM $_FUNCTION_MD5SUM
+  fi # $_BOOLEAN_MD5SUM $_FUNCTION_SUM
 
   # - "-z string" = true if the length of string is zero
   if $_BOOLEAN_MD5SUM \
-  && [[ -z $_FUNCTION_MD5SUM ]]
+  && [[ -z $_FUNCTION_SUM ]]
   then
     # NOTE:
     # - it's highly unlikely, but the possibility does exist that the "md5sum"
     #   binary may not be available. if it's not, attempt to use the "openssl"
     #   binary in its place. openssl is ~13x larger & ~1/2 the speed of
-    #   md5sum, but slow is better than an avoidable error
+    #   "md5sum", but slow is better than an avoidable error
     # - (special thanks to vbatts for the idea of using openssl as a fallback)
+    # ^ TODO: verify size/speed comparisons
 
     #+ openssl (fallback to md5sum) +#
     # - naturally, there has to be ONE troublemaker. meh
@@ -982,11 +1149,12 @@ function _binary_validate_setup()
     #   "dgst -md5" (no "-" on dgst [required]. "-" on md5 [required])
     # - beat the silly thing into submission:
     #   "openssl dgst -help 2>&1"
-    # - called in "function _pathname_md5sum_openssl"
+    # - called in "function _pathname_openssl_md5sum"
     # - $_BOOLEAN_MD5SUM is true
-    # - _FUNCTION_MD5SUM is set to _pathname_md5sum_openssl (2/2)
+    # - _FUNCTION_SUM is set to _pathname_openssl_md5sum (2/2)
 
     _BINARY_NAME=openssl
+#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1))
     if [[ $_BINARY_HELP =~ "command not found" ]]
     then
@@ -995,14 +1163,334 @@ function _binary_validate_setup()
       _BINARY_OPTION=-md5
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
-        _FUNCTION_MD5SUM=_pathname_md5sum_openssl
-        _eko_v "            \$_FUNCTION_MD5SUM: \"$_FUNCTION_MD5SUM\""
+        _FUNCTION_SUM=_pathname_openssl_md5sum
+        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
     fi
     #- openssl (fallback to md5sum) -#
-  fi # $_BOOLEAN_MD5SUM $_FUNCTION_MD5SUM
+  fi # $_BOOLEAN_MD5SUM $_FUNCTION_SUM
+
+  # - "-z string" = true if the length of string is zero
+  if $_BOOLEAN_SHA1SUM \
+  && [[ -z $_FUNCTION_SUM ]]
+  then
+    #+ sha1sum +#
+    # - "sha1sum --help". stdout
+    # - called in "function _pathname_sha1sum_sha1sum"
+    # - $_BOOLEAN_SHA1SUM is true
+    # - _FUNCTION_SUM is set to _pathname_sha1sum_sha1sum (1/2)
+
+    _BINARY_NAME=sha1sum#disabled#
+    _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+    if [[ ! $_BINARY_HELP =~ "command not found" ]]
+    then
+      _FUNCTION_SUM=_pathname_sha1sum_sha1sum
+      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+    fi
+    #- sha1sum -#
+  fi # $_BOOLEAN_SHA1SUM $_FUNCTION_SUM
+
+  # - "-z string" = true if the length of string is zero
+  if $_BOOLEAN_SHA1SUM \
+  && [[ -z $_FUNCTION_SUM ]]
+  then
+    # NOTE:
+    # - it's highly unlikely, but the possibility does exist that the
+    #   "sha1sum" binary may not be available. if it's not, attempt to use the
+    #   "openssl" binary in its place. openssl is ~13x larger & ~1/2 the speed
+    #   of "sha1sum", but slow is better than an avoidable error
+    # - (special thanks to vbatts for the idea of using openssl as a fallback)
+    # ^ TODO: verify size/speed comparisons
+
+    #+ openssl (fallback to sha1sum) +#
+    # - naturally, there has to be ONE troublemaker. meh
+    # - "openssl --help". stderr. anything not a valid option spits out help
+    #   text. technically speaking, none of "--help", "-help", "-h", "-?" are
+    #   supported. they all provide useful help text, though *shrug*
+    # - "openssl --help 2>&1". stdout
+    #   "dgst -sha1" (no "-" on dgst [required]. "-" on sha1 [required])
+    # - beat the silly thing into submission:
+    #   "openssl dgst -help 2>&1"
+    # - called in "function _pathname_openssl_sha1sum"
+    # - $_BOOLEAN_SHA1SUM is true
+    # - _FUNCTION_SUM is set to _pathname_openssl_sha1sum (2/2)
+
+    _BINARY_NAME=openssl
+#disabled#
+    _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1))
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      _show_error "required binaries \"sha1sum\" or \"$_BINARY_NAME\" not found"
+    else
+      _BINARY_OPTION=-sha1
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _FUNCTION_SUM=_pathname_openssl_sha1sum
+        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi
+    #- openssl (fallback to sha1sum) -#
+  fi # $_BOOLEAN_SHA1SUM $_FUNCTION_SUM
+
+  # - "-z string" = true if the length of string is zero
+  if $_BOOLEAN_SHA224SUM \
+  && [[ -z $_FUNCTION_SUM ]]
+  then
+    #+ sha224sum +#
+    # - "sha224sum --help". stdout
+    # - called in "function _pathname_sha224sum_sha224sum"
+    # - $_BOOLEAN_SHA224SUM is true
+    # - _FUNCTION_SUM is set to _pathname_sha224sum_sha224sum (1/2)
+
+    _BINARY_NAME=sha224sum#disabled#
+    _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+    if [[ ! $_BINARY_HELP =~ "command not found" ]]
+    then
+      _FUNCTION_SUM=_pathname_sha224sum_sha224sum
+      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+    fi
+    #- sha224sum -#
+  fi # $_BOOLEAN_SHA224SUM $_FUNCTION_SUM
+
+  # - "-z string" = true if the length of string is zero
+  if $_BOOLEAN_SHA224SUM \
+  && [[ -z $_FUNCTION_SUM ]]
+  then
+    # NOTE:
+    # - it's highly unlikely, but the possibility does exist that the
+    #   "sha224sum" binary may not be available. if it's not, attempt to use
+    #   the "openssl" binary in its place. openssl is ~13x larger & ~1/2 the
+    #   speed of "sha224sum", but slow is better than an avoidable error
+    # - (special thanks to vbatts for the idea of using openssl as a fallback)
+    # ^ TODO: verify size/speed comparisons
+
+    #+ openssl (fallback to sha224sum) +#
+    # - naturally, there has to be ONE troublemaker. meh
+    # - "openssl --help". stderr. anything not a valid option spits out help
+    #   text. technically speaking, none of "--help", "-help", "-h", "-?" are
+    #   supported. they all provide useful help text, though *shrug*
+    # - "openssl --help 2>&1". stdout
+    #   "dgst -sha224" (no "-" on dgst [required]. "-" on sha224 [required])
+    # - beat the silly thing into submission:
+    #   "openssl dgst -help 2>&1"
+    # - called in "function _pathname_openssl_sha224sum"
+    # - $_BOOLEAN_SHA224SUM is true
+    # - _FUNCTION_SUM is set to _pathname_openssl_sha224sum (2/2)
+
+    _BINARY_NAME=openssl
+#disabled#
+    _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1))
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      _show_error "required binaries \"sha224sum\" or \"$_BINARY_NAME\" not found"
+    else
+      _BINARY_OPTION=-sha224
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _FUNCTION_SUM=_pathname_openssl_sha224sum
+        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi
+    #- openssl (fallback to sha224sum) -#
+  fi # $_BOOLEAN_SHA224SUM $_FUNCTION_SUM
+
+  # - "-z string" = true if the length of string is zero
+  if $_BOOLEAN_SHA256SUM \
+  && [[ -z $_FUNCTION_SUM ]]
+  then
+    #+ sha256sum +#
+    # - "sha256sum --help". stdout
+    # - called in "function _pathname_sha256sum_sha256sum"
+    # - $_BOOLEAN_SHA256SUM is true
+    # - _FUNCTION_SUM is set to _pathname_sha256sum_sha256sum (1/2)
+
+    _BINARY_NAME=sha256sum#disabled#
+    _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+    if [[ ! $_BINARY_HELP =~ "command not found" ]]
+    then
+      _FUNCTION_SUM=_pathname_sha256sum_sha256sum
+      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+    fi
+    #- sha256sum -#
+  fi # $_BOOLEAN_SHA256SUM $_FUNCTION_SUM
+
+  # - "-z string" = true if the length of string is zero
+  if $_BOOLEAN_SHA256SUM \
+  && [[ -z $_FUNCTION_SUM ]]
+  then
+    # NOTE:
+    # - it's highly unlikely, but the possibility does exist that the
+    #   "sha256sum" binary may not be available. if it's not, attempt to use
+    #   the "openssl" binary in its place. openssl is ~13x larger & ~1/2 the
+    #   speed of "sha256sum", but slow is better than an avoidable error
+    # - (special thanks to vbatts for the idea of using openssl as a fallback)
+    # ^ TODO: verify size/speed comparisons
+
+    #+ openssl (fallback to sha256sum) +#
+    # - naturally, there has to be ONE troublemaker. meh
+    # - "openssl --help". stderr. anything not a valid option spits out help
+    #   text. technically speaking, none of "--help", "-help", "-h", "-?" are
+    #   supported. they all provide useful help text, though *shrug*
+    # - "openssl --help 2>&1". stdout
+    #   "dgst -sha256" (no "-" on dgst [required]. "-" on sha256 [required])
+    # - beat the silly thing into submission:
+    #   "openssl dgst -help 2>&1"
+    # - called in "function _pathname_openssl_sha256sum"
+    # - $_BOOLEAN_SHA256SUM is true
+    # - _FUNCTION_SUM is set to _pathname_openssl_sha256sum (2/2)
+
+    _BINARY_NAME=openssl
+#disabled#
+    _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1))
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      _show_error "required binaries \"sha256sum\" or \"$_BINARY_NAME\" not found"
+    else
+      _BINARY_OPTION=-sha256
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _FUNCTION_SUM=_pathname_openssl_sha256sum
+        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi
+    #- openssl (fallback to sha256sum) -#
+  fi # $_BOOLEAN_SHA256SUM $_FUNCTION_SUM
+
+  # - "-z string" = true if the length of string is zero
+  if $_BOOLEAN_SHA384SUM \
+  && [[ -z $_FUNCTION_SUM ]]
+  then
+    #+ sha384sum +#
+    # - "sha384sum --help". stdout
+    # - called in "function _pathname_sha384sum_sha384sum"
+    # - $_BOOLEAN_SHA384SUM is true
+    # - _FUNCTION_SUM is set to _pathname_sha384sum_sha384sum (1/2)
+
+    _BINARY_NAME=sha384sum#disabled#
+    _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+    if [[ ! $_BINARY_HELP =~ "command not found" ]]
+    then
+      _FUNCTION_SUM=_pathname_sha384sum_sha384sum
+      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+    fi
+    #- sha384sum -#
+  fi # $_BOOLEAN_SHA384SUM $_FUNCTION_SUM
+
+  # - "-z string" = true if the length of string is zero
+  if $_BOOLEAN_SHA384SUM \
+  && [[ -z $_FUNCTION_SUM ]]
+  then
+    # NOTE:
+    # - it's highly unlikely, but the possibility does exist that the
+    #   "sha384sum" binary may not be available. if it's not, attempt to use
+    #   the "openssl" binary in its place. openssl is ~13x larger & ~1/2 the
+    #   speed of "sha384sum", but slow is better than an avoidable error
+    # - (special thanks to vbatts for the idea of using openssl as a fallback)
+    # ^ TODO: verify size/speed comparisons
+
+    #+ openssl (fallback to sha384sum) +#
+    # - naturally, there has to be ONE troublemaker. meh
+    # - "openssl --help". stderr. anything not a valid option spits out help
+    #   text. technically speaking, none of "--help", "-help", "-h", "-?" are
+    #   supported. they all provide useful help text, though *shrug*
+    # - "openssl --help 2>&1". stdout
+    #   "dgst -sha384" (no "-" on dgst [required]. "-" on sha256 [required])
+    # - beat the silly thing into submission:
+    #   "openssl dgst -help 2>&1"
+    # - called in "function _pathname_openssl_sha384sum"
+    # - $_BOOLEAN_SHA384SUM is true
+    # - _FUNCTION_SUM is set to _pathname_openssl_sha384sum (2/2)
+
+    _BINARY_NAME=openssl
+#disabled#
+    _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1))
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      _show_error "required binaries \"sha384sum\" or \"$_BINARY_NAME\" not found"
+    else
+      _BINARY_OPTION=-sha384
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _FUNCTION_SUM=_pathname_openssl_sha384sum
+        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi
+    #- openssl (fallback to sha384sum) -#
+  fi # $_BOOLEAN_SHA384SUM $_FUNCTION_SUM
+
+  # - "-z string" = true if the length of string is zero
+  if $_BOOLEAN_SHA512SUM \
+  && [[ -z $_FUNCTION_SUM ]]
+  then
+    #+ sha512sum +#
+    # - "sha512sum --help". stdout
+    # - called in "function _pathname_sha512sum_sha512sum"
+    # - $_BOOLEAN_SHA512SUM is true
+    # - _FUNCTION_SUM is set to _pathname_sha512sum_sha512sum (1/2)
+
+    _BINARY_NAME=sha512sum#disabled#
+    _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+    if [[ ! $_BINARY_HELP =~ "command not found" ]]
+    then
+      _FUNCTION_SUM=_pathname_sha512sum_sha512sum
+      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+    fi
+    #- sha512sum -#
+  fi # $_BOOLEAN_SHA512SUM $_FUNCTION_SUM
+
+  # - "-z string" = true if the length of string is zero
+  if $_BOOLEAN_SHA512SUM \
+  && [[ -z $_FUNCTION_SUM ]]
+  then
+    # NOTE:
+    # - it's highly unlikely, but the possibility does exist that the
+    #   "sha512sum" binary may not be available. if it's not, attempt to use
+    #   the "openssl" binary in its place. openssl is ~13x larger & ~1/2 the
+    #   speed of "sha512sum", but slow is better than an avoidable error
+    # - (special thanks to vbatts for the idea of using openssl as a fallback)
+    # ^ TODO: verify size/speed comparisons
+
+    #+ openssl (fallback to sha512sum) +#
+    # - naturally, there has to be ONE troublemaker. meh
+    # - "openssl --help". stderr. anything not a valid option spits out help
+    #   text. technically speaking, none of "--help", "-help", "-h", "-?" are
+    #   supported. they all provide useful help text, though *shrug*
+    # - "openssl --help 2>&1". stdout
+    #   "dgst -sha512" (no "-" on dgst [required]. "-" on sha256 [required])
+    # - beat the silly thing into submission:
+    #   "openssl dgst -help 2>&1"
+    # - called in "function _pathname_openssl_sha512sum"
+    # - $_BOOLEAN_SHA512SUM is true
+    # - _FUNCTION_SUM is set to _pathname_openssl_sha512sum (2/2)
+
+    _BINARY_NAME=openssl
+#disabled#
+    _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1))
+    if [[ $_BINARY_HELP =~ "command not found" ]]
+    then
+      _show_error "required binaries \"sha512sum\" or \"$_BINARY_NAME\" not found"
+    else
+      _BINARY_OPTION=-sha512
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _FUNCTION_SUM=_pathname_openssl_sha512sum
+        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi
+    #- openssl (fallback to sha512sum) -#
+  fi # $_BOOLEAN_SHA512SUM $_FUNCTION_SUM
 
   if $_BOOLEAN_UNLINK
   then
@@ -1117,7 +1605,7 @@ function _binary_validate_setup()
     # - "rm --help". stdout
     #   "-f" (use "--force")
     # - called in "function _trap"
-    # - $_BOOLEAN_HARDLINK is true/false (TODO. not yet implemented)
+    # - $_BOOLEAN_HARDLINK is true/false (TODO. unimplemented)
     # - $_BOOLEAN_UNLINK is true/false
     # - _OPTIONS_RM is set
 
@@ -1166,7 +1654,7 @@ function _binary_validate_setup()
     # - "touch --help". stdout
     #   "-d" (use "--date") ("=" is optional, use "=" for uniformity)
     # - called in "function _pathnames_scan"
-    # - $_BOOLEAN_HARDLINK is true/false (TODO. not yet implemented)
+    # - $_BOOLEAN_HARDLINK is true/false (TODO. unimplemented)
     # - $_BOOLEAN_UNLINK is true/false
     # - $_BOOLEAN_TIMESTAMP is true/false (set in "function _pathnames_scan")
     # - $_SD_MTIM_HMS is referenced in "function _trap"
@@ -1398,8 +1886,14 @@ function _parse_parameters()
   # _BOOLEAN_NANOSECONDS
   # _BOOLEAN_NONSPARSE
   # _BOOLEAN_RELATIVE
+  # _BOOLEAN_SHA1SUM
+  # _BOOLEAN_SHA224SUM
+  # _BOOLEAN_SHA256SUM
+  # _BOOLEAN_SHA384SUM
+  # _BOOLEAN_SHA512SUM
   # _BOOLEAN_SPARSE
   # _BOOLEAN_STDOUT
+  # _BOOLEAN_SUM
   # _BOOLEAN_UNLINK
   # _BOOLEAN_VERBOSE
   # _BOOLEAN_XDEV
@@ -1408,8 +1902,8 @@ function _parse_parameters()
   # _OPTIONS_LN (ln options, not script options)
   # _OPTIONS_MV (mv options, not script options)
   # _OPTIONS_RM (rm options, not script options)
-  # _OPTION_MD5SUM_SIZE
   # _OPTION_PATHNAME
+  # _OPTION_SUM_SIZE
 
   # NOTE:
   # - boolean variables are proper toggles
@@ -1437,16 +1931,22 @@ function _parse_parameters()
   _BOOLEAN_NANOSECONDS=false # display
   _BOOLEAN_NONSPARSE=false   # action
   _BOOLEAN_RELATIVE=false    # action
+  _BOOLEAN_SHA1SUM=false     # action
+  _BOOLEAN_SHA224SUM=false   # action
+  _BOOLEAN_SHA256SUM=false   # action
+  _BOOLEAN_SHA384SUM=false   # action
+  _BOOLEAN_SHA512SUM=false   # action
   _BOOLEAN_SPARSE=false      # action
   _BOOLEAN_STDOUT=true       # display
+  _BOOLEAN_SUM=false         # action
   _BOOLEAN_UNLINK=false      # action
   _BOOLEAN_VERBOSE=false     # display
   _BOOLEAN_XDEV=false        # action
 #- marker boolean -#
   unset _ARRAY_HOLDNAMES
   unset _ARRAY_PATHNAMES
-  unset _OPTION_MD5SUM_SIZE
   unset _OPTION_PATHNAME
+  unset _OPTION_SUM_SIZE
 
   #- parameter defaults -#
 
@@ -1462,6 +1962,51 @@ function _parse_parameters()
   while [[ $# -gt 0 ]]
   do
     case $1 in
+      ( -1 \
+      | --sha1sum )
+        if $_BOOLEAN_SHA1SUM
+        then
+          _BOOLEAN_SHA1SUM=false
+        else
+          _BOOLEAN_SHA1SUM=true
+        fi
+      ;;
+      ( -224 \
+      | --sha224sum )
+        if $_BOOLEAN_SHA224SUM
+        then
+          _BOOLEAN_SHA224SUM=false
+        else
+          _BOOLEAN_SHA224SUM=true
+        fi
+      ;;
+      ( -256 \
+      | --sha256sum )
+        if $_BOOLEAN_SHA256SUM
+        then
+          _BOOLEAN_SHA256SUM=false
+        else
+          _BOOLEAN_SHA256SUM=true
+        fi
+      ;;
+      ( -384 \
+      | --sha384sum )
+        if $_BOOLEAN_SHA384SUM
+        then
+          _BOOLEAN_SHA384SUM=false
+        else
+          _BOOLEAN_SHA384SUM=true
+        fi
+      ;;
+      ( -512 \
+      | --sha512sum )
+        if $_BOOLEAN_SHA512SUM
+        then
+          _BOOLEAN_SHA512SUM=false
+        else
+          _BOOLEAN_SHA512SUM=true
+        fi
+      ;;
       ( -D \
       | --dry-run )
         if $_BOOLEAN_DRYRUN
@@ -1602,9 +2147,9 @@ function _parse_parameters()
         if [[ ${2:0:1} == - ]] \
         || [[ -z $2 ]]
         then
-          _show_error "md5sum buffer size not specified"
+          _show_error "sum buffer size not specified"
         else
-          _OPTION_MD5SUM_SIZE=$2
+          _OPTION_SUM_SIZE=$2
         fi
         shift
       ;;
@@ -1640,6 +2185,109 @@ function _parse_parameters()
     esac
     shift
   done
+
+  #+ marker testing +#
+  # - it sort of works here, but it appears some of the tests are redundant.
+  #   explore further (later) to discover what can be removed
+  # - it doesn't appear to work in the loop
+  if [[ 0 == 1 ]]
+  then
+  # 1/6
+  if $_BOOLEAN_MD5SUM \
+  && ( $_BOOLEAN_SHA1SUM \
+  || $_BOOLEAN_SHA224SUM \
+  || $_BOOLEAN_SHA256SUM \
+  || $_BOOLEAN_SHA384SUM \
+  || $_BOOLEAN_SHA512SUM )
+  then
+    _show_error "md5sum specified with another *sum"
+  fi
+
+  # 2/6
+  if $_BOOLEAN_SHA1SUM \
+  && ( $_BOOLEAN_MD5SUM \
+  || $_BOOLEAN_SHA224SUM \
+  || $_BOOLEAN_SHA256SUM \
+  || $_BOOLEAN_SHA384SUM \
+  || $_BOOLEAN_SHA512SUM )
+  then
+    _show_error "sha1sum specified with another *sum"
+  fi
+
+  # 3/6
+  if $_BOOLEAN_SHA224SUM \
+  && ( $_BOOLEAN_MD5SUM \
+  || $_BOOLEAN_SHA1SUM \
+  || $_BOOLEAN_SHA256SUM \
+  || $_BOOLEAN_SHA384SUM \
+  || $_BOOLEAN_SHA512SUM )
+  then
+    _show_error "sha224sum specified with another *sum"
+  fi
+
+  # 4/6
+  if $_BOOLEAN_SHA256SUM \
+  && ( $_BOOLEAN_MD5SUM \
+  || $_BOOLEAN_SHA1SUM \
+  || $_BOOLEAN_SHA224SUM \
+  || $_BOOLEAN_SHA384SUM \
+  || $_BOOLEAN_SHA512SUM )
+  then
+    _show_error "sha256sum specified with another *sum"
+  fi
+
+  # 5/6
+  if $_BOOLEAN_SHA384SUM \
+  && ( $_BOOLEAN_MD5SUM \
+  || $_BOOLEAN_SHA1SUM \
+  || $_BOOLEAN_SHA224SUM \
+  || $_BOOLEAN_SHA256SUM \
+  || $_BOOLEAN_SHA512SUM )
+  then
+    _show_error "sha384sum specified with another *sum"
+  fi
+
+  # 6/6
+  if $_BOOLEAN_SHA512SUM \
+  && ( $_BOOLEAN_MD5SUM \
+  || $_BOOLEAN_SHA1SUM \
+  || $_BOOLEAN_SHA224SUM \
+  || $_BOOLEAN_SHA256SUM \
+  || $_BOOLEAN_SHA384SUM )
+  then
+    _show_error "sha512sum specified with another *sum"
+  fi
+  fi
+  #- marker testing -#
+
+  #+ marker testing +#
+  # - different approach. simplistic, incomplete, & prone to (harmless) error
+  # - conflicts *can* happen. this is simply to test the idea. it works! \o/
+  # ^ bash supports AND (&&) & OR (||). too bad it doesn't support XOR
+  # - if *any* *sum methods are selected, set the "global" to true
+
+  # FIXME:
+  # - known bug: if multiple *sum options are selected (in any order), the
+  #   first listed/tested in "function _binary_validate_setup" will be used
+  # - somehow flag *something* such that the first (or last. doesn't matter,
+  #   just so long as its predictable) parsed from the commandline will be
+  #   used. this would likely need to be done here in
+  #   "function _parse_parameters"
+  # - alternately, if 2 or more *different* *sum options are specified, throw
+  #   an error & quit. this is probably the better approach
+  if [[ 1 == 1 ]]
+  then
+  if $_BOOLEAN_MD5SUM \
+  || $_BOOLEAN_SHA1SUM \
+  || $_BOOLEAN_SHA224SUM \
+  || $_BOOLEAN_SHA256SUM \
+  || $_BOOLEAN_SHA384SUM \
+  || $_BOOLEAN_SHA512SUM
+  then
+    _BOOLEAN_SUM=true
+  fi
+  fi
+  #- marker testing -#
 
   #- _parse_parameters -#
 
@@ -1716,12 +2364,18 @@ function _parse_parameters()
   _eko_v "        \$_BOOLEAN_NANOSECONDS: \"$_BOOLEAN_NANOSECONDS\""
   _eko_v "          \$_BOOLEAN_NONSPARSE: \"$_BOOLEAN_NONSPARSE\""
   _eko_v "           \$_BOOLEAN_RELATIVE: \"$_BOOLEAN_RELATIVE\""
+  _eko_v "            \$_BOOLEAN_SHA1SUM: \"$_BOOLEAN_SHA1SUM\""
+  _eko_v "          \$_BOOLEAN_SHA224SUM: \"$_BOOLEAN_SHA224SUM\""
+  _eko_v "          \$_BOOLEAN_SHA256SUM: \"$_BOOLEAN_SHA256SUM\""
+  _eko_v "          \$_BOOLEAN_SHA384SUM: \"$_BOOLEAN_SHA384SUM\""
+  _eko_v "          \$_BOOLEAN_SHA512SUM: \"$_BOOLEAN_SHA512SUM\""
   _eko_v "             \$_BOOLEAN_SPARSE: \"$_BOOLEAN_SPARSE\""
   _eko_v "             \$_BOOLEAN_STDOUT: \"$_BOOLEAN_STDOUT\""
+  _eko_v "                \$_BOOLEAN_SUM: \"$_BOOLEAN_SUM\""
   _eko_v "             \$_BOOLEAN_UNLINK: \"$_BOOLEAN_UNLINK\""
   _eko_v "            \$_BOOLEAN_VERBOSE: \"$_BOOLEAN_VERBOSE\""
   _eko_v "               \$_BOOLEAN_XDEV: \"$_BOOLEAN_XDEV\""
-  _eko_v "            \$_FUNCTION_MD5SUM: \"$_FUNCTION_MD5SUM\""
+  _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
   _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
   _eko_v "                 \$_OPTIONS_CD: \"$_OPTIONS_CD\""
   _eko_v "                 \$_OPTIONS_CP: \"$_OPTIONS_CP\""
@@ -1731,16 +2385,20 @@ function _parse_parameters()
   _eko_v "               \$_OPTIONS_READ: \"$_OPTIONS_READ\""
   _eko_v "                 \$_OPTIONS_RM: \"$_OPTIONS_RM\""
   _eko_v "           \$_OPTIONS_REALPATH: \"$_OPTIONS_REALPATH\""
-  _eko_v "         \$_OPTION_MD5SUM_SIZE: \"$_OPTION_MD5SUM_SIZE\""
+  _eko_v "            \$_OPTION_SUM_SIZE: \"$_OPTION_SUM_SIZE\""
   _eko_v "      \${#_ARRAY_PATHNAMES[@]}: \"${#_ARRAY_PATHNAMES[@]}\""
   _eko_v "       \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
+
+  # TODO:
+  # - figure out a way to prevent multiple *sum routines from being specified
+  #   simultaneously
 
   # NOTE:
   # - lots of testing before we go further:
   # - done here:
   # - "-p" not specified at all. show help
   # - multiple "-p" & "-r" are mutually exclusive. error exit
-  # - "-s" specified without "-m" (1/2). error exit
+  # - "-s" specified without "-m/-1/-224/-256/-384/-512" (1/2). error exit
   # - "-s" specified with non-numeric (2/2). error exit
   # - "-n" specified without "-l" or "-v". error exit
   # - "-N" specified without "-U". error exit
@@ -1748,7 +2406,7 @@ function _parse_parameters()
   # - "-H" & "-r" are mutually exclusive. error exit
   # - "-H" & "-U" are mutually exclusive. error exit
   # - "-N" & "-S" are mutually exclusive. error exit
-  # - "-d" & "-l" & "-m" are mutually exclusive. error exit
+  # - "-d" & "-l" & "-m/-1/-224/-256/-384/-512" are mutually exclusive. error exit
   # - "-l" & "-v" are mutually exclusive. error exit
   # - done elsewhere:
   # - path exists?
@@ -1773,24 +2431,33 @@ function _parse_parameters()
     _show_error "multiple \"-p, --pathname\" & \"-r, --relative\" are mutually exclusive"
   fi
 
-  # - md5sum (1/2)
-  # - "-s" specified without "-m" (1/2)
+#  # - md5sum (1/2)
+#  # - "-s" specified without "-m" (1/2)
+#  # - "-n string" = true if the length of string is non-zero
+#  if [[ -n $_OPTION_SUM_SIZE ]] \
+#  && ! $_BOOLEAN_MD5SUM
+#  then
+#    _show_error \""-m, --md5sum\" not specified"
+#  fi
+
+  # - *sum (1/2)
+  # - "-s" specified without "-m/-1/-224/-256/-384/-512" (1/2)
   # - "-n string" = true if the length of string is non-zero
-  if [[ -n $_OPTION_MD5SUM_SIZE ]] \
-  && ! $_BOOLEAN_MD5SUM
+  if [[ -n $_OPTION_SUM_SIZE ]] \
+  && ! $_BOOLEAN_SUM
   then
-    _show_error \""-m, --md5sum\" not specified"
+    _show_error \""-m/-1/-224/-256/-384/-512\" not specified"
   fi
 
-  # - md5sum (2/2)
+  # - *sum (2/2)
   # - "-s" specified with non-numeric (2/2)
   # - ensure it's a whole positive number (anything else prefixed with "-" is
   #   caught during the parsing loop above)
   # - "-n string" = true if the length of string is non-zero
-  if [[ -n $_OPTION_MD5SUM_SIZE ]] \
-  && [[ ! $_OPTION_MD5SUM_SIZE =~ ^[0-9]+$ ]]
+  if [[ -n $_OPTION_SUM_SIZE ]] \
+  && [[ ! $_OPTION_SUM_SIZE =~ ^[0-9]+$ ]]
   then
-    _show_error "invalid md5sum buffer size \"$_OPTION_MD5SUM_SIZE\" specified"
+    _show_error "invalid sum buffer size \"$_OPTION_SUM_SIZE\" specified"
   fi
 
   # - simple logic: one requires one of the others
@@ -1842,13 +2509,22 @@ function _parse_parameters()
     _show_error \""-N, --non-sparse\" & \"-S, --sparse\" are mutually exclusive"
   fi
 
+#  # - cosmetic: stdout is extremely garbled
+#  # - "-d" & "-l" & "-m" are mutually exclusive
+#  if $_BOOLEAN_DEBUG \
+#  && $_BOOLEAN_LONG \
+#  && $_BOOLEAN_MD5SUM
+#  then
+#    _show_error \""-d, --debug\" & \"-l, --long\" & \"-m, --md5sum\" are mutually exclusive"
+#  fi
+
   # - cosmetic: stdout is extremely garbled
-  # - "-d" & "-l" & "-m" are mutually exclusive
+  # - "-d" & "-l" & "-m/-1/-224/-256/-384/-512" are mutually exclusive
   if $_BOOLEAN_DEBUG \
   && $_BOOLEAN_LONG \
-  && $_BOOLEAN_MD5SUM
+  && $_BOOLEAN_SUM
   then
-    _show_error \""-d, --debug\" & \"-l, --long\" & \"-m, --md5sum\" are mutually exclusive"
+    _show_error \""-d\" & \"-l\" & \"-m/-1/-224/-256/-384/-512\" are mutually exclusive"
   fi
 
   # - cosmetic: stdout is extremely garbled
@@ -1876,83 +2552,137 @@ function _pathname_md5sum_md5sum()
   # _eko_iod
 
   # variables:
-  # _OPTION_MD5SUM_SIZE
-  # _ST_MD5 (contrivance. not from stat(2))
+  # _OPTION_SUM_SIZE
   # _ST_NAME (contrivance. not from stat(2))
   # _ST_SIZE
+  # _ST_SUM (contrivance. not from stat(2))
 
   # binaries:
   # head
   # md5sum
 
   # - "-z string" = true if the length of string is zero
-  if [[ -z $_OPTION_MD5SUM_SIZE ]]
+  if [[ -z $_OPTION_SUM_SIZE ]]
   then
-    # - generate md5sum of the file (full)
-    _ST_MD5=$(md5sum -- "$_ST_NAME" 2>/dev/null)
+    # - generate sum of the file (full)
+    _ST_SUM=$(md5sum -- "$_ST_NAME" 2>/dev/null)
 
     # - ${parameter/pattern/string}
     # - strip "  <pathname>" suffix from output. keep the rest
 #+ old +#
-#    _ST_MD5=${_ST_MD5/%  $_ST_NAME/}
+#    _ST_SUM=${_ST_SUM/%  $_ST_NAME/}
 #- old -#
 #+ new +#
-    _ST_MD5=${_ST_MD5/%  "$_ST_NAME"/}
+    _ST_SUM=${_ST_SUM/%  "$_ST_NAME"/}
 #- new -#
   else
-    # - generate md5sum of the file ($_OPTION_MD5SUM_SIZE)
-    _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE -- "$_ST_NAME" 2>/dev/null | md5sum -- -)
+    # - generate sum of the file ($_OPTION_SUM_SIZE)
+    _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | md5sum -- -)
 
     # - ${parameter/pattern/string}
     # - strip "  -" suffix from output. keep the rest
-    _ST_MD5=${_ST_MD5/%  -/}
+    _ST_SUM=${_ST_SUM/%  -/}
   fi
 
   _eko_iod "#- _pathname_md5sum_md5sum -#"
 }
 
-function _pathname_md5sum_openssl()
+#+#foobar
+function _pathname_openssl_md5sum()
 {
-  _eko_iod "#+ _pathname_md5sum_openssl +#"
+  _eko_iod "#+ _pathname_openssl_md5sum +#"
 
   # functions:
   # _eko_iod
 
   # variables:
-  # _OPTION_MD5SUM_SIZE
-  # _ST_MD5 (contrivance. not from stat(2))
+  # _OPTION_SUM_SIZE
   # _ST_NAME (contrivance. not from stat(2))
   # _ST_SIZE
+  # _ST_SUM (contrivance. not from stat(2))
 
   # binaries:
   # head
-  # openssl (fallback to md5sum)
+  # openssl (fallback to supported *sum variants: md5 & sha1/224/256/384/512)
 
   # - "-z string" = true if the length of string is zero
-  if [[ -z $_OPTION_MD5SUM_SIZE ]]
+  if [[ -z $_OPTION_SUM_SIZE ]]
   then
-    # - generate md5sum of the file (full)
-    _ST_MD5=$(openssl dgst -md5 "$_ST_NAME" 2>/dev/null)
+    # - generate sum of the file (full)
+    _ST_SUM=$(openssl dgst -md5 "$_ST_NAME" 2>/dev/null)
 
     # - ${parameter/pattern/string}
     # - strip "MD5(<pathname>)= " prefix from output. keep the rest
 #+ old +#
-#    _ST_MD5=${_ST_MD5/#MD5($_ST_NAME)= /}
+#    _ST_SUM=${_ST_SUM/#MD5($_ST_NAME)= /}
 #- old -#
 #+ new +#
-    _ST_MD5=${_ST_MD5/#MD5("$_ST_NAME")= /}
+    _ST_SUM=${_ST_SUM/#MD5("$_ST_NAME")= /}
 #- new -#
   else
-    # - generate md5sum of the file ($_OPTION_MD5SUM_SIZE)
-    _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE -- "$_ST_NAME" 2>/dev/null | openssl dgst -md5)
+    # - generate sum of the file ($_OPTION_SUM_SIZE)
+    _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | openssl dgst -md5)
 
     # - ${parameter/pattern/string}
     # - strip "(stdin)= " prefix from output. keep the rest
-    _ST_MD5=${_ST_MD5/#(stdin)= /}
+    _ST_SUM=${_ST_SUM/#(stdin)= /}
   fi
 
-  _eko_iod "#- _pathname_md5sum_openssl -#"
+  _eko_iod "#- _pathname_openssl_md5sum -#"
 }
+#-#foobar
+
+#+#foobar
+function _pathname_openssl_sha1sum()
+{
+  _eko_iod "#+ _pathname_openssl_sha1sum +#"
+
+  # - informative(?) placeholder
+  _ST_SUM="openssl sha1sum"
+
+  _eko_iod "#- _pathname_openssl_sha1sum -#"
+}
+
+function _pathname_openssl_sha224sum()
+{
+  _eko_iod "#+ _pathname_openssl_sha224sum +#"
+
+  # - informative(?) placeholder
+  _ST_SUM="openssl sha224sum"
+
+  _eko_iod "#- _pathname_openssl_sha224sum -#"
+}
+
+function _pathname_openssl_sha256sum()
+{
+  _eko_iod "#+ _pathname_openssl_sha256sum +#"
+
+  # - informative(?) placeholder
+  _ST_SUM="openssl sha256sum"
+
+  _eko_iod "#- _pathname_openssl_sha256sum -#"
+}
+
+function _pathname_openssl_sha384sum()
+{
+  _eko_iod "#+ _pathname_openssl_sha384sum +#"
+
+  # - informative(?) placeholder
+  _ST_SUM="openssl sha384sum"
+
+  _eko_iod "#- _pathname_openssl_sha384sum -#"
+}
+
+function _pathname_openssl_sha512sum()
+{
+  _eko_iod "#+ _pathname_openssl_sha512sum +#"
+
+  # - informative(?) placeholder
+  _ST_SUM="openssl sha512sum"
+
+  _eko_iod "#- _pathname_openssl_sha512sum -#"
+}
+#-#foobar
 
 function _pathname_redundant_check()
 {
@@ -2056,6 +2786,221 @@ function _pathname_redundant_check()
   done
 
   _eko_iod "#- _pathname_redundant_check -#"
+}
+
+function _pathname_sha1sum_sha1sum()
+{
+  _eko_iod "#+ _pathname_sha1sum_sha1sum +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # _OPTION_SUM_SIZE
+  # _ST_NAME (contrivance. not from stat(2))
+  # _ST_SIZE
+  # _ST_SUM (contrivance. not from stat(2))
+
+  # binaries:
+  # head
+  # sha1sum
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_OPTION_SUM_SIZE ]]
+  then
+    # - generate sum of the file (full)
+    _ST_SUM=$(sha1sum -- "$_ST_NAME" 2>/dev/null)
+
+    # - ${parameter/pattern/string}
+    # - strip "  <pathname>" suffix from output. keep the rest
+#+ old +#
+#    _ST_SUM=${_ST_SUM/%  $_ST_NAME/}
+#- old -#
+#+ new +#
+    _ST_SUM=${_ST_SUM/%  "$_ST_NAME"/}
+#- new -#
+  else
+    # - generate sum of the file ($_OPTION_SUM_SIZE)
+    _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | sha1sum -- -)
+
+    # - ${parameter/pattern/string}
+    # - strip "  -" suffix from output. keep the rest
+    _ST_SUM=${_ST_SUM/%  -/}
+  fi
+
+  _eko_iod "#- _pathname_sha1sum_sha1sum -#"
+}
+
+function _pathname_sha224sum_sha224sum()
+{
+  _eko_iod "#+ _pathname_sha224sum_sha224sum +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # _OPTION_SUM_SIZE
+  # _ST_NAME (contrivance. not from stat(2))
+  # _ST_SIZE
+  # _ST_SUM (contrivance. not from stat(2))
+
+  # binaries:
+  # head
+  # sha224sum
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_OPTION_SUM_SIZE ]]
+  then
+    # - generate sum of the file (full)
+    _ST_SUM=$(sha224sum -- "$_ST_NAME" 2>/dev/null)
+
+    # - ${parameter/pattern/string}
+    # - strip "  <pathname>" suffix from output. keep the rest
+#+ old +#
+#    _ST_SUM=${_ST_SUM/%  $_ST_NAME/}
+#- old -#
+#+ new +#
+    _ST_SUM=${_ST_SUM/%  "$_ST_NAME"/}
+#- new -#
+  else
+    # - generate sum of the file ($_OPTION_SUM_SIZE)
+    _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | sha224sum -- -)
+
+    # - ${parameter/pattern/string}
+    # - strip "  -" suffix from output. keep the rest
+    _ST_SUM=${_ST_SUM/%  -/}
+  fi
+
+  _eko_iod "#- _pathname_sha224sum_sha224sum -#"
+}
+
+function _pathname_sha256sum_sha256sum()
+{
+  _eko_iod "#+ _pathname_sha256sum_sha256sum +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # _OPTION_SUM_SIZE
+  # _ST_NAME (contrivance. not from stat(2))
+  # _ST_SIZE
+  # _ST_SUM (contrivance. not from stat(2))
+
+  # binaries:
+  # head
+  # sha256sum
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_OPTION_SUM_SIZE ]]
+  then
+    # - generate sum of the file (full)
+    _ST_SUM=$(sha256sum -- "$_ST_NAME" 2>/dev/null)
+
+    # - ${parameter/pattern/string}
+    # - strip "  <pathname>" suffix from output. keep the rest
+#+ old +#
+#    _ST_SUM=${_ST_SUM/%  $_ST_NAME/}
+#- old -#
+#+ new +#
+    _ST_SUM=${_ST_SUM/%  "$_ST_NAME"/}
+#- new -#
+  else
+    # - generate sum of the file ($_OPTION_SUM_SIZE)
+    _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | sha256sum -- -)
+
+    # - ${parameter/pattern/string}
+    # - strip "  -" suffix from output. keep the rest
+    _ST_SUM=${_ST_SUM/%  -/}
+  fi
+
+  _eko_iod "#- _pathname_sha256sum_sha256sum -#"
+}
+
+function _pathname_sha384sum_sha384sum()
+{
+  _eko_iod "#+ _pathname_sha384sum_sha384sum +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # _OPTION_SUM_SIZE
+  # _ST_NAME (contrivance. not from stat(2))
+  # _ST_SIZE
+  # _ST_SUM (contrivance. not from stat(2))
+
+  # binaries:
+  # head
+  # sha384sum
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_OPTION_SUM_SIZE ]]
+  then
+    # - generate sum of the file (full)
+    _ST_SUM=$(sha384sum -- "$_ST_NAME" 2>/dev/null)
+
+    # - ${parameter/pattern/string}
+    # - strip "  <pathname>" suffix from output. keep the rest
+#+ old +#
+#    _ST_SUM=${_ST_SUM/%  $_ST_NAME/}
+#- old -#
+#+ new +#
+    _ST_SUM=${_ST_SUM/%  "$_ST_NAME"/}
+#- new -#
+  else
+    # - generate sum of the file ($_OPTION_SUM_SIZE)
+    _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | sha384sum -- -)
+
+    # - ${parameter/pattern/string}
+    # - strip "  -" suffix from output. keep the rest
+    _ST_SUM=${_ST_SUM/%  -/}
+  fi
+
+  _eko_iod "#- _pathname_sha384sum_sha384sum -#"
+}
+
+function _pathname_sha512sum_sha512sum()
+{
+  _eko_iod "#+ _pathname_sha512sum_sha512sum +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # _OPTION_SUM_SIZE
+  # _ST_NAME (contrivance. not from stat(2))
+  # _ST_SIZE
+  # _ST_SUM (contrivance. not from stat(2))
+
+  # binaries:
+  # head
+  # sha512sum
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_OPTION_SUM_SIZE ]]
+  then
+    # - generate sum of the file (full)
+    _ST_SUM=$(sha512sum -- "$_ST_NAME" 2>/dev/null)
+
+    # - ${parameter/pattern/string}
+    # - strip "  <pathname>" suffix from output. keep the rest
+#+ old +#
+#    _ST_SUM=${_ST_SUM/%  $_ST_NAME/}
+#- old -#
+#+ new +#
+    _ST_SUM=${_ST_SUM/%  "$_ST_NAME"/}
+#- new -#
+  else
+    # - generate sum of the file ($_OPTION_SUM_SIZE)
+    _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | sha512sum -- -)
+
+    # - ${parameter/pattern/string}
+    # - strip "  -" suffix from output. keep the rest
+    _ST_SUM=${_ST_SUM/%  -/}
+  fi
+
+  _eko_iod "#- _pathname_sha512sum_sha512sum -#"
 }
 
 function _pathname_transform_bruteforce()
@@ -2369,11 +3314,17 @@ function _pathnames_scan()
   # _BOOLEAN_MD5SUM
   # _BOOLEAN_NANOSECONDS
   # _BOOLEAN_RELATIVE
+# _BOOLEAN_SHA1SUM (add) (pending)
+# _BOOLEAN_SHA224SUM (add) (pending)
+# _BOOLEAN_SHA256SUM (add) (pending)
+# _BOOLEAN_SHA384SUM (add) (pending)
+# _BOOLEAN_SHA512SUM (add) (pending)
   # _BOOLEAN_STDOUT
+  # _BOOLEAN_SUM
   # _BOOLEAN_TIMESTAMP
   # _BOOLEAN_UNLINK
   # _BOOLEAN_VERBOSE
-  # _FUNCTION_MD5SUM (_pathname_md5sum_md5sum _pathname_md5sum_openssl)
+  # _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum & lots more)
   # _MY_GID
   # _MY_UID
   # _OPTIONS_CP (cp options, not script options)
@@ -2390,7 +3341,6 @@ function _pathnames_scan()
   # _ST_DEV
   # _ST_GID
   # _ST_INO
-  # _ST_MD5 (contrivance. not from stat(2))
   # _ST_MODE
   # _ST_MTIM_HMS (contrivance. not from stat(2))
   # _ST_MTIM_UTC (contrivance. not from stat(2))
@@ -2398,6 +3348,7 @@ function _pathnames_scan()
   # _ST_NAME (contrivance. not from stat(2))
   # _ST_NLINK
   # _ST_SIZE
+  # _ST_SUM (contrivance. not from stat(2))
   # _ST_UID
   # _SU_NAME (contrivance. not from stat(2))
 
@@ -2609,15 +3560,16 @@ function _pathnames_scan()
 
         if $_BOOLEAN_STDOUT
         then
-          if $_BOOLEAN_MD5SUM
+#          if $_BOOLEAN_MD5SUM
+          if $_BOOLEAN_SUM
           then
-            # - generate md5sum of the file (full or $_OPTION_MD5SUM_SIZE)
-            $_FUNCTION_MD5SUM
+            # - generate sum of the file (full or $_OPTION_SUM_SIZE)
+            $_FUNCTION_SUM
 #+ old +#
-#            echo "$_ST_MD5  $_ST_NAME"
+#            echo "$_ST_SUM  $_ST_NAME"
 #- old -#
 #+ new +#
-            printf "%s  %s\n" $_ST_MD5 "$_ST_NAME"
+            printf "%s  %s\n" $_ST_SUM "$_ST_NAME"
 #- new -#
           else
 #+ old +#
@@ -2629,14 +3581,15 @@ function _pathnames_scan()
           fi
         elif $_BOOLEAN_LONG
         then
-          if $_BOOLEAN_MD5SUM
+#          if $_BOOLEAN_MD5SUM
+          if $_BOOLEAN_SUM
           then
-            # - generate md5sum of the file (full or $_OPTION_MD5SUM_SIZE)
-            $_FUNCTION_MD5SUM
+            # - generate sum of the file (full or $_OPTION_SUM_SIZE)
+            $_FUNCTION_SUM
             printf "%4s %10s %s %4s %4s %3s %14s %s %s %s %s %s\n" \
             $_ST_DEV $_ST_INO $_ST_MODE $_ST_NLINK $_ST_UID $_ST_GID \
             $_ST_SIZE $_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC \
-            $_ST_MD5 \
+            $_ST_SUM \
             "$_ST_NAME"
           else
             printf "%4s %10s %s %4s %4s %3s %14s %s %s %s %s\n" \
@@ -2646,10 +3599,11 @@ function _pathnames_scan()
           fi
         elif $_BOOLEAN_VERBOSE
         then
-          if $_BOOLEAN_MD5SUM
+#          if $_BOOLEAN_MD5SUM
+          if $_BOOLEAN_SUM
           then
-            # - generate md5sum of the file (full or $_OPTION_MD5SUM_SIZE)
-            $_FUNCTION_MD5SUM
+            # - generate sum of the file (full or $_OPTION_SUM_SIZE)
+            $_FUNCTION_SUM
 #+ old +#
 #            echo "
 #                     \$_ST_DEV: \"$_ST_DEV\"
@@ -2660,7 +3614,7 @@ function _pathnames_scan()
 #                     \$_ST_GID: \"$_ST_GID\"
 #                    \$_ST_SIZE: \"$_ST_SIZE\"
 #                    \$_ST_MTIM: \"$_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC\"
-#                     \$_ST_MD5: \"$_ST_MD5\"
+#                     \$_ST_SUM: \"$_ST_SUM\"
 #                    \$_ST_NAME: \"$_ST_NAME\""
 #- old -#
 #+ new +#
@@ -2673,7 +3627,7 @@ function _pathnames_scan()
             \$_ST_GID: \""$_ST_GID\"" \
             \$_ST_SIZE: \""$_ST_SIZE\"" \
             \$_ST_MTIM: \""$_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC\"" \
-            \$_ST_MD5: \""$_ST_MD5\"" \
+            \$_ST_SUM: \""$_ST_SUM\"" \
             \$_ST_NAME: \""$_ST_NAME\""
 #- new -#
           else
@@ -2794,26 +3748,32 @@ Mandatory parameter:
 
 Optional parameters:
   -D, --dry-run       Perform a trial run of the specified action
-  -E, --error         (TODO. placeholder option)
-  -H, --hardlink      Link duplicate files (TODO. placeholder option)
+  -E, --error         (TODO. unimplemented)
+  -H, --hardlink      Link duplicate files (TODO. unimplemented)
   -N, --non-sparse    Explicitly force non-sparse copies when unlinking files
   -S, --sparse        Explicitly force sparse copies when unlinking files
   -U, --unlink        Unlink previously hardlinked files
   -d, --debug         Display debugging information (function names/entry/exit)
   -l, --long          Display all information in a format similar to \""ls -in\""
-  -m, --md5sum        Generate an md5sum for each file
   -n, --nanoseconds   Display nanoseconds in long & verbose reports
   -r, --relative      Output relative instead of absolute pathnames
-  -s, --size          Specify the maximum \""head\"" size of each file to md5sum
   -v, --verbose       Display verbose information (variable names/contents)
   -x, --xdev          Do not descend directories on other filesystems
+  -m, --md5sum        Generate an md5sum for each file
+  -1, --sha1sum       Generate an sha1sum for each file (TODO. unimplemented)
+  -224, --sha224sum   Generate an sha224sum for each file (TODO. unimplemented)
+  -256, --sha256sum   Generate an sha256sum for each file (TODO. unimplemented)
+  -384, --sha384sum   Generate an sha384sum for each file (TODO. unimplemented)
+  -512, --sha512sum   Generate an sha512sum for each file (TODO. unimplemented)
+  -s, --size          Specify the maximum \""head\"" size of each file to sum
   -?, -h, --help      Display this help text, useful as it is
   -W, -w, --warning   Display big fat warning. don't say I didn't tell you!
 
 There are 3 basic types of parameters:
               additive: \"-p\"
   last invocation used: \"-s\"
-                toggle: \"-D -E -H -N -S -U -d -l -m -n -r -v -x\"
+                toggle: \"-D -E -H -N -S -U -d -l -n -r -v -x
+                         -m -1 -224 -256 -384 -512\"
 
 Note:
   Globs are supported with \"-p, --pathname\". Refer to bash(1) section
@@ -2878,7 +3838,6 @@ function _sqlite3_test()
 #  # _ST_DEV
 #  # _ST_GID
 #  # _ST_INO
-#  # _ST_MD5 (contrivance. not from stat(2))
 #  # _ST_MODE
 #  # _ST_MTIM_HMS (contrivance. not from stat(2))
 #  # _ST_MTIM_UTC (contrivance. not from stat(2))
@@ -2886,6 +3845,7 @@ function _sqlite3_test()
 #  # _ST_NAME (contrivance. not from stat(2))
 #  # _ST_NLINK
 #  # _ST_SIZE
+#  # _ST_SUM (contrivance. not from stat(2))
 #  # _ST_UID
 
 #  # binaries:

@@ -12,68 +12,10 @@
 # - optionally unlink files that were previously hardlinked
 
 # TODO:
-# - finish with the remaining _pathname_openssl_*sum functions
-# - additional code cleanup
-# - ensure the changelog has been accurately updated
 # - ensure the builtin/binary/variable/function listings are complete
-
-#+ assorted notes +#
-
-# variables:
-#+ delete +# (not yet)
-# 1_3_2
-# _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum & lots more)
-# ^ 12 functions in total (list them all by name: search in less & nano)
-
-# _FUNCTION_MD5SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum)
-# _FUNCTION_SHA1SUM (_pathname_sha1sum_sha1sum _pathname_openssl_sha1sum)
-# _FUNCTION_SHA224SUM (_pathname_sha224sum_sha224sum _pathname_openssl_sha224sum)
-# _FUNCTION_SHA256SUM (_pathname_sha256sum_sha256sum _pathname_openssl_sha256sum)
-# _FUNCTION_SHA384SUM (_pathname_sha384sum_sha384sum _pathname_openssl_sha384sum)
-# _FUNCTION_SHA512SUM (_pathname_sha512sum_sha512sum _pathname_openssl_sha512sum)
-#- delete -# (not yet)
-
-# 1_3_2 (sorted)
-#+ keep for now +#
-# _pathname_md5sum_md5sum
-# _pathname_openssl_md5sum
-# _pathname_openssl_sha1sum
-# _pathname_openssl_sha224sum
-# _pathname_openssl_sha256sum
-# _pathname_openssl_sha384sum
-# _pathname_openssl_sha512sum
-# _pathname_sha1sum_sha1sum
-# _pathname_sha224sum_sha224sum
-# _pathname_sha256sum_sha256sum
-# _pathname_sha384sum_sha384sum
-# _pathname_sha512sum_sha512sum
-#- keep for now -#
-
-# function _binary_validate_setup()
-#     #+ head +#
-# ^ add some lines describing where it's called
-
-# _FUNCTION_SUM points to one of the many md5 or sha sum functions
-# - something feels wrong/incomplete about this. explore later
-# - the following variable was the missing ingredient
-# - for internal use only *guffaw*
-# _BOOLEAN_SUM (add) (done)
-
-# - we have the first 2. add the rest
-  # _pathname_md5sum_md5sum (_FUNCTION_SUM) (done)
-  # _pathname_openssl_md5sum (_FUNCTION_SUM) (done)
-  # _pathname_openssl_sha1sum (_FUNCTION_SUM) (pending)
-  # _pathname_openssl_sha224sum (_FUNCTION_SUM) (pending)
-  # _pathname_openssl_sha256sum (_FUNCTION_SUM) (pending)
-  # _pathname_openssl_sha384sum (_FUNCTION_SUM) (pending)
-  # _pathname_openssl_sha512sum (_FUNCTION_SUM) (pending)
-  # _pathname_sha1sum_sha1sum (_FUNCTION_SUM) (done)
-  # _pathname_sha224sum_sha224sum (_FUNCTION_SUM) (done)
-  # _pathname_sha256sum_sha256sum (_FUNCTION_SUM) (done)
-  # _pathname_sha384sum_sha384sum (_FUNCTION_SUM) (done)
-  # _pathname_sha512sum_sha512sum (_FUNCTION_SUM) (done)
-
-#- assorted notes -#
+# - ensure the changelog has been accurately updated. that'll be fun :(
+# - possibly remove select portions of the script that have beein #'d out
+# ^ specifically #+ old +#/#- old -#, #+ new +#/#- new -#, & #disabled#
 
 # TODO:
 # - possibly use printf elsewhere (everywhere?) (verbose output for settings?)
@@ -90,43 +32,44 @@
 #   inefficiently it is generated) will provide me with the required data to
 #   work on the routine(s) that would follow
 
-#foobar
 # 2019-09-30
+# - overall cosmetic cleanup of the entire script. there are entirely too many
+#   small changes to list everything.
 # - "function _parse_parameters" added the following variable:
 #  add: _BOOLEAN_SUM
 # ^ it's a catch-all variable for use in "function _pathnames_scan" to signify
-#   that one of the many sum routines should be called. word this better :(
+#   that one of the many *sum routines should be called. word this better :(
 # - added the following functions:
-#  add: function _pathname_openssl_sha1sum() (pending)
-#  add: function _pathname_openssl_sha224sum() (pending)
-#  add: function _pathname_openssl_sha256sum() (pending)
-#  add: function _pathname_openssl_sha384sum() (pending)
-#  add: function _pathname_openssl_sha512sum() (pending)
-#  add: function _pathname_sha1sum_sha1sum() (done)
-#  add: function _pathname_sha224sum_sha224sum() (done)
-#  add: function _pathname_sha256sum_sha256sum() (done)
-#  add: function _pathname_sha384sum_sha384sum() (done)
-#  add: function _pathname_sha512sum_sha512sum() (done)
+#  add: function _pathname_openssl_sha1sum()
+#  add: function _pathname_openssl_sha224sum()
+#  add: function _pathname_openssl_sha256sum()
+#  add: function _pathname_openssl_sha384sum()
+#  add: function _pathname_openssl_sha512sum()
+#  add: function _pathname_sha1sum_sha1sum()
+#  add: function _pathname_sha224sum_sha224sum()
+#  add: function _pathname_sha256sum_sha256sum()
+#  add: function _pathname_sha384sum_sha384sum()
+#  add: function _pathname_sha512sum_sha512sum()
 # - "function _show_help" reordered the option/description list to group the
-#   various sum routines together
+#   various *sum routines together
 # - "function _show_help" added the following lines:
-#  add: -1, --sha1sum       Generate an sha1sum for each file (TODO. unimplemented)
-#  add: -224, --sha224sum   Generate an sha224sum for each file (TODO. unimplemented)
-#  add: -256, --sha256sum   Generate an sha256sum for each file (TODO. unimplemented)
-#  add: -384, --sha384sum   Generate an sha384sum for each file (TODO. unimplemented)
-#  add: -512, --sha512sum   Generate an sha512sum for each file (TODO. unimplemented)
+#  add: -1, --sha1sum       Generate an sha1sum for each file
+#  add: -224, --sha224sum   Generate an sha224sum for each file
+#  add: -256, --sha256sum   Generate an sha256sum for each file
+#  add: -384, --sha384sum   Generate an sha384sum for each file
+#  add: -512, --sha512sum   Generate an sha512sum for each file
 # - "function _show_help" changed the following line:
 #  was: -s, --size          Specify the maximum \""head\"" size of each file to md5sum
-#   is: -s, --size          Specify the maximum \""head\"" size of each file to sum
+#   is: -s, --size          Specify the maximum \""head\"" size of each file to *sum
 # - changed the following lines in "function _pathname_md5sum_md5sum", &
 #   "function _pathname_openssl_md5sum"
 #  was: # - generate md5sum of the file (full)
-#   is: # - generate sum of the file (full)
+#   is: # - generate *sum of the file (full)
 #  was: # - generate md5sum of the file ($_OPTION_SUM_SIZE)
-#   is: # - generate sum of the file ($_OPTION_SUM_SIZE)
+#   is: # - generate *sum of the file ($_OPTION_SUM_SIZE)
 # - changed the following line in "function _pathnames_scan"
 #  was: # - generate md5sum of the file (full or $_OPTION_SUM_SIZE)
-#   is: # - generate sum of the file (full or $_OPTION_SUM_SIZE)
+#   is: # - generate *sum of the file (full or $_OPTION_SUM_SIZE)
 # - renamed the following variables globally:
 #  was: _FUNCTION_MD5SUM
 #   is: _FUNCTION_SUM
@@ -144,10 +87,10 @@
 #   the "stdout" & "verbose" output modes, following the example set by the
 #   "long" output mode. there is no change in performance, but it does make
 #   future maintenance simpler
-# - "function _pathname_md5sum_md5sum" added doublequoting (100% required)
+# - "function _pathname_md5sum_md5sum" added doublequote wraps (100% required)
 #  was: _ST_MD5=${_ST_MD5/%  $_ST_NAME/}
 #   is: _ST_MD5=${_ST_MD5/%  "$_ST_NAME"/}
-# - "function _pathname_md5sum_openssl" added doublequoting (100% required)
+# - "function _pathname_md5sum_openssl" added doublequote wraps (100% required)
 #  was: _ST_MD5=${_ST_MD5/#MD5($_ST_NAME)= /}
 #   is: _ST_MD5=${_ST_MD5/#MD5("$_ST_NAME")= /}
 # - NOTE: (to self) remove at a later time what can be removed in terms of
@@ -456,7 +399,7 @@
   # _BUILTIN_NAME
   # _BUILTIN_OPTION
   # _DIRNAME
-  # _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum & lots more)
+  # _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum _pathname_openssl_sha1sum _pathname_openssl_sha224sum _pathname_openssl_sha256sum _pathname_openssl_sha384sum _pathname_openssl_sha512sum _pathname_sha1sum_sha1sum _pathname_sha224sum_sha224sum _pathname_sha256sum_sha256sum _pathname_sha384sum_sha384sum _pathname_sha512sum_sha512sum)
   # _FUNCTION_TRANSFORM (_pathname_transform_bruteforce _pathname_transform_cd_pwd _pathname_transform_realpath)
   # _LHS
   # _LINKNAME
@@ -500,7 +443,7 @@
   # _SU_NAME (contrivance. not from stat(2))
 # _ARRAY_HOLDNAMES (single dimension indexed array)
 # _ARRAY_PATHNAMES (single dimension indexed array)
-# _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum & lots more)
+# _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum _pathname_openssl_sha1sum _pathname_openssl_sha224sum _pathname_openssl_sha256sum _pathname_openssl_sha384sum _pathname_openssl_sha512sum _pathname_sha1sum_sha1sum _pathname_sha224sum_sha224sum _pathname_sha256sum_sha256sum _pathname_sha384sum_sha384sum _pathname_sha512sum_sha512sum)
 # _FUNCTION_TRANSFORM (_pathname_transform_bruteforce _pathname_transform_cd_pwd _pathname_transform_realpath)
 # _MY_GID
 # _MY_UID
@@ -524,17 +467,17 @@
   # _eko_v
   # _pathname_md5sum_md5sum (_FUNCTION_SUM)
   # _pathname_openssl_md5sum (_FUNCTION_SUM)
-  # _pathname_openssl_sha1sum (_FUNCTION_SUM) (pending)
-  # _pathname_openssl_sha224sum (_FUNCTION_SUM) (pending)
-  # _pathname_openssl_sha256sum (_FUNCTION_SUM) (pending)
-  # _pathname_openssl_sha384sum (_FUNCTION_SUM) (pending)
-  # _pathname_openssl_sha512sum (_FUNCTION_SUM) (pending)
+  # _pathname_openssl_sha1sum (_FUNCTION_SUM)
+  # _pathname_openssl_sha224sum (_FUNCTION_SUM)
+  # _pathname_openssl_sha256sum (_FUNCTION_SUM)
+  # _pathname_openssl_sha384sum (_FUNCTION_SUM)
+  # _pathname_openssl_sha512sum (_FUNCTION_SUM)
   # _pathname_redundant_check
-  # _pathname_sha1sum_sha1sum (_FUNCTION_SUM) (pending)
-  # _pathname_sha224sum_sha224sum (_FUNCTION_SUM) (pending)
-  # _pathname_sha256sum_sha256sum (_FUNCTION_SUM) (pending)
-  # _pathname_sha384sum_sha384sum (_FUNCTION_SUM) (pending)
-  # _pathname_sha512sum_sha512sum (_FUNCTION_SUM) (pending)
+  # _pathname_sha1sum_sha1sum (_FUNCTION_SUM)
+  # _pathname_sha224sum_sha224sum (_FUNCTION_SUM)
+  # _pathname_sha256sum_sha256sum (_FUNCTION_SUM)
+  # _pathname_sha384sum_sha384sum (_FUNCTION_SUM)
+  # _pathname_sha512sum_sha512sum (_FUNCTION_SUM)
   # _pathname_transform_bruteforce (_FUNCTION_TRANSFORM)
   # _pathname_transform_cd_pwd (_FUNCTION_TRANSFORM)
   # _pathname_transform_realpath (_FUNCTION_TRANSFORM)
@@ -553,7 +496,7 @@
 # TZ
 # _ARRAY_HOLDNAMES (single dimension indexed array)
 # _ARRAY_PATHNAMES (single dimension indexed array)
-# _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum & lots more)
+# _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum _pathname_openssl_sha1sum _pathname_openssl_sha224sum _pathname_openssl_sha256sum _pathname_openssl_sha384sum _pathname_openssl_sha512sum _pathname_sha1sum_sha1sum _pathname_sha224sum_sha224sum _pathname_sha256sum_sha256sum _pathname_sha384sum_sha384sum _pathname_sha512sum_sha512sum)
 # _FUNCTION_TRANSFORM (_pathname_transform_bruteforce _pathname_transform_cd_pwd _pathname_transform_realpath)
 # _MY_GID
 # _MY_UID
@@ -739,16 +682,16 @@ function _binary_validate_setup()
   # _eko_v
   # _pathname_md5sum_md5sum (_FUNCTION_SUM)
   # _pathname_openssl_md5sum (_FUNCTION_SUM)
-  # _pathname_openssl_sha1sum (_FUNCTION_SUM) (pending)
-  # _pathname_openssl_sha224sum (_FUNCTION_SUM) (pending)
-  # _pathname_openssl_sha256sum (_FUNCTION_SUM) (pending)
-  # _pathname_openssl_sha384sum (_FUNCTION_SUM) (pending)
-  # _pathname_openssl_sha512sum (_FUNCTION_SUM) (pending)
-  # _pathname_sha1sum_sha1sum (_FUNCTION_SUM) (pending)
-  # _pathname_sha224sum_sha224sum (_FUNCTION_SUM) (pending)
-  # _pathname_sha256sum_sha256sum (_FUNCTION_SUM) (pending)
-  # _pathname_sha384sum_sha384sum (_FUNCTION_SUM) (pending)
-  # _pathname_sha512sum_sha512sum (_FUNCTION_SUM) (pending)
+  # _pathname_openssl_sha1sum (_FUNCTION_SUM)
+  # _pathname_openssl_sha224sum (_FUNCTION_SUM)
+  # _pathname_openssl_sha256sum (_FUNCTION_SUM)
+  # _pathname_openssl_sha384sum (_FUNCTION_SUM)
+  # _pathname_openssl_sha512sum (_FUNCTION_SUM)
+  # _pathname_sha1sum_sha1sum (_FUNCTION_SUM)
+  # _pathname_sha224sum_sha224sum (_FUNCTION_SUM)
+  # _pathname_sha256sum_sha256sum (_FUNCTION_SUM)
+  # _pathname_sha384sum_sha384sum (_FUNCTION_SUM)
+  # _pathname_sha512sum_sha512sum (_FUNCTION_SUM)
   # _pathname_transform_bruteforce (_FUNCTION_TRANSFORM)
   # _pathname_transform_realpath (_FUNCTION_TRANSFORM)
   # _show_error
@@ -768,7 +711,7 @@ function _binary_validate_setup()
   # _BOOLEAN_SPARSE
   # _BOOLEAN_UNLINK
   # _BOOLEAN_XDEV
-  # _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum & lots more)
+  # _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum _pathname_openssl_sha1sum _pathname_openssl_sha224sum _pathname_openssl_sha256sum _pathname_openssl_sha384sum _pathname_openssl_sha512sum _pathname_sha1sum_sha1sum _pathname_sha224sum_sha224sum _pathname_sha256sum_sha256sum _pathname_sha384sum_sha384sum _pathname_sha512sum_sha512sum)
   # _FUNCTION_TRANSFORM (_pathname_transform_bruteforce _pathname_transform_cd_pwd _pathname_transform_realpath)
   # _MY_GID
   # _MY_UID
@@ -818,7 +761,7 @@ function _binary_validate_setup()
 
   # NOTE:
   # - ordering: by standalone binary or by the first named in ranked binary
-  #   sequences (pairs or triplets)
+  #   sequences (pairs, triplets, or endlessly more)
   # - each set is explicitly wrapped in $_BOOLEAN_* tests as appropriate. it's
   #   much easier to maintain & at the same time *still* test only those
   #   binaries & options used for specific actions
@@ -1008,17 +951,16 @@ function _binary_validate_setup()
     #   "-c" (use "--bytes") ("=" is optional, use "=" for uniformity)
     # - called in "function _pathname_md5sum_md5sum"
     # - called in "function _pathname_openssl_md5sum"
-    # - called in "function _pathname_openssl_sha1sum" (pending)
-    # - called in "function _pathname_openssl_sha224sum" (pending)
-    # - called in "function _pathname_openssl_sha256sum" (pending)
-    # - called in "function _pathname_openssl_sha384sum" (pending)
-    # - called in "function _pathname_openssl_sha512sum" (pending)
-    # - called in "function _pathname_sha1sum_sha1sum" (pending)
-    # - called in "function _pathname_sha224sum_sha224sum" (pending)
-    # - called in "function _pathname_sha256sum_sha256sum" (pending)
-    # - called in "function _pathname_sha384sum_sha384sum" (pending)
-    # - called in "function _pathname_sha512sum_sha512sum" (pending)
-
+    # - called in "function _pathname_openssl_sha1sum"
+    # - called in "function _pathname_openssl_sha224sum"
+    # - called in "function _pathname_openssl_sha256sum"
+    # - called in "function _pathname_openssl_sha384sum"
+    # - called in "function _pathname_openssl_sha512sum"
+    # - called in "function _pathname_sha1sum_sha1sum"
+    # - called in "function _pathname_sha224sum_sha224sum"
+    # - called in "function _pathname_sha256sum_sha256sum"
+    # - called in "function _pathname_sha384sum_sha384sum"
+    # - called in "function _pathname_sha512sum_sha512sum"
     # - $_BOOLEAN_MD5SUM is true
     # - $_OPTION_SUM_SIZE is non-zero length
 
@@ -1182,7 +1124,8 @@ function _binary_validate_setup()
     # - $_BOOLEAN_SHA1SUM is true
     # - _FUNCTION_SUM is set to _pathname_sha1sum_sha1sum (1/2)
 
-    _BINARY_NAME=sha1sum#disabled#
+    _BINARY_NAME=sha1sum
+#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
@@ -1246,7 +1189,8 @@ function _binary_validate_setup()
     # - $_BOOLEAN_SHA224SUM is true
     # - _FUNCTION_SUM is set to _pathname_sha224sum_sha224sum (1/2)
 
-    _BINARY_NAME=sha224sum#disabled#
+    _BINARY_NAME=sha224sum
+#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
@@ -1310,7 +1254,8 @@ function _binary_validate_setup()
     # - $_BOOLEAN_SHA256SUM is true
     # - _FUNCTION_SUM is set to _pathname_sha256sum_sha256sum (1/2)
 
-    _BINARY_NAME=sha256sum#disabled#
+    _BINARY_NAME=sha256sum
+#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
@@ -1374,7 +1319,8 @@ function _binary_validate_setup()
     # - $_BOOLEAN_SHA384SUM is true
     # - _FUNCTION_SUM is set to _pathname_sha384sum_sha384sum (1/2)
 
-    _BINARY_NAME=sha384sum#disabled#
+    _BINARY_NAME=sha384sum
+#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
@@ -1438,7 +1384,8 @@ function _binary_validate_setup()
     # - $_BOOLEAN_SHA512SUM is true
     # - _FUNCTION_SUM is set to _pathname_sha512sum_sha512sum (1/2)
 
-    _BINARY_NAME=sha512sum#disabled#
+    _BINARY_NAME=sha512sum
+#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
@@ -2431,15 +2378,6 @@ function _parse_parameters()
     _show_error "multiple \"-p, --pathname\" & \"-r, --relative\" are mutually exclusive"
   fi
 
-#  # - md5sum (1/2)
-#  # - "-s" specified without "-m" (1/2)
-#  # - "-n string" = true if the length of string is non-zero
-#  if [[ -n $_OPTION_SUM_SIZE ]] \
-#  && ! $_BOOLEAN_MD5SUM
-#  then
-#    _show_error \""-m, --md5sum\" not specified"
-#  fi
-
   # - *sum (1/2)
   # - "-s" specified without "-m/-1/-224/-256/-384/-512" (1/2)
   # - "-n string" = true if the length of string is non-zero
@@ -2457,7 +2395,7 @@ function _parse_parameters()
   if [[ -n $_OPTION_SUM_SIZE ]] \
   && [[ ! $_OPTION_SUM_SIZE =~ ^[0-9]+$ ]]
   then
-    _show_error "invalid sum buffer size \"$_OPTION_SUM_SIZE\" specified"
+    _show_error "invalid *sum buffer size \"$_OPTION_SUM_SIZE\" specified"
   fi
 
   # - simple logic: one requires one of the others
@@ -2509,15 +2447,6 @@ function _parse_parameters()
     _show_error \""-N, --non-sparse\" & \"-S, --sparse\" are mutually exclusive"
   fi
 
-#  # - cosmetic: stdout is extremely garbled
-#  # - "-d" & "-l" & "-m" are mutually exclusive
-#  if $_BOOLEAN_DEBUG \
-#  && $_BOOLEAN_LONG \
-#  && $_BOOLEAN_MD5SUM
-#  then
-#    _show_error \""-d, --debug\" & \"-l, --long\" & \"-m, --md5sum\" are mutually exclusive"
-#  fi
-
   # - cosmetic: stdout is extremely garbled
   # - "-d" & "-l" & "-m/-1/-224/-256/-384/-512" are mutually exclusive
   if $_BOOLEAN_DEBUG \
@@ -2564,7 +2493,7 @@ function _pathname_md5sum_md5sum()
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
   then
-    # - generate sum of the file (full)
+    # - generate *sum of the file (full)
     _ST_SUM=$(md5sum -- "$_ST_NAME" 2>/dev/null)
 
     # - ${parameter/pattern/string}
@@ -2576,7 +2505,7 @@ function _pathname_md5sum_md5sum()
     _ST_SUM=${_ST_SUM/%  "$_ST_NAME"/}
 #- new -#
   else
-    # - generate sum of the file ($_OPTION_SUM_SIZE)
+    # - generate *sum of the file ($_OPTION_SUM_SIZE)
     _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | md5sum -- -)
 
     # - ${parameter/pattern/string}
@@ -2587,7 +2516,6 @@ function _pathname_md5sum_md5sum()
   _eko_iod "#- _pathname_md5sum_md5sum -#"
 }
 
-#+#foobar
 function _pathname_openssl_md5sum()
 {
   _eko_iod "#+ _pathname_openssl_md5sum +#"
@@ -2608,7 +2536,7 @@ function _pathname_openssl_md5sum()
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
   then
-    # - generate sum of the file (full)
+    # - generate *sum of the file (full)
     _ST_SUM=$(openssl dgst -md5 "$_ST_NAME" 2>/dev/null)
 
     # - ${parameter/pattern/string}
@@ -2620,7 +2548,7 @@ function _pathname_openssl_md5sum()
     _ST_SUM=${_ST_SUM/#MD5("$_ST_NAME")= /}
 #- new -#
   else
-    # - generate sum of the file ($_OPTION_SUM_SIZE)
+    # - generate *sum of the file ($_OPTION_SUM_SIZE)
     _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | openssl dgst -md5)
 
     # - ${parameter/pattern/string}
@@ -2630,15 +2558,46 @@ function _pathname_openssl_md5sum()
 
   _eko_iod "#- _pathname_openssl_md5sum -#"
 }
-#-#foobar
 
-#+#foobar
 function _pathname_openssl_sha1sum()
 {
   _eko_iod "#+ _pathname_openssl_sha1sum +#"
 
-  # - informative(?) placeholder
-  _ST_SUM="openssl sha1sum"
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # _OPTION_SUM_SIZE
+  # _ST_NAME (contrivance. not from stat(2))
+  # _ST_SIZE
+  # _ST_SUM (contrivance. not from stat(2))
+
+  # binaries:
+  # head
+  # openssl (fallback to supported *sum variants: md5 & sha1/224/256/384/512)
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_OPTION_SUM_SIZE ]]
+  then
+    # - generate *sum of the file (full)
+    _ST_SUM=$(openssl dgst -sha1 "$_ST_NAME" 2>/dev/null)
+
+    # - ${parameter/pattern/string}
+    # - strip "SHA1(<pathname>)= " prefix from output. keep the rest
+#+ old +#
+#    _ST_SUM=${_ST_SUM/#SHA1($_ST_NAME)= /}
+#- old -#
+#+ new +#
+    _ST_SUM=${_ST_SUM/#SHA1("$_ST_NAME")= /}
+#- new -#
+  else
+    # - generate *sum of the file ($_OPTION_SUM_SIZE)
+    _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | openssl dgst -sha1)
+
+    # - ${parameter/pattern/string}
+    # - strip "(stdin)= " prefix from output. keep the rest
+    _ST_SUM=${_ST_SUM/#(stdin)= /}
+  fi
 
   _eko_iod "#- _pathname_openssl_sha1sum -#"
 }
@@ -2647,8 +2606,41 @@ function _pathname_openssl_sha224sum()
 {
   _eko_iod "#+ _pathname_openssl_sha224sum +#"
 
-  # - informative(?) placeholder
-  _ST_SUM="openssl sha224sum"
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # _OPTION_SUM_SIZE
+  # _ST_NAME (contrivance. not from stat(2))
+  # _ST_SIZE
+  # _ST_SUM (contrivance. not from stat(2))
+
+  # binaries:
+  # head
+  # openssl (fallback to supported *sum variants: md5 & sha1/224/256/384/512)
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_OPTION_SUM_SIZE ]]
+  then
+    # - generate *sum of the file (full)
+    _ST_SUM=$(openssl dgst -sha224 "$_ST_NAME" 2>/dev/null)
+
+    # - ${parameter/pattern/string}
+    # - strip "SHA224(<pathname>)= " prefix from output. keep the rest
+#+ old +#
+#    _ST_SUM=${_ST_SUM/#SHA224($_ST_NAME)= /}
+#- old -#
+#+ new +#
+    _ST_SUM=${_ST_SUM/#SHA224("$_ST_NAME")= /}
+#- new -#
+  else
+    # - generate *sum of the file ($_OPTION_SUM_SIZE)
+    _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | openssl dgst -sha224)
+
+    # - ${parameter/pattern/string}
+    # - strip "(stdin)= " prefix from output. keep the rest
+    _ST_SUM=${_ST_SUM/#(stdin)= /}
+  fi
 
   _eko_iod "#- _pathname_openssl_sha224sum -#"
 }
@@ -2657,8 +2649,41 @@ function _pathname_openssl_sha256sum()
 {
   _eko_iod "#+ _pathname_openssl_sha256sum +#"
 
-  # - informative(?) placeholder
-  _ST_SUM="openssl sha256sum"
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # _OPTION_SUM_SIZE
+  # _ST_NAME (contrivance. not from stat(2))
+  # _ST_SIZE
+  # _ST_SUM (contrivance. not from stat(2))
+
+  # binaries:
+  # head
+  # openssl (fallback to supported *sum variants: md5 & sha1/224/256/384/512)
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_OPTION_SUM_SIZE ]]
+  then
+    # - generate *sum of the file (full)
+    _ST_SUM=$(openssl dgst -sha256 "$_ST_NAME" 2>/dev/null)
+
+    # - ${parameter/pattern/string}
+    # - strip "SHA256(<pathname>)= " prefix from output. keep the rest
+#+ old +#
+#    _ST_SUM=${_ST_SUM/#SHA256($_ST_NAME)= /}
+#- old -#
+#+ new +#
+    _ST_SUM=${_ST_SUM/#SHA256("$_ST_NAME")= /}
+#- new -#
+  else
+    # - generate *sum of the file ($_OPTION_SUM_SIZE)
+    _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | openssl dgst -sha256)
+
+    # - ${parameter/pattern/string}
+    # - strip "(stdin)= " prefix from output. keep the rest
+    _ST_SUM=${_ST_SUM/#(stdin)= /}
+  fi
 
   _eko_iod "#- _pathname_openssl_sha256sum -#"
 }
@@ -2667,8 +2692,41 @@ function _pathname_openssl_sha384sum()
 {
   _eko_iod "#+ _pathname_openssl_sha384sum +#"
 
-  # - informative(?) placeholder
-  _ST_SUM="openssl sha384sum"
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # _OPTION_SUM_SIZE
+  # _ST_NAME (contrivance. not from stat(2))
+  # _ST_SIZE
+  # _ST_SUM (contrivance. not from stat(2))
+
+  # binaries:
+  # head
+  # openssl (fallback to supported *sum variants: md5 & sha1/224/256/384/512)
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_OPTION_SUM_SIZE ]]
+  then
+    # - generate *sum of the file (full)
+    _ST_SUM=$(openssl dgst -sha384 "$_ST_NAME" 2>/dev/null)
+
+    # - ${parameter/pattern/string}
+    # - strip "SHA384(<pathname>)= " prefix from output. keep the rest
+#+ old +#
+#    _ST_SUM=${_ST_SUM/#SHA384($_ST_NAME)= /}
+#- old -#
+#+ new +#
+    _ST_SUM=${_ST_SUM/#SHA384("$_ST_NAME")= /}
+#- new -#
+  else
+    # - generate *sum of the file ($_OPTION_SUM_SIZE)
+    _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | openssl dgst -sha384)
+
+    # - ${parameter/pattern/string}
+    # - strip "(stdin)= " prefix from output. keep the rest
+    _ST_SUM=${_ST_SUM/#(stdin)= /}
+  fi
 
   _eko_iod "#- _pathname_openssl_sha384sum -#"
 }
@@ -2677,12 +2735,44 @@ function _pathname_openssl_sha512sum()
 {
   _eko_iod "#+ _pathname_openssl_sha512sum +#"
 
-  # - informative(?) placeholder
-  _ST_SUM="openssl sha512sum"
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # _OPTION_SUM_SIZE
+  # _ST_NAME (contrivance. not from stat(2))
+  # _ST_SIZE
+  # _ST_SUM (contrivance. not from stat(2))
+
+  # binaries:
+  # head
+  # openssl (fallback to supported *sum variants: md5 & sha1/224/256/384/512)
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_OPTION_SUM_SIZE ]]
+  then
+    # - generate *sum of the file (full)
+    _ST_SUM=$(openssl dgst -sha512 "$_ST_NAME" 2>/dev/null)
+
+    # - ${parameter/pattern/string}
+    # - strip "SHA512(<pathname>)= " prefix from output. keep the rest
+#+ old +#
+#    _ST_SUM=${_ST_SUM/#SHA512($_ST_NAME)= /}
+#- old -#
+#+ new +#
+    _ST_SUM=${_ST_SUM/#SHA512("$_ST_NAME")= /}
+#- new -#
+  else
+    # - generate *sum of the file ($_OPTION_SUM_SIZE)
+    _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | openssl dgst -sha512)
+
+    # - ${parameter/pattern/string}
+    # - strip "(stdin)= " prefix from output. keep the rest
+    _ST_SUM=${_ST_SUM/#(stdin)= /}
+  fi
 
   _eko_iod "#- _pathname_openssl_sha512sum -#"
 }
-#-#foobar
 
 function _pathname_redundant_check()
 {
@@ -2808,7 +2898,7 @@ function _pathname_sha1sum_sha1sum()
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
   then
-    # - generate sum of the file (full)
+    # - generate *sum of the file (full)
     _ST_SUM=$(sha1sum -- "$_ST_NAME" 2>/dev/null)
 
     # - ${parameter/pattern/string}
@@ -2820,7 +2910,7 @@ function _pathname_sha1sum_sha1sum()
     _ST_SUM=${_ST_SUM/%  "$_ST_NAME"/}
 #- new -#
   else
-    # - generate sum of the file ($_OPTION_SUM_SIZE)
+    # - generate *sum of the file ($_OPTION_SUM_SIZE)
     _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | sha1sum -- -)
 
     # - ${parameter/pattern/string}
@@ -2851,7 +2941,7 @@ function _pathname_sha224sum_sha224sum()
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
   then
-    # - generate sum of the file (full)
+    # - generate *sum of the file (full)
     _ST_SUM=$(sha224sum -- "$_ST_NAME" 2>/dev/null)
 
     # - ${parameter/pattern/string}
@@ -2863,7 +2953,7 @@ function _pathname_sha224sum_sha224sum()
     _ST_SUM=${_ST_SUM/%  "$_ST_NAME"/}
 #- new -#
   else
-    # - generate sum of the file ($_OPTION_SUM_SIZE)
+    # - generate *sum of the file ($_OPTION_SUM_SIZE)
     _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | sha224sum -- -)
 
     # - ${parameter/pattern/string}
@@ -2894,7 +2984,7 @@ function _pathname_sha256sum_sha256sum()
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
   then
-    # - generate sum of the file (full)
+    # - generate *sum of the file (full)
     _ST_SUM=$(sha256sum -- "$_ST_NAME" 2>/dev/null)
 
     # - ${parameter/pattern/string}
@@ -2906,7 +2996,7 @@ function _pathname_sha256sum_sha256sum()
     _ST_SUM=${_ST_SUM/%  "$_ST_NAME"/}
 #- new -#
   else
-    # - generate sum of the file ($_OPTION_SUM_SIZE)
+    # - generate *sum of the file ($_OPTION_SUM_SIZE)
     _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | sha256sum -- -)
 
     # - ${parameter/pattern/string}
@@ -2937,7 +3027,7 @@ function _pathname_sha384sum_sha384sum()
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
   then
-    # - generate sum of the file (full)
+    # - generate *sum of the file (full)
     _ST_SUM=$(sha384sum -- "$_ST_NAME" 2>/dev/null)
 
     # - ${parameter/pattern/string}
@@ -2949,7 +3039,7 @@ function _pathname_sha384sum_sha384sum()
     _ST_SUM=${_ST_SUM/%  "$_ST_NAME"/}
 #- new -#
   else
-    # - generate sum of the file ($_OPTION_SUM_SIZE)
+    # - generate *sum of the file ($_OPTION_SUM_SIZE)
     _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | sha384sum -- -)
 
     # - ${parameter/pattern/string}
@@ -2980,7 +3070,7 @@ function _pathname_sha512sum_sha512sum()
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
   then
-    # - generate sum of the file (full)
+    # - generate *sum of the file (full)
     _ST_SUM=$(sha512sum -- "$_ST_NAME" 2>/dev/null)
 
     # - ${parameter/pattern/string}
@@ -2992,7 +3082,7 @@ function _pathname_sha512sum_sha512sum()
     _ST_SUM=${_ST_SUM/%  "$_ST_NAME"/}
 #- new -#
   else
-    # - generate sum of the file ($_OPTION_SUM_SIZE)
+    # - generate *sum of the file ($_OPTION_SUM_SIZE)
     _ST_SUM=$(head --bytes=$_OPTION_SUM_SIZE -- "$_ST_NAME" 2>/dev/null | sha512sum -- -)
 
     # - ${parameter/pattern/string}
@@ -3311,20 +3401,14 @@ function _pathnames_scan()
   # _ARRAY_PATHNAMES (single dimension indexed array)
   # _BOOLEAN_DRYRUN
   # _BOOLEAN_LONG
-  # _BOOLEAN_MD5SUM
   # _BOOLEAN_NANOSECONDS
   # _BOOLEAN_RELATIVE
-# _BOOLEAN_SHA1SUM (add) (pending)
-# _BOOLEAN_SHA224SUM (add) (pending)
-# _BOOLEAN_SHA256SUM (add) (pending)
-# _BOOLEAN_SHA384SUM (add) (pending)
-# _BOOLEAN_SHA512SUM (add) (pending)
   # _BOOLEAN_STDOUT
   # _BOOLEAN_SUM
   # _BOOLEAN_TIMESTAMP
   # _BOOLEAN_UNLINK
   # _BOOLEAN_VERBOSE
-  # _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum & lots more)
+  # _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum _pathname_openssl_sha1sum _pathname_openssl_sha224sum _pathname_openssl_sha256sum _pathname_openssl_sha384sum _pathname_openssl_sha512sum _pathname_sha1sum_sha1sum _pathname_sha224sum_sha224sum _pathname_sha256sum_sha256sum _pathname_sha384sum_sha384sum _pathname_sha512sum_sha512sum)
   # _MY_GID
   # _MY_UID
   # _OPTIONS_CP (cp options, not script options)
@@ -3560,10 +3644,9 @@ function _pathnames_scan()
 
         if $_BOOLEAN_STDOUT
         then
-#          if $_BOOLEAN_MD5SUM
           if $_BOOLEAN_SUM
           then
-            # - generate sum of the file (full or $_OPTION_SUM_SIZE)
+            # - generate *sum of the file (full or $_OPTION_SUM_SIZE)
             $_FUNCTION_SUM
 #+ old +#
 #            echo "$_ST_SUM  $_ST_NAME"
@@ -3581,10 +3664,9 @@ function _pathnames_scan()
           fi
         elif $_BOOLEAN_LONG
         then
-#          if $_BOOLEAN_MD5SUM
           if $_BOOLEAN_SUM
           then
-            # - generate sum of the file (full or $_OPTION_SUM_SIZE)
+            # - generate *sum of the file (full or $_OPTION_SUM_SIZE)
             $_FUNCTION_SUM
             printf "%4s %10s %s %4s %4s %3s %14s %s %s %s %s %s\n" \
             $_ST_DEV $_ST_INO $_ST_MODE $_ST_NLINK $_ST_UID $_ST_GID \
@@ -3599,10 +3681,9 @@ function _pathnames_scan()
           fi
         elif $_BOOLEAN_VERBOSE
         then
-#          if $_BOOLEAN_MD5SUM
           if $_BOOLEAN_SUM
           then
-            # - generate sum of the file (full or $_OPTION_SUM_SIZE)
+            # - generate *sum of the file (full or $_OPTION_SUM_SIZE)
             $_FUNCTION_SUM
 #+ old +#
 #            echo "
@@ -3760,12 +3841,12 @@ Optional parameters:
   -v, --verbose       Display verbose information (variable names/contents)
   -x, --xdev          Do not descend directories on other filesystems
   -m, --md5sum        Generate an md5sum for each file
-  -1, --sha1sum       Generate an sha1sum for each file (TODO. unimplemented)
-  -224, --sha224sum   Generate an sha224sum for each file (TODO. unimplemented)
-  -256, --sha256sum   Generate an sha256sum for each file (TODO. unimplemented)
-  -384, --sha384sum   Generate an sha384sum for each file (TODO. unimplemented)
-  -512, --sha512sum   Generate an sha512sum for each file (TODO. unimplemented)
-  -s, --size          Specify the maximum \""head\"" size of each file to sum
+  -1, --sha1sum       Generate an sha1sum for each file
+  -224, --sha224sum   Generate an sha224sum for each file
+  -256, --sha256sum   Generate an sha256sum for each file
+  -384, --sha384sum   Generate an sha384sum for each file
+  -512, --sha512sum   Generate an sha512sum for each file
+  -s, --size          Specify the maximum \""head\"" size of each file to *sum
   -?, -h, --help      Display this help text, useful as it is
   -W, -w, --warning   Display big fat warning. don't say I didn't tell you!
 

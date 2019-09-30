@@ -14,12 +14,16 @@
 # TODO:
 # - ensure the builtin/binary/variable/function listings are complete
 # - ensure the changelog has been accurately updated. that'll be fun :(
-# - possibly remove select portions of the script that have beein #'d out
-# ^ specifically #+ old +#/#- old -#, #+ new +#/#- new -#, & #disabled#
+# - possibly remove select portions of the script that have been #'d out
+# ^ specifically #+ old +#/#- old -#, #+ new +#/#- new -#,
+#   #+ marker testing +#/#- marker testing -#, & #disabled#
+# ^ other "marker" tags, but only the tags themselves
 
 # TODO:
 # - possibly use printf elsewhere (everywhere?) (verbose output for settings?)
 # ^ this will require a complete rethink of how _eko_v currently does things
+# - alternate approach: define _eko_pv (verbose via printf) & use that for
+#   special occasions
 
 # TODO:
 # - figure out hardlinking
@@ -33,6 +37,9 @@
 #   work on the routine(s) that would follow
 
 # 2019-09-30
+# - "function _parse_parameters" additional magic for dealing with *sum
+#   conflicts. new routines are in #+ marker conflict +#/#- marker conflict -#
+# ^ some cleanup from the various tests needs to be done
 # - overall cosmetic cleanup of the entire script. there are entirely too many
 #   small changes to list everything.
 # - "function _parse_parameters" added the following variable:
@@ -1917,6 +1924,20 @@ function _parse_parameters()
         else
           _BOOLEAN_SHA1SUM=true
         fi
+#+ marker conflict +#
+if [[ 1 == 1 ]]
+then
+if $_BOOLEAN_SHA1SUM
+then
+  if $_BOOLEAN_SUM
+  then
+    _show_error "sha1sum conflict"
+  else
+    _BOOLEAN_SUM=true
+  fi
+fi
+fi
+#- marker conflict -#
       ;;
       ( -224 \
       | --sha224sum )
@@ -1926,6 +1947,20 @@ function _parse_parameters()
         else
           _BOOLEAN_SHA224SUM=true
         fi
+#+ marker conflict +#
+if [[ 1 == 1 ]]
+then
+if $_BOOLEAN_SHA224SUM
+then
+  if $_BOOLEAN_SUM
+  then
+    _show_error "sha224sum conflict"
+  else
+    _BOOLEAN_SUM=true
+  fi
+fi
+fi
+#- marker conflict -#
       ;;
       ( -256 \
       | --sha256sum )
@@ -1935,6 +1970,20 @@ function _parse_parameters()
         else
           _BOOLEAN_SHA256SUM=true
         fi
+#+ marker conflict +#
+if [[ 1 == 1 ]]
+then
+if $_BOOLEAN_SHA256SUM
+then
+  if $_BOOLEAN_SUM
+  then
+    _show_error "sha256sum conflict"
+  else
+    _BOOLEAN_SUM=true
+  fi
+fi
+fi
+#- marker conflict -#
       ;;
       ( -384 \
       | --sha384sum )
@@ -1944,6 +1993,20 @@ function _parse_parameters()
         else
           _BOOLEAN_SHA384SUM=true
         fi
+#+ marker conflict +#
+if [[ 1 == 1 ]]
+then
+if $_BOOLEAN_SHA384SUM
+then
+  if $_BOOLEAN_SUM
+  then
+    _show_error "sha384sum conflict"
+  else
+    _BOOLEAN_SUM=true
+  fi
+fi
+fi
+#- marker conflict -#
       ;;
       ( -512 \
       | --sha512sum )
@@ -1953,6 +2016,20 @@ function _parse_parameters()
         else
           _BOOLEAN_SHA512SUM=true
         fi
+#+ marker conflict +#
+if [[ 1 == 1 ]]
+then
+if $_BOOLEAN_SHA512SUM
+then
+  if $_BOOLEAN_SUM
+  then
+    _show_error "sha512sum conflict"
+  else
+    _BOOLEAN_SUM=true
+  fi
+fi
+fi
+#- marker conflict -#
       ;;
       ( -D \
       | --dry-run )
@@ -2039,6 +2116,20 @@ function _parse_parameters()
         else
           _BOOLEAN_MD5SUM=true
         fi
+#+ marker conflict +#
+if [[ 1 == 1 ]]
+then
+if $_BOOLEAN_MD5SUM
+then
+  if $_BOOLEAN_SUM
+  then
+    _show_error "md5sum conflict"
+  else
+    _BOOLEAN_SUM=true
+  fi
+fi
+fi
+#- marker conflict -#
       ;;
       ( -n \
       | --nanoseconds )
@@ -2133,6 +2224,22 @@ function _parse_parameters()
     shift
   done
 
+  #+ marker conflict +#
+  if [[ 1 == 1 ]]
+  then
+  if ! $_BOOLEAN_MD5SUM \
+  && ! $_BOOLEAN_SHA1SUM \
+  && ! $_BOOLEAN_SHA224SUM \
+  && ! $_BOOLEAN_SHA256SUM \
+  && ! $_BOOLEAN_SHA384SUM \
+  && ! $_BOOLEAN_SHA512SUM \
+  && $_BOOLEAN_SUM
+  then
+    _BOOLEAN_SUM=false
+  fi
+  fi
+  #- marker conflict -#
+
   #+ marker testing +#
   # - it sort of works here, but it appears some of the tests are redundant.
   #   explore further (later) to discover what can be removed
@@ -2222,7 +2329,7 @@ function _parse_parameters()
   #   "function _parse_parameters"
   # - alternately, if 2 or more *different* *sum options are specified, throw
   #   an error & quit. this is probably the better approach
-  if [[ 1 == 1 ]]
+  if [[ 0 == 1 ]]
   then
   if $_BOOLEAN_MD5SUM \
   || $_BOOLEAN_SHA1SUM \

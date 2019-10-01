@@ -12,13 +12,15 @@
 # - optionally unlink files that were previously hardlinked
 
 # TODO:
-# - ensure the builtin/binary/variable/function listings are complete
+# - "function _trap" needs attention. it correctly deletes the temp file, but
+#   it restores an incorrect timestamp from I know not where
 # - ensure the changelog has been accurately updated. that'll be fun :(
-# - remove select portions of the script that have been #'d out. specifically:
+# - remove select portions of the script that have been #'d out (done?)
+# - remove the following headers/footers & the conditional wraps within each:
 #   #+ marker *sum size conflict +# / #- marker *sum size conflict -#
 #   #+ marker *sum type conflict +# / #- marker *sum type conflict -#
 #   #+ marker edit +# / #- marker edit -#
-#   #disabled#
+#   #disabled# < keep this one (useful for testing)
 
 # TODO:
 # - possibly use printf elsewhere (everywhere?) (verbose output for settings?)
@@ -35,9 +37,31 @@
 # - shitwall some of the ideas that have been suggested by others. at the very
 #   least, having a properly populated sqlite3 db (regardless of how
 #   inefficiently it is generated) will provide me with the required data to
-#   work on the routine(s) that would follow
+#   work on the routine(s) that would follow. all of this can be done in
+#   standalone script snippets for testing so there's no need to retain the
+#   sqlite3 stub in this script
 
 # 2019-10-01
+# - "function _pathnames_scan" added/changed the following lines:
+#  add: # - 4: "$_MY_GID" for additional finger pointing :)
+#  was: # - 4: "$PPID" for a degree of uniqueness coupled with the
+#   is: # - 5: "$PPID" for a degree of uniqueness coupled with the
+#  was: # - 5: "$$" for an additional degree of uniqueness in case the user
+#   is: # - 6: "$$" for an additional degree of uniqueness in case the user
+#  was: _SU_NAME="${_ST_NAME}.scanfs.$_MY_UID.$PPID.$$"
+#   is: _SU_NAME="${_ST_NAME}.scanfs.$_MY_UID:$_MY_GID.$PPID.$$"
+#  was: printf "%4s %10s %s %4s %4s %3s %14s %s %s %s %s %s\n" \
+#   is: printf "%4s %10s %s %4s %4s %-3s %14s %s %s %s %s %s\n" \
+#  was: printf "%4s %10s %s %4s %4s %3s %14s %s %s %s %s\n" \
+#   is: printf "%4s %10s %s %4s %4s %-3s %14s %s %s %s %s\n" \
+# - performed simple timing tests of the various *sum routines to get a rough
+#   idea of their relative performance. kept the raw information in the script
+#   for future reference. look for the following tags:
+#   #+ marker binary size/speed +# / #- marker binary size/speed -#
+# - "function _sqlite3_test" removed. until I get that much anticipated "AHA!"
+#   moment regarding *efficiently* populating the db with potentially millions
+#   of files, this unused function is just useless clutter
+#   (NOTE: the function is removed, but the requisite logic is retained)
 # - "function _show_help" changed the following lines:
 #  was:             additive: \"-p\"
 #  was: last invocation used: \"-s\"
@@ -45,11 +69,11 @@
 #   is:          additive: \"-p\"
 #   is:            toggle: \"-D -E -H -N -S -U -d -l -n -r -v -x\"
 #   is: single invocation: \"-m -1 -224 -256 -384 -512, -s\"
-# - "function _parse_parameters" added conditionals for dealing with *sum size
-#   conflicts. new routine is wrapped in the following tags temporarily:
+# - "function _parse_parameters" added logic for dealing with *sum size
+#   conflicts. the new routine is wrapped in the following tags temporarily:
 #   #+ marker *sum size conflict +# / #- marker *sum size conflict -#
-# - "function _parse_parameters" added conditionals for dealing with *sum type
-#   conflicts. new routines are wrapped in the following tags temporarily:
+# - "function _parse_parameters" added logic for dealing with *sum type
+#   conflicts. the new routines are wrapped in the following tags temporarily:
 #   #+ marker *sum type conflict +# / #- marker *sum type conflict -#
 # - overall cosmetic cleanup of the entire script. there are entirely too many
 #   small changes to list everything.
@@ -79,8 +103,8 @@
 # - "function _show_help" changed the following line:
 #  was: -s, --size          Specify the maximum \""head\"" size of each file to md5sum
 #   is: -s, --size          Specify the maximum \""head\"" size of each file to *sum
-# - changed the following lines in "function _pathname_md5sum_md5sum", &
-#   "function _pathname_openssl_md5sum"
+# - "function _pathname_md5sum_md5sum" & "function _pathname_openssl_md5sum"
+#   changed the following lines:
 #  was: # - generate md5sum of the file (full)
 #   is: # - generate *sum of the file (full)
 #  was: # - generate md5sum of the file ($_OPTION_SUM_SIZE)
@@ -322,11 +346,6 @@
 # TODO:
 # - allow for regular files to be specified with "-p, --pathname"
 # - much *much* later, if ever. probably never
-
-# NOTE:
-# - random scribbles in "function _sqlite3_test"
-# - right idea, wrong place. create/populate/close the sqlite3 db in
-#   "function _pathnames_scan"?
 
 # NOTE: (to self) (& others, if you're bored. hi there!)
 # - look for anything with the following tags: EDIT FIXME IDEA NOTE ORDER TODO
@@ -603,7 +622,8 @@ function _trap()
   #   variables will be pointed at the last directory/file processed along
   #   with the parent directory's timestamp, so cleaning up will be fairly
   #   straightforward
-  # - also: _SU_NAME="${_ST_NAME}.scanfs.$_MY_UID.$PPID.$$" (already set)
+  # - also: _SU_NAME="${_ST_NAME}.scanfs.$_MY_UID:$_MY_GID.$PPID.$$"
+  #   (already set in "function _pathnames_scan")
 
   # NOTE:
   # - regarding the parent directory's timestamp (specifically $_SD_MTIM_HMS),
@@ -670,6 +690,9 @@ function _trap()
     if ! $_BOOLEAN_DRYRUN
     then
       rm $_OPTIONS_RM -- "$_SU_NAME"
+
+      # FIXME:
+      # - not 100% certain, but I *think* the wrong timestamp is being used
 
       # - there is a single (known) special case where attempting to restore
       #   the parent directory's timestamp will fail. script run as non-root.
@@ -1097,7 +1120,29 @@ function _binary_validate_setup()
     #   binary in its place. openssl is ~13x larger & ~1/2 the speed of
     #   "md5sum", but slow is better than an avoidable error
     # - (special thanks to vbatts for the idea of using openssl as a fallback)
-    # ^ TODO: verify size/speed comparisons
+
+#+ marker binary size/speed +#
+
+#  42668 md5sum
+# 572208 openssl
+
+# $ echo 572208 / 42668 | bc -l
+# 13.41070591544014249554
+
+# $ time for i in 1 2 3 ; do scanfs -p /usr/bin/ -m >/dev/null ; done
+# real	0m28.143s
+# user	0m9.674s
+# sys	0m4.264s
+
+# $ time for i in 1 2 3 ; do scanfs -p /usr/bin/ -m >/dev/null ; done
+# real	1m1.692s
+# user	0m40.779s
+# sys	0m9.345s
+
+# $ echo "( ( 0*60+28.143 ) / ( 1*60+1.692 ) )" | bc -l
+# .45618556701030927835
+
+#- marker binary size/speed -#
 
     #+ openssl (fallback to md5sum) +#
     # - naturally, there has to be ONE troublemaker. meh
@@ -1164,7 +1209,29 @@ function _binary_validate_setup()
     #   "openssl" binary in its place. openssl is ~13x larger & ~1/2 the speed
     #   of "sha1sum", but slow is better than an avoidable error
     # - (special thanks to vbatts for the idea of using openssl as a fallback)
-    # ^ TODO: verify size/speed comparisons
+
+#+ marker binary size/speed +#
+
+#  42668 sha1sum
+# 572208 openssl
+
+# $ echo 572208 / 42668 | bc -l
+# 13.41070591544014249554
+
+# $ time for i in 1 2 3 ; do scanfs -p /usr/bin/ -1 >/dev/null ; done
+# real	0m31.624s
+# user	0m13.314s
+# sys	0m4.519s
+
+# $ time for i in 1 2 3 ; do scanfs -p /usr/bin/ -1 >/dev/null ; done
+# real	1m3.875s
+# user	0m43.042s
+# sys	0m9.190s
+
+# $ echo "( ( 0*60+31.624 ) / ( 1*60+3.875 ) )" | bc -l
+# .49509197651663405088
+
+#- marker binary size/speed -#
 
     #+ openssl (fallback to sha1sum) +#
     # - naturally, there has to be ONE troublemaker. meh
@@ -1228,10 +1295,32 @@ function _binary_validate_setup()
     # NOTE:
     # - it's highly unlikely, but the possibility does exist that the
     #   "sha224sum" binary may not be available. if it's not, attempt to use
-    #   the "openssl" binary in its place. openssl is ~13x larger & ~1/2 the
+    #   the "openssl" binary in its place. openssl is ~11x larger & ~1/2 the
     #   speed of "sha224sum", but slow is better than an avoidable error
     # - (special thanks to vbatts for the idea of using openssl as a fallback)
-    # ^ TODO: verify size/speed comparisons
+
+#+ marker binary size/speed +#
+
+#  50860 sha224sum
+# 572208 openssl
+
+# $ echo 572208 / 50860 | bc -l
+# 11.25064883995281163979
+
+# $ time for i in 1 2 3 ; do scanfs -p /usr/bin/ -224 >/dev/null ; done
+# real	0m41.724s
+# user	0m23.357s
+# sys	0m5.231s
+
+# $ time for i in 1 2 3 ; do scanfs -p /usr/bin/ -224 >/dev/null ; done
+# real	1m13.436s
+# user	0m52.723s
+# sys	0m9.082s
+
+# $ echo "( ( 0*60+41.724 ) / ( 1*60+13.436 ) )" | bc -l
+# .56816820088240100223
+
+#- marker binary size/speed -#
 
     #+ openssl (fallback to sha224sum) +#
     # - naturally, there has to be ONE troublemaker. meh
@@ -1295,10 +1384,32 @@ function _binary_validate_setup()
     # NOTE:
     # - it's highly unlikely, but the possibility does exist that the
     #   "sha256sum" binary may not be available. if it's not, attempt to use
-    #   the "openssl" binary in its place. openssl is ~13x larger & ~1/2 the
+    #   the "openssl" binary in its place. openssl is ~11x larger & ~1/2 the
     #   speed of "sha256sum", but slow is better than an avoidable error
     # - (special thanks to vbatts for the idea of using openssl as a fallback)
-    # ^ TODO: verify size/speed comparisons
+
+#+ marker binary size/speed +#
+
+#  50860 sha256sum
+# 572208 openssl
+
+# $ echo 572208 / 50860 | bc -l
+# 11.25064883995281163979
+
+# $ time for i in 1 2 3 ; do scanfs -p /usr/bin/ -256 >/dev/null ; done
+# real	0m41.805s
+# user	0m23.580s
+# sys	0m5.078s
+
+# $ time for i in 1 2 3 ; do scanfs -p /usr/bin/ -256 >/dev/null ; done
+# real	1m13.567s
+# user	0m52.638s
+# sys	0m9.216s
+
+# $ echo "( ( 0*60+41.805 ) / ( 1*60+13.567 ) )" | bc -l
+# .56825750676254298802
+
+#- marker binary size/speed -#
 
     #+ openssl (fallback to sha256sum) +#
     # - naturally, there has to be ONE troublemaker. meh
@@ -1362,10 +1473,32 @@ function _binary_validate_setup()
     # NOTE:
     # - it's highly unlikely, but the possibility does exist that the
     #   "sha384sum" binary may not be available. if it's not, attempt to use
-    #   the "openssl" binary in its place. openssl is ~13x larger & ~1/2 the
+    #   the "openssl" binary in its place. openssl is ~6x larger & ~3/4 the
     #   speed of "sha384sum", but slow is better than an avoidable error
     # - (special thanks to vbatts for the idea of using openssl as a fallback)
-    # ^ TODO: verify size/speed comparisons
+
+#+ marker binary size/speed +#
+
+#  91820 sha384sum
+# 572208 openssl
+
+# $ echo 572208 / 91820 | bc -l
+# 6.23184491396209976040
+
+# $ time for i in 1 2 3 ; do scanfs -p /usr/bin/ -384 >/dev/null ; done
+# real	1m6.671s
+# user	0m48.863s
+# sys	0m5.922s
+
+# $ time for i in 1 2 3 ; do scanfs -p /usr/bin/ -384 >/dev/null ; done
+# real	1m28.774s
+# user	1m7.787s
+# sys	0m9.280s
+
+# $ echo "( ( 1*60+6.671 ) / ( 1*60+28.774 ) )" | bc -l
+# .75101944262959875639
+
+#- marker binary size/speed -#
 
     #+ openssl (fallback to sha384sum) +#
     # - naturally, there has to be ONE troublemaker. meh
@@ -1429,10 +1562,32 @@ function _binary_validate_setup()
     # NOTE:
     # - it's highly unlikely, but the possibility does exist that the
     #   "sha512sum" binary may not be available. if it's not, attempt to use
-    #   the "openssl" binary in its place. openssl is ~13x larger & ~1/2 the
+    #   the "openssl" binary in its place. openssl is ~6x larger & ~3/4 the
     #   speed of "sha512sum", but slow is better than an avoidable error
     # - (special thanks to vbatts for the idea of using openssl as a fallback)
-    # ^ TODO: verify size/speed comparisons
+
+#+ marker binary size/speed +#
+
+#  91820 sha512sum
+# 572208 openssl
+
+# $ echo 572208 / 91820 | bc -l
+# 6.23184491396209976040
+
+# $ time for i in 1 2 3 ; do scanfs -p /usr/bin/ -512 >/dev/null ; done
+# real	1m6.868s
+# user	0m48.880s
+# sys	0m5.935s
+
+# $ time for i in 1 2 3 ; do scanfs -p /usr/bin/ -512 >/dev/null ; done
+# real	1m28.911s
+# user	1m8.187s
+# sys	0m9.087s
+
+# $ echo "( ( 1*60+6.868 ) / ( 1*60+28.911 ) )" | bc -l
+# .75207792061724645994
+
+#- marker binary size/speed -#
 
     #+ openssl (fallback to sha512sum) +#
     # - naturally, there has to be ONE troublemaker. meh
@@ -2517,7 +2672,6 @@ fi
   _eko_iod "#- _parse_parameters -#"
 }
 
-#+ marker edit +#
 function _pathname_md5sum_md5sum()
 {
   _eko_iod "#+ _pathname_md5sum_md5sum +#"
@@ -2528,7 +2682,6 @@ function _pathname_md5sum_md5sum()
   # variables:
   # _OPTION_SUM_SIZE
   # _ST_NAME (contrivance. not from stat(2))
-  # _ST_SIZE
   # _ST_SUM (contrivance. not from stat(2))
 
   # binaries:
@@ -2566,7 +2719,6 @@ function _pathname_openssl_md5sum()
   # variables:
   # _OPTION_SUM_SIZE
   # _ST_NAME (contrivance. not from stat(2))
-  # _ST_SIZE
   # _ST_SUM (contrivance. not from stat(2))
 
   # binaries:
@@ -2604,7 +2756,6 @@ function _pathname_openssl_sha1sum()
   # variables:
   # _OPTION_SUM_SIZE
   # _ST_NAME (contrivance. not from stat(2))
-  # _ST_SIZE
   # _ST_SUM (contrivance. not from stat(2))
 
   # binaries:
@@ -2642,7 +2793,6 @@ function _pathname_openssl_sha224sum()
   # variables:
   # _OPTION_SUM_SIZE
   # _ST_NAME (contrivance. not from stat(2))
-  # _ST_SIZE
   # _ST_SUM (contrivance. not from stat(2))
 
   # binaries:
@@ -2680,7 +2830,6 @@ function _pathname_openssl_sha256sum()
   # variables:
   # _OPTION_SUM_SIZE
   # _ST_NAME (contrivance. not from stat(2))
-  # _ST_SIZE
   # _ST_SUM (contrivance. not from stat(2))
 
   # binaries:
@@ -2718,7 +2867,6 @@ function _pathname_openssl_sha384sum()
   # variables:
   # _OPTION_SUM_SIZE
   # _ST_NAME (contrivance. not from stat(2))
-  # _ST_SIZE
   # _ST_SUM (contrivance. not from stat(2))
 
   # binaries:
@@ -2756,7 +2904,6 @@ function _pathname_openssl_sha512sum()
   # variables:
   # _OPTION_SUM_SIZE
   # _ST_NAME (contrivance. not from stat(2))
-  # _ST_SIZE
   # _ST_SUM (contrivance. not from stat(2))
 
   # binaries:
@@ -2898,7 +3045,6 @@ function _pathname_sha1sum_sha1sum()
   # variables:
   # _OPTION_SUM_SIZE
   # _ST_NAME (contrivance. not from stat(2))
-  # _ST_SIZE
   # _ST_SUM (contrivance. not from stat(2))
 
   # binaries:
@@ -2936,7 +3082,6 @@ function _pathname_sha224sum_sha224sum()
   # variables:
   # _OPTION_SUM_SIZE
   # _ST_NAME (contrivance. not from stat(2))
-  # _ST_SIZE
   # _ST_SUM (contrivance. not from stat(2))
 
   # binaries:
@@ -2974,7 +3119,6 @@ function _pathname_sha256sum_sha256sum()
   # variables:
   # _OPTION_SUM_SIZE
   # _ST_NAME (contrivance. not from stat(2))
-  # _ST_SIZE
   # _ST_SUM (contrivance. not from stat(2))
 
   # binaries:
@@ -3012,7 +3156,6 @@ function _pathname_sha384sum_sha384sum()
   # variables:
   # _OPTION_SUM_SIZE
   # _ST_NAME (contrivance. not from stat(2))
-  # _ST_SIZE
   # _ST_SUM (contrivance. not from stat(2))
 
   # binaries:
@@ -3050,7 +3193,6 @@ function _pathname_sha512sum_sha512sum()
   # variables:
   # _OPTION_SUM_SIZE
   # _ST_NAME (contrivance. not from stat(2))
-  # _ST_SIZE
   # _ST_SUM (contrivance. not from stat(2))
 
   # binaries:
@@ -3077,7 +3219,6 @@ function _pathname_sha512sum_sha512sum()
 
   _eko_iod "#- _pathname_sha512sum_sha512sum -#"
 }
-#- marker edit -#
 
 function _pathname_transform_bruteforce()
 {
@@ -3342,6 +3483,10 @@ function _pathname_validate()
   # - "-z string" = true if the length of string is zero
   if [[ -z $(find "$_OPTION_PATHNAME" -type d -maxdepth 0 2>/dev/null) ]]
   then
+#+ marker testing +#
+# - possibly keep this. it could be useful for troubleshooting
+_eko_v "            \$_OPTION_PATHNAME: \"$_OPTION_PATHNAME\" (symlink)"
+#- marker testing -#
     # - correctly decipher the pathname if the very last element is a symlink
     # - take note of the explicit trailing "/". it's part of the magic
     if [[ -n $(find "$_OPTION_PATHNAME/" -type d -maxdepth 0 2>/dev/null) ]]
@@ -3378,6 +3523,7 @@ function _pathnames_scan()
 
   # functions:
   # _eko_iod
+  # _eko_v
 
   # variables:
   # $$
@@ -3386,6 +3532,7 @@ function _pathnames_scan()
   # _ARRAY_HOLDNAMES (single dimension indexed array)
   # _ARRAY_PATHNAMES (single dimension indexed array)
   # _BOOLEAN_DRYRUN
+  # _BOOLEAN_HARDLINK
   # _BOOLEAN_LONG
   # _BOOLEAN_NANOSECONDS
   # _BOOLEAN_RELATIVE
@@ -3394,6 +3541,7 @@ function _pathnames_scan()
   # _BOOLEAN_TIMESTAMP
   # _BOOLEAN_UNLINK
   # _BOOLEAN_VERBOSE
+  # _BOOLEAN_XDEV
   # _FUNCTION_SUM (_pathname_md5sum_md5sum _pathname_openssl_md5sum _pathname_openssl_sha1sum _pathname_openssl_sha224sum _pathname_openssl_sha256sum _pathname_openssl_sha384sum _pathname_openssl_sha512sum _pathname_sha1sum_sha1sum _pathname_sha224sum_sha224sum _pathname_sha256sum_sha256sum _pathname_sha384sum_sha384sum _pathname_sha512sum_sha512sum)
   # _MY_GID
   # _MY_UID
@@ -3430,6 +3578,9 @@ function _pathnames_scan()
   # sort
   # touch
 
+  # builtins:
+  # read
+
   # NOTE:
   # - no need to manipulate $IFS (now supports pathnames containing 0x09 [tab]
   #   & 0x20 [space]. does not support pathnames containing 0x0a [linefeed])
@@ -3447,10 +3598,9 @@ function _pathnames_scan()
   #   "function _binary_validate_setup"
 
   # NOTE:
-  # - if the unlinking is interrupted for any reason, the original file will
-  #   still be in place. the worst that can happen is there will be a stray
-  #   temporary file & the parent directory's timestamp will be altered. this
-  #   is now handled by "function _trap"
+  # - if unlinking is interrupted for any reason, the original file will still
+  #   be in place. the temporary file will be removed & the parent directory's
+  #   timestamp will be restored. cleanup is handled by "function _trap"
 
   # NOTE:
   # - acquire only _SD_MTIM_* & _SD_NAME from outer find (with -printf)
@@ -3571,12 +3721,13 @@ function _pathnames_scan()
           # - 2: "scanfs" to make it easy to find stray temporary files in
           #      case disaster strikes
           # - 3: "$_MY_UID" for finger pointing :)
-          # - 4: "$PPID" for a degree of uniqueness coupled with the
+          # - 4: "$_MY_GID" for additional finger pointing :)
+          # - 5: "$PPID" for a degree of uniqueness coupled with the
           #      following:
-          # - 5: "$$" for an additional degree of uniqueness in case the user
+          # - 6: "$$" for an additional degree of uniqueness in case the user
           #      is *ahem* unwise enough to process the same directory
           #      hierarchy simultaneously
-          _SU_NAME="${_ST_NAME}.scanfs.$_MY_UID.$PPID.$$"
+          _SU_NAME="${_ST_NAME}.scanfs.$_MY_UID:$_MY_GID.$PPID.$$"
 
           # - copy the original file (with various options) to a unique file
           # - take note of what is & what is not doublequoted
@@ -3644,13 +3795,13 @@ function _pathnames_scan()
           then
             # - generate *sum of the file (full or $_OPTION_SUM_SIZE)
             $_FUNCTION_SUM
-            printf "%4s %10s %s %4s %4s %3s %14s %s %s %s %s %s\n" \
+            printf "%4s %10s %s %4s %4s %-3s %14s %s %s %s %s %s\n" \
             $_ST_DEV $_ST_INO $_ST_MODE $_ST_NLINK $_ST_UID $_ST_GID \
             $_ST_SIZE $_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC \
             $_ST_SUM \
             "$_ST_NAME"
           else
-            printf "%4s %10s %s %4s %4s %3s %14s %s %s %s %s\n" \
+            printf "%4s %10s %s %4s %4s %-3s %14s %s %s %s %s\n" \
             $_ST_DEV $_ST_INO $_ST_MODE $_ST_NLINK $_ST_UID $_ST_GID \
             $_ST_SIZE $_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC \
             "$_ST_NAME"
@@ -3782,9 +3933,9 @@ Optional parameters:
   -S, --sparse        Explicitly force sparse copies when unlinking files
   -U, --unlink        Unlink previously hardlinked files
   -d, --debug         Display debugging information (function names/entry/exit)
-  -l, --long          Display all information in a format similar to \""ls -in\""
+  -l, --long          Display pathname listings in a format similar to \""ls -in\""
   -n, --nanoseconds   Display nanoseconds in long & verbose reports
-  -r, --relative      Output relative instead of absolute pathnames
+  -r, --relative      Display relative instead of absolute pathnames
   -v, --verbose       Display verbose information (variable names/contents)
   -x, --xdev          Do not descend directories on other filesystems
   -m, --md5sum        Generate an md5sum for each file
@@ -3848,145 +3999,6 @@ TL;DR version: You break it, you get to keep both halves
   _eko_iod "#- _show_warning -#"
 
   exit 0
-}
-
-function _sqlite3_test()
-{
-  _eko_iod "#+ _sqlite3_test +#"
-
-  # NOTE:
-  # - everything's up in the air at the moment, so the below listings are
-  #   deliberately prefixed with "#  #"
-
-#  # functions:
-#  # _eko_iod
-
-#  # variables:
-#  # _ST_DEV
-#  # _ST_GID
-#  # _ST_INO
-#  # _ST_MODE
-#  # _ST_MTIM_HMS (contrivance. not from stat(2))
-#  # _ST_MTIM_UTC (contrivance. not from stat(2))
-#  # _ST_MTIM_YMD (contrivance. not from stat(2))
-#  # _ST_NAME (contrivance. not from stat(2))
-#  # _ST_NLINK
-#  # _ST_SIZE
-#  # _ST_SUM (contrivance. not from stat(2))
-#  # _ST_UID
-
-#  # binaries:
-#  # sqlite3
-
-# NOTE:
-# - this is an unused stub. keeping it for the information
-
-#+ comment block +#
-if [[ 0 == 1 ]]
-then
-
-# IDEA:
-# - when hardlinking 2 sets of previously hardlinked files & both sets have
-#   identical *link* counts, but differing *file* counts, link specifically
-#   the smaller set of files (by file count) to the larger set. reason: same
-#   link count + less files in the listing = some files are "outside" the sets
-#   being hardlinked, so preserve those pre-existing hardlinks
-# - additionally: if there are 3 or more sets of files (by link counts)
-#   - link max link count to single link (badly worded. look below)
-#   - from "bottom upwards" link those with the least number of links to those
-#     with the largest number of links (wrong?)
-#   ^ this seems incomplete/incorrect somehow. requires more thought
-# - starting over with a much clearer description:
-# - 2 sets of files with identical link counts & identical file counts & they
-#   match eachother. link 1 set to the other. doesn't matter which to which
-# - 2 sets of files with identical link counts but different file counts, link
-#   the set with a smaller file count *into* the set with a larger file count.
-#   this will preserve the unseen (pre-existing) hardlinks
-# - random strays with internally consistent file/link counts that match the
-#   larger set. link the set with the larger link count *into* the set with
-#   the smaller link count. this will group everything together
-# - what to do with 2 sets with matching file contents but different link
-#   counts *and* different file counts per set, some "inside" the paths being
-#   scanned, some "outside" the paths being scanned?
-
-# TODO:
-# - create the db
-# - call _pathnames_scan from here
-# - dump info to the db while in _pathnames_scan (in the loop)
-# - close the db
-
-# NOTE:
-# - this might be the wrong approach
-# - instead: create, populate, & close the sqlite3 db from within
-#   "function _pathnames_scan"
-
-# NOTE:
-# - use st_dev + st_name for the unique test if possible. this would allow
-#   hardlinking *within* separate filesystems from a single invocation of the
-#   script possible
-#  UNIQUE(st_dev, st_name)
-
-# NOTE:
-# - TEXT or INTEGER?
-# - from bash/find, both are easily possible. "%M" = TEXT, "%m" = INTEGER
-# - from tcl, it's INTEGER. TEXT would require more work on my part
-#  st_mode   TEXT    NOT NULL,
-#  st_mode   INTEGER NOT NULL,
-
-# NOTE:
-# - this one field will contain "$_ST_MTIM_YMD $_ST_MTIM_HMS $_ST_MTIM_UTC"
-#   with the nanosecond portion of $_ST_MTIM_HMS removed. or not. preserving
-#   nanoseconds would be a Good Thing(TM)
-# - in case it needs doing: _ST_MTIM_HMS="${_ST_MTIM_HMS/.*/}"
-#  st_mtim   TEXT    NOT NULL,
-
-  # - "-f file" = true if file exists & is a regular file
-  if [[ ! -f scanfs.sqlite ]]
-  then
-
-# - for now, just create stuff in $PWD
-sqlite3 scanfs.sqlite << EOF
-CREATE TABLE fileinfo
-(
-  st_dev    INTEGER NOT NULL,
-  st_ino    INTEGER NOT NULL,
-  st_mode   TEXT    NOT NULL,
-  st_nlink  INTEGER NOT NULL,
-  st_uid    INTEGER NOT NULL,
-  st_gid    INTEGER NOT NULL,
-  st_size   INTEGER NOT NULL,
-  st_mtim   TEXT    NOT NULL,
-  st_md5    TEXT    NOT NULL,
-  st_name   TEXT    NOT NULL,
-  UNIQUE(st_name)
-);
-EOF
-
-  fi
-
-# - this function needs an additional output method specifically for dumping
-#   information to the sqlite3 db itself
-# - how to dump stuff to stdout & the db simultaneously? is this even needed?
-# - use of "<<" (stackoverflow example) vs "<<<" (here string). which would be
-#   easier? for that matter, which are *possible*?
-
-_pathnames_scan
-
-# - then do an sqlite3 "COMMIT;" to finish things off
-
-# from https://stackoverflow.com/questions/42245816/non-interactive-sqlite3-usage-from-bash-script/42261631
-
-#!/bin/sh
-sqlite3 test.db <<EOF
-create table n (id INTEGER PRIMARY KEY,f TEXT,l TEXT);
-insert into n (f,l) values ('john','smith');
-select * from n;
-EOF
-
-fi
-#- comment block -#
-
-  _eko_iod "#- _sqlite3_test -#"
 }
 
 #- function definitions here -#

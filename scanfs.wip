@@ -14,8 +14,11 @@
 # TODO:
 # - "function _trap" needs attention. it correctly deletes the temp file, but
 #   it restores an incorrect timestamp from I know not where (current time?)
+# * (or maybe the temp file doesn't even exist. explore this idea later)
 # > figure out what I'm doing wrong in the error trap. test code is here:
 #   #+ marker trap test +# / #- marker trap test -#
+# * (currently in "function _trap_test" & "function _pathnames_scan". in the
+#   latter, they're only visible in "verbose" mode. look for "1/8" to "8/8")
 # > live (unaltered) code is here:
 #   #+ marker trap live +# / #- marker trap live -#
 # > test code is enabled. to disable it simply rename the following:
@@ -29,8 +32,8 @@
 # - ensure the changelog has been accurately updated. that'll be fun :(
 # - remove select portions of the script that have been #'d out (done?)
 # - remove the following headers/footers & the conditional wraps within each:
-#   #+ marker *sum size conflict +# / #- marker *sum size conflict -#
-#   #+ marker *sum type conflict +# / #- marker *sum type conflict -#
+#   #+ marker *sum conflict size +# / #- marker *sum conflict size -#
+#   #+ marker *sum conflict type +# / #- marker *sum conflict type -#
 #   #+ marker edit +# / #- marker edit -#
 #   #disabled# < keep this one (useful for testing)
 
@@ -83,10 +86,10 @@
 #   is: single invocation: \"-m -1 -224 -256 -384 -512, -s\"
 # - "function _parse_parameters" added logic for dealing with *sum size
 #   conflicts. the new routine is wrapped in the following tags temporarily:
-#   #+ marker *sum size conflict +# / #- marker *sum size conflict -#
+#   #+ marker *sum conflict size +# / #- marker *sum conflict size -#
 # - "function _parse_parameters" added logic for dealing with *sum type
 #   conflicts. the new routines are wrapped in the following tags temporarily:
-#   #+ marker *sum type conflict +# / #- marker *sum type conflict -#
+#   #+ marker *sum conflict type +# / #- marker *sum conflict type -#
 # - overall cosmetic cleanup of the entire script. there are entirely too many
 #   small changes to list everything.
 # - "function _parse_parameters" added the following variable:
@@ -2318,7 +2321,7 @@ function _parse_parameters()
         else
           _BOOLEAN_SHA1SUM=true
         fi
-#+ marker *sum type conflict +#
+#+ marker *sum conflict type +#
 if [[ 1 == 1 ]]
 then
         if $_BOOLEAN_SHA1SUM
@@ -2331,7 +2334,7 @@ then
           fi
         fi
 fi
-#- marker *sum type conflict -#
+#- marker *sum conflict type -#
       ;;
       ( -224 \
       | --sha224sum )
@@ -2341,7 +2344,7 @@ fi
         else
           _BOOLEAN_SHA224SUM=true
         fi
-#+ marker *sum type conflict +#
+#+ marker *sum conflict type +#
 if [[ 1 == 1 ]]
 then
         if $_BOOLEAN_SHA224SUM
@@ -2354,7 +2357,7 @@ then
           fi
         fi
 fi
-#- marker *sum type conflict -#
+#- marker *sum conflict type -#
       ;;
       ( -256 \
       | --sha256sum )
@@ -2364,7 +2367,7 @@ fi
         else
           _BOOLEAN_SHA256SUM=true
         fi
-#+ marker *sum type conflict +#
+#+ marker *sum conflict type +#
 if [[ 1 == 1 ]]
 then
         if $_BOOLEAN_SHA256SUM
@@ -2377,7 +2380,7 @@ then
           fi
         fi
 fi
-#- marker *sum type conflict -#
+#- marker *sum conflict type -#
       ;;
       ( -384 \
       | --sha384sum )
@@ -2387,7 +2390,7 @@ fi
         else
           _BOOLEAN_SHA384SUM=true
         fi
-#+ marker *sum type conflict +#
+#+ marker *sum conflict type +#
 if [[ 1 == 1 ]]
 then
         if $_BOOLEAN_SHA384SUM
@@ -2400,7 +2403,7 @@ then
           fi
         fi
 fi
-#- marker *sum type conflict -#
+#- marker *sum conflict type -#
       ;;
       ( -512 \
       | --sha512sum )
@@ -2410,7 +2413,7 @@ fi
         else
           _BOOLEAN_SHA512SUM=true
         fi
-#+ marker *sum type conflict +#
+#+ marker *sum conflict type +#
 if [[ 1 == 1 ]]
 then
         if $_BOOLEAN_SHA512SUM
@@ -2423,7 +2426,7 @@ then
           fi
         fi
 fi
-#- marker *sum type conflict -#
+#- marker *sum conflict type -#
       ;;
       ( -D \
       | --dry-run )
@@ -2510,7 +2513,7 @@ fi
         else
           _BOOLEAN_MD5SUM=true
         fi
-#+ marker *sum type conflict +#
+#+ marker *sum conflict type +#
 if [[ 1 == 1 ]]
 then
         if $_BOOLEAN_MD5SUM
@@ -2523,7 +2526,7 @@ then
           fi
         fi
 fi
-#- marker *sum type conflict -#
+#- marker *sum conflict type -#
       ;;
       ( -n \
       | --nanoseconds )
@@ -2581,7 +2584,7 @@ fi
         then
           _show_error "*sum buffer size not specified"
         else
-#+ marker *sum size conflict +#
+#+ marker *sum conflict size +#
 if [[ 1 == 1 ]]
 then
           # - "-n string" = true if the length of string is non-zero
@@ -2594,7 +2597,7 @@ then
 else
           _OPTION_SUM_SIZE=$2
 fi
-#- marker *sum size conflict -#
+#- marker *sum conflict size -#
         fi
         shift
       ;;
@@ -2631,7 +2634,12 @@ fi
     shift
   done
 
-#+ marker *sum type conflict +#
+#+ marker *sum conflict type +#
+# - why do this? if any single 1 of the 6 *sum types is specified exactly
+#   twice on the commandline, the boolean for that individual *sum type will
+#   be toggled back & forth to "false", but _BOOLEAN_SUM will be set to "true",
+#   causing _FUNCTION_SUM (defined as "" at this point) to be uselessly called
+#   in the most time critical function ("function _pathnames_scan")
 if [[ 1 == 1 ]]
 then
   if ! $_BOOLEAN_MD5SUM \
@@ -2645,7 +2653,7 @@ then
     _BOOLEAN_SUM=false
   fi
 fi
-#- marker *sum type conflict -#
+#- marker *sum conflict type -#
 
   #- _parse_parameters -#
 
@@ -3926,13 +3934,27 @@ function _pathnames_scan()
 # - put something like this after every step
 # - this doesn't work for some unknown reason
 #read -p "press the any key to continue: " -n 1 _CHAR
-
 #- marker trap test -#
 
         #+ DANGER! WILL ROBINSON! DANGER! this is live code +#
         if ! $_BOOLEAN_DRYRUN \
         && $_BOOLEAN_UNLINK
         then
+#+ marker trap test +#
+# 1/8
+# - this is everything known about the original $_ST_NAME
+_eko_v "1/8: \$_ST_DEV: \"$_ST_DEV\""
+_eko_v "1/8: \$_ST_INO: \"$_ST_INO\""
+_eko_v "1/8: \$_ST_MODE: \"$_ST_MODE\""
+_eko_v "1/8: \$_ST_NLINK: \"$_ST_NLINK\""
+_eko_v "1/8: \$_ST_UID: \"$_ST_UID\""
+_eko_v "1/8: \$_ST_GID: \"$_ST_GID\""
+_eko_v "1/8: \$_ST_SIZE: \"$_ST_SIZE\""
+_eko_v "1/8: \$_ST_MTIM_YMD: \"$_ST_MTIM_YMD\""
+_eko_v "1/8: \$_ST_MTIM_HMS: \"$_ST_MTIM_HMS\""
+_eko_v "1/8: \$_ST_MTIM_UTC: \"$_ST_MTIM_UTC\""
+_eko_v "1/8: \$_ST_NAME: \"$_ST_NAME\""
+#- marker trap test -#
           # - be as unique as possible. why such a convoluted file name?
           # - 1: the base name *is* the original file name
           # - 2: "scanfs" to make it easy to find stray temporary files in
@@ -3945,17 +3967,19 @@ function _pathnames_scan()
           #      is *ahem* unwise enough to process the same directory
           #      hierarchy simultaneously
           _SU_NAME="${_ST_NAME}.scanfs.$_MY_UID:$_MY_GID.$PPID.$$"
-# 1/5
-read -p "press the any key to continue (1/5): " -n 1 _CHAR
-
-# - random test
-# - it DOES reach this point
-#beeps
+#+ marker trap test +#
+# 2/8
+# - $_SU_NAME all dressed up with nowhere to go
+_eko_v "2/8: \$_SU_NAME: \"$_SU_NAME\""
+#- marker trap test -#
 
           # - copy the original file (with various options) to a unique file
           # - take note of what is & what is not doublequoted
           cp $_OPTIONS_CP -- "$_ST_NAME" "$_SU_NAME"
-# 2/5
+#+ marker trap test +#
+# 3/8
+_eko_v "3/8: \"cp $_OPTIONS_CP -- \"$_ST_NAME\" \"$_SU_NAME\""
+#- marker trap test -#
 
           # - get stat(2) info of the newly created unique file, save
           #   everything as _ST_* (except for _ST_NAME itself). this/these
@@ -3976,20 +4000,41 @@ read -p "press the any key to continue (1/5): " -n 1 _CHAR
           -type f \
           -maxdepth 0 \
           -printf "%D %i %M %n %U %G %s %TY-%Tm-%Td %TH:%TM:%TS %TZ\n" 2>/dev/null)
-# 3/5
+#+ marker trap test +#
+# 4/8
+# - this is everything known about the newly created $_SU_NAME
+# - take careful note: _ST_* & _SU_NAME below. this is deliberate
+_eko_v "4/8: \$_ST_DEV: \"$_ST_DEV\""
+_eko_v "4/8: \$_ST_INO: \"$_ST_INO\""
+_eko_v "4/8: \$_ST_MODE: \"$_ST_MODE\""
+_eko_v "4/8: \$_ST_NLINK: \"$_ST_NLINK\""
+_eko_v "4/8: \$_ST_UID: \"$_ST_UID\""
+_eko_v "4/8: \$_ST_GID: \"$_ST_GID\""
+_eko_v "4/8: \$_ST_SIZE: \"$_ST_SIZE\""
+_eko_v "4/8: \$_ST_MTIM_YMD: \"$_ST_MTIM_YMD\""
+_eko_v "4/8: \$_ST_MTIM_HMS: \"$_ST_MTIM_HMS\""
+_eko_v "4/8: \$_ST_MTIM_UTC: \"$_ST_MTIM_UTC\""
+_eko_v "4/8: \$_SU_NAME: \"$_SU_NAME\""
+#- marker trap test -#
 
           # - move the newly created unique file into place, overwriting the
           #   original file
           # - take note of what is & what is not doublequoted
           mv $_OPTIONS_MV -- "$_SU_NAME" "$_ST_NAME"
-# 4/5
+#+ marker trap test +#
+# 5/8
+_eko_v "5/8: \"mv $_OPTIONS_MV -- \"$_SU_NAME\" \"$_ST_NAME\""
+#- marker trap test -#
 
           # - since at least one file was manipulated in the current
           #   directory, the directory's timestamp will need to be restored
           # - flag it now, restore it immediately after processing the current
           #   directory
           _BOOLEAN_TIMESTAMP=true
-# 5/5
+#+ marker trap test +#
+# 6/8
+_eko_v "6/8: \$_BOOLEAN_TIMESTAMP: \"$_BOOLEAN_TIMESTAMP\""
+#- marker trap test -#
         fi
         #- DANGER! WILL ROBINSON! DANGER! this is live code -#
 
@@ -4090,9 +4135,17 @@ read -p "press the any key to continue (1/5): " -n 1 _CHAR
     then
       # - take careful note: $_SD_* & not $_ST_* or $_SU_*
       touch --date="$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC" "$_SD_NAME" 2>/dev/null
+#+ marker trap test +#
+# 7/8
+_eko_v "7/8: \"touch --date=\"$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC\" \"$_SD_NAME\" 2>/dev/null"
+#- marker trap test -#
 
       # - reset the flag for the next iteration
       _BOOLEAN_TIMESTAMP=false
+#+ marker trap test +#
+# 8/8
+_eko_v "8/8: \$_BOOLEAN_TIMESTAMP: \"$_BOOLEAN_TIMESTAMP\""
+#- marker trap test -#
     fi
     #- DANGER! WILL ROBINSON! DANGER! this is live code -#
 

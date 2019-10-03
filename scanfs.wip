@@ -821,6 +821,10 @@ function _trap()
 # - put various [[]] conditionals to see if the files even *exist* when this
 #   routine is reached
 
+# TODO:
+# - test to see if the outer if/then/fi construct is even *entered* when needed
+# - the inner if/then/fi construct appears to be entered. maybe
+
   # - doublequote pathnames (but not the regex portions) for safety
 #  if $_BOOLEAN_UNLINK \
 #  && [[ -f "$_SU_NAME" ]] \
@@ -3918,6 +3922,11 @@ function _pathnames_scan()
 # - for later:
 # - echo assorted bits of info to stdout to see what we have to work with
 # - also in the segment within $_BOOLEAN_TIMESTAMP after the loops
+
+# - put something like this after every step
+# - this doesn't work for some unknown reason
+#read -p "press the any key to continue: " -n 1 _CHAR
+
 #- marker trap test -#
 
         #+ DANGER! WILL ROBINSON! DANGER! this is live code +#
@@ -3936,10 +3945,17 @@ function _pathnames_scan()
           #      is *ahem* unwise enough to process the same directory
           #      hierarchy simultaneously
           _SU_NAME="${_ST_NAME}.scanfs.$_MY_UID:$_MY_GID.$PPID.$$"
+# 1/5
+read -p "press the any key to continue (1/5): " -n 1 _CHAR
+
+# - random test
+# - it DOES reach this point
+#beeps
 
           # - copy the original file (with various options) to a unique file
           # - take note of what is & what is not doublequoted
           cp $_OPTIONS_CP -- "$_ST_NAME" "$_SU_NAME"
+# 2/5
 
           # - get stat(2) info of the newly created unique file, save
           #   everything as _ST_* (except for _ST_NAME itself). this/these
@@ -3960,17 +3976,20 @@ function _pathnames_scan()
           -type f \
           -maxdepth 0 \
           -printf "%D %i %M %n %U %G %s %TY-%Tm-%Td %TH:%TM:%TS %TZ\n" 2>/dev/null)
+# 3/5
 
           # - move the newly created unique file into place, overwriting the
           #   original file
           # - take note of what is & what is not doublequoted
           mv $_OPTIONS_MV -- "$_SU_NAME" "$_ST_NAME"
+# 4/5
 
           # - since at least one file was manipulated in the current
           #   directory, the directory's timestamp will need to be restored
           # - flag it now, restore it immediately after processing the current
           #   directory
           _BOOLEAN_TIMESTAMP=true
+# 5/5
         fi
         #- DANGER! WILL ROBINSON! DANGER! this is live code -#
 

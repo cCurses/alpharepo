@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# scanfs v2019.10.01
+# scanfs v2019.10.01+
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -13,7 +13,19 @@
 
 # TODO:
 # - "function _trap" needs attention. it correctly deletes the temp file, but
-#   it restores an incorrect timestamp from I know not where
+#   it restores an incorrect timestamp from I know not where (current time?)
+# > figure out what I'm doing wrong in the error trap. test code is here:
+#   #+ marker trap test +# / #- marker trap test -#
+# > live (unaltered) code is here:
+#   #+ marker trap live +# / #- marker trap live -#
+# > test code is enabled. to disable it simply rename the following:
+# from: function _trap()
+#   to: function _trap_test()
+#   (the magic of function declarations. the last of the same name is used)
+# - create a directory/file hierarchy (as root, obviously) with entries owned
+#   by everyone listed in /etc/passwd & /etc/group to test assorted features
+# > one thought comes immediately to mind: assuming permissions permit it,
+#   as non-root, unlink files owned by someone else & see what happens
 # - ensure the changelog has been accurately updated. that'll be fun :(
 # - remove select portions of the script that have been #'d out (done?)
 # - remove the following headers/footers & the conditional wraps within each:
@@ -587,6 +599,7 @@ declare -a _ARRAY_PATHNAMES
 # ORDER:
 # - before calling _parse_parameters, but otherwise alphabetical
 
+#+ marker trap live +#
 # - except this one. 'tis special
 function _trap()
 {
@@ -707,6 +720,195 @@ function _trap()
 
   exit 1
 }
+#- marker trap live -#
+
+#+ marker trap test +#
+# - except this one. 'tis special
+#function _trap_test()
+function _trap()
+{
+  _eko_iod "#+ _trap_test +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_v
+
+  # variables:
+  # _BOOLEAN_DRYRUN
+  # _BOOLEAN_UNLINK
+  # _OPTIONS_RM (rm options, not script options)
+  # _SD_MTIM_HMS (contrivance. not from stat(2))
+  # _SD_MTIM_UTC (contrivance. not from stat(2))
+  # _SD_MTIM_YMD (contrivance. not from stat(2))
+  # _SD_NAME (contrivance. not from stat(2))
+  # _ST_NAME (contrivance. not from stat(2))
+  # _SU_NAME (contrivance. not from stat(2))
+
+  # binaries:
+  # rm
+  # touch
+
+  # NOTE:
+  # - hardlinking & unlinking will require slightly different actions
+  #   hardlinking: restore parent directory's timestamp
+  #   unlinking: delete temp file. restore parent directory's timestamp
+  # - for now, concentrate exclusively on cleaning up from unlinking
+
+  # IDEA:
+  # - set up a trap to catch what *can* be caught. the various $_S[DTU]_*
+  #   variables will be pointed at the last directory/file processed along
+  #   with the parent directory's timestamp, so cleaning up will be fairly
+  #   straightforward
+  # - also: _SU_NAME="${_ST_NAME}.scanfs.$_MY_UID:$_MY_GID.$PPID.$$"
+  #   (already set in "function _pathnames_scan")
+
+  # NOTE:
+  # - regarding the parent directory's timestamp (specifically $_SD_MTIM_HMS),
+  #   preserve nanoseconds & include them in the report so we know exactly
+  #   what is & is not being preserved
+
+  # IDEA:
+  # - there's no kill like overkill. do a "bottom up" set of tests:
+  # - ultimately, these can be done in any order. using a specific order makes
+  #   maintenance easier
+  # - this has a more logical feel to it. first & foremost, the temp file must
+  #   exist. everything else depends on that
+  #   $_SU_NAME exists & is a regular file
+  #   $_SU_NAME matches $_ST_NAME with "[.].*$" via "=~" (anchor with "^")
+  #   $_ST_NAME exists & is a regular file
+  #   $_ST_NAME matches $_SD_NAME with "[/].*$" via "=~" (anchor with "^")
+  #   $_SD_NAME exists & is a directory
+
+  # above or below
+
+  # IDEA:
+  # - there's no kill like overkill. do a "top down" set of tests:
+  # - ultimately, these can be done in any order. using a specific order makes
+  #   maintenance easier
+  #   $_SD_NAME exists & is a directory
+  #   $_ST_NAME matches $_SD_NAME with "[/].*$" via "=~" (anchor with "^")
+  #   $_ST_NAME exists & is a regular file
+  #   $_SU_NAME matches $_ST_NAME with "[.].*$" via "=~" (anchor with "^")
+  #   $_SU_NAME exists & is a regular file
+
+  # - this test is known to work
+  #if $_BOOLEAN_UNLINK \
+  #&& [[ -d $_SD_NAME ]] \
+  #&& [[ -f $_ST_NAME ]] \
+  #&& [[ -f $_SU_NAME ]]
+
+  # - use this ordering. if nothing else, it's aesthetically pleasing
+  # - considerably more thorough than the above test
+  #if $_BOOLEAN_UNLINK \
+  #&& [[ -f $_SU_NAME ]] \
+  #&& [[ $_SU_NAME =~ ^$_ST_NAME[.].*$ ]] \
+  #&& [[ -f $_ST_NAME ]] \
+  #&& [[ $_ST_NAME =~ ^$_SD_NAME[/].*$ ]] \
+  #&& [[ -d $_SD_NAME ]]
+
+# IDEA:
+# - I suspect the temp file is not being created
+# - parent directory's timestamp is current time (even with "live" version)
+# - added "press the any key to continue: " immediately preceding the "exit 1"
+#   so I can inspect the filesystem at my leisure. huge fail
+# - I don't need this shit. troubleshooting my troubleshooting. yeah, no
+
+# IDEA: (different approach #1)
+# - "#+ test dump +# / #- test dump -#" so I can see what's what
+# - all requisite information is correct. why doesn't this work?
+
+# IDEA: (different approach #2)
+# - put various [[]] conditionals to see if the files even *exist* when this
+#   routine is reached
+
+  # - doublequote pathnames (but not the regex portions) for safety
+#  if $_BOOLEAN_UNLINK \
+#  && [[ -f "$_SU_NAME" ]] \
+#  && [[ "$_SU_NAME" =~ ^"$_ST_NAME"[.].*$ ]] \
+#  && [[ -f "$_ST_NAME" ]] \
+#  && [[ "$_ST_NAME" =~ ^"$_SD_NAME"[/].*$ ]] \
+#  && [[ -d "$_SD_NAME" ]]
+#  then
+    _eko_v ""
+    _eko_v "             \$_BOOLEAN_DRYRUN: \"$_BOOLEAN_DRYRUN\""
+    _eko_v "             \$_BOOLEAN_UNLINK: \"$_BOOLEAN_UNLINK\""
+    _eko_v "                    \$_SU_NAME: \"$_SU_NAME\""
+    _eko_v "                    \$_ST_NAME: \"$_ST_NAME\""
+    _eko_v "                    \$_SD_NAME: \"$_SD_NAME\""
+    _eko_v "                    \$_SD_MTIM: \"$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC\""
+
+    # - put the dry-run test here so we get the above report but
+    #   (conditionally) prevent the below actions
+#    if ! $_BOOLEAN_DRYRUN
+#    then
+
+#+ testing +#
+    _eko_v "#+ test dump +#"
+    # - does this file exist? parent directory's timestamp is updated, so?
+    # - NOTE: parent directory's timestamp restored if files are non-sparse
+    # - TODO: test again with sparse files
+    # - TODO: verify that this file does, in fact, exist
+    _eko_v "                    \$_SU_NAME: \"$_SU_NAME\""
+#- testing -#
+
+      # - this succeeds (I think. see above)
+#echo \
+      rm $_OPTIONS_RM -- "$_SU_NAME"
+
+      # FIXME:
+      # - not 100% certain, but I *think* the wrong timestamp is being used
+      # ^ it's the current time. why?
+
+      # - there is a single (known) special case where attempting to restore
+      #   the parent directory's timestamp will fail. script run as non-root.
+      #   unlinking files in a directory that is itself mode 1777 (drwxrwxrwt)
+      #   & owned by someone other than oneself. hence the "2>/dev/null"
+      #   below
+
+#+ testing +#
+    # - all 3 are correct
+    _eko_v "                \$_SD_MTIM_YMD: \"$_SD_MTIM_YMD\""
+    _eko_v "                \$_SD_MTIM_HMS: \"$_SD_MTIM_HMS\""
+    _eko_v "                \$_SD_MTIM_UTC: \"$_SD_MTIM_UTC\""
+
+    # - so is this
+    _eko_v "                    \$_SD_NAME: \"$_SD_NAME\""
+    _eko_v "#- test dump -#"
+#- testing -#
+
+# NOTE:
+# - test data is a set of 1073741824 byte files hardlinked together
+# - for some bizarre reason, the directory's timestamp is not updated with the
+#   below "touch" if the test files are completely sparse. if the test files
+#   are forcibly created non-sparse & the script is run against *that* set,
+#   everything works properly
+
+      # - this fails
+      # - but apparently only with large sparse files. what?
+#echo \
+      touch --date="$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC" "$_SD_NAME"
+# 2>/dev/null
+#    fi
+#  fi
+
+# - nope. I assume it's catching the ^C
+#read -p "press the any key to continue: " -n 1 _CHAR
+# - still nope. wtf?
+#read -p "press the any key to continue: " -n 2 _CHAR
+# - fine. this doesn't even work. time to use brute force
+#read -p "press the any key to continue: " _CHAR
+# - oh, ffs. THIS doesn't work?
+#read -p "press the any key to continue: " -t 86400
+
+# - random test
+# - it DOES reach this point
+#beeps
+
+  _eko_iod "#- _trap_test -#"
+
+  exit 1
+}
+#- marker trap test -#
 
 # - refer to bash(1) section "SHELL BUILTIN COMMANDS" & signal(7) section
 #   "Standard signals" for additional details
@@ -3711,6 +3913,12 @@ function _pathnames_scan()
       # - "-n string" = true if the length of string is non-zero
       if [[ -n "$_ST_NAME" ]]
       then
+
+#+ marker trap test +#
+# - for later:
+# - echo assorted bits of info to stdout to see what we have to work with
+# - also in the segment within $_BOOLEAN_TIMESTAMP after the loops
+#- marker trap test -#
 
         #+ DANGER! WILL ROBINSON! DANGER! this is live code +#
         if ! $_BOOLEAN_DRYRUN \

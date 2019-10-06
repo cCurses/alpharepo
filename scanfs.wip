@@ -12,28 +12,51 @@
 # - optionally unlink files that were previously hardlinked
 
 # TODO:
+# - whatinhell did I break? the error trap is not entered *at all* when ^C is
+#   pressed. first & foremost, this obviously needs figuring out. HELP!
+# > for now. do *NOT* abort the script when it's unlinking files & everything
+#   will be tickety-boo
+
+# - wrap all the test code scattered throughout the script in
+#   _BOOLEAN_TESTING_01 (numbered in case I need more of them) so the mess I'm
+#   making can stay & be easily found, but the script's normal usage wil not
+#   be affected (done)
+#_BOOLEAN_TESTING_01=false # disabled
+#
+_BOOLEAN_TESTING_01=true # enabled
+# > at present. all 8 are in "function _pathnames_scan" & are only visible in
+#   "verbose" mode. look for "1/8" to "8/8". 6 in the loop. 2 after the loop
+
 # - "function _trap" needs attention. it correctly deletes the temp file, but
 #   it restores an incorrect timestamp from I know not where (current time?)
 # * (or maybe the temp file doesn't even exist. explore this idea later)
 # > figure out what I'm doing wrong in the error trap. test code is here:
 #   #+ marker trap test +# / #- marker trap test -#
-# * (currently in "function _trap_test" & "function _pathnames_scan". in the
-#   latter, they're only visible in "verbose" mode. look for "1/8" to "8/8")
+# > currently only in "function _trap_test"
+
 # > live (unaltered) code is here:
 #   #+ marker trap live +# / #- marker trap live -#
+
 # > test code is enabled. to disable it simply rename the following:
-# from: function _trap()
-#   to: function _trap_test()
-#   (the magic of function declarations. the last of the same name is used)
+# from: #trap _trap SIGINT SIGTERM
+# from: trap _trap_test SIGINT SIGTERM
+#   to: trap _trap SIGINT SIGTERM
+#   to: #trap _trap_test SIGINT SIGTERM
+#trap#
+
 # - create a directory/file hierarchy (as root, obviously) with entries owned
 #   by everyone listed in /etc/passwd & /etc/group to test assorted features
 # > one thought comes immediately to mind: assuming permissions permit it,
 #   as non-root, unlink files owned by someone else & see what happens
+
 # - ensure the changelog has been accurately updated. that'll be fun :(
+
 # - remove select portions of the script that have been #'d out (done?)
+
 # - remove the following headers/footers & the conditional wraps within each:
 #   #+ marker *sum conflict size +# / #- marker *sum conflict size -#
 #   #+ marker *sum conflict type +# / #- marker *sum conflict type -#
+#   #+ marker *sum dry-run +# / #- marker *sum dry-run -#
 #   #+ marker edit +# / #- marker edit -#
 #   #disabled# < keep this one (useful for testing)
 
@@ -41,7 +64,7 @@
 # - possibly use printf elsewhere (everywhere?) (verbose output for settings?)
 # ^ this will require a complete rethink of how _eko_v currently does things
 # - alternate approach: define _eko_pv (verbose via printf) & use that for
-#   special occasions
+#   special occasions (done)
 
 # TODO:
 # - figure out hardlinking
@@ -56,6 +79,11 @@
 #   standalone script snippets for testing so there's no need to retain the
 #   sqlite3 stub in this script
 
+# 2019-10-06
+# - changed the following lines throughout the script:
+#  was: _eko_v "      \$_FOO: \"$_FOO\""
+#   is: _eko_pv "\$_FOO:" \""$_FOO\""
+# - "function _eko_pv" added for properly formatted verbose output
 # 2019-10-01
 # - "function _pathnames_scan" added/changed the following lines:
 #  add: # - 4: "$_MY_GID" for additional finger pointing :)
@@ -514,6 +542,7 @@
   # _binary_validate_setup
   # _builtin_validate_setup
   # _eko_iod
+  # _eko_pv
   # _eko_v
   # _pathname_md5sum_md5sum (_FUNCTION_SUM)
   # _pathname_openssl_md5sum (_FUNCTION_SUM)
@@ -727,8 +756,7 @@ function _trap()
 
 #+ marker trap test +#
 # - except this one. 'tis special
-#function _trap_test()
-function _trap()
+function _trap_test()
 {
   _eko_iod "#+ _trap_test +#"
 
@@ -750,6 +778,8 @@ function _trap()
   # binaries:
   # rm
   # touch
+
+beeps
 
   # NOTE:
   # - hardlinking & unlinking will require slightly different actions
@@ -824,18 +854,39 @@ function _trap()
 # - put various [[]] conditionals to see if the files even *exist* when this
 #   routine is reached
 
+# IDEA: (different approach #3)
+# - just dump everything used in this function to stdout via _eko_v *outside*
+#   any conditionals. let's get a view of anything/everything available
+
+#+ marker trap test +#
+  # - currently untested
+  _eko_v "t: \$_BOOLEAN_DRYRUN: \"$_BOOLEAN_DRYRUN\""
+  _eko_v "t: \$_BOOLEAN_UNLINK: \"$_BOOLEAN_UNLINK\""
+  _eko_v "t: \$_OPTIONS_RM: \"$_OPTIONS_RM\""
+  _eko_v "t: \$_SD_NAME: \"$_SD_NAME\""
+  _eko_v "t: \$_ST_NAME: \"$_ST_NAME\""
+  _eko_v "t: \$_SU_NAME: \"$_SU_NAME\""
+  _eko_v "t: \$_SD_MTIM_YMD: \"$_SD_MTIM_YMD\""
+  _eko_v "t: \$_SD_MTIM_HMS: \"$_SD_MTIM_HMS\""
+  _eko_v "t: \$_SD_MTIM_UTC: \"$_SD_MTIM_UTC\""
+#- marker trap test -#
+
 # TODO:
 # - test to see if the outer if/then/fi construct is even *entered* when needed
 # - the inner if/then/fi construct appears to be entered. maybe
+# - added pass/fail stuff to see what's what. currently untested
 
   # - doublequote pathnames (but not the regex portions) for safety
-#  if $_BOOLEAN_UNLINK \
-#  && [[ -f "$_SU_NAME" ]] \
-#  && [[ "$_SU_NAME" =~ ^"$_ST_NAME"[.].*$ ]] \
-#  && [[ -f "$_ST_NAME" ]] \
-#  && [[ "$_ST_NAME" =~ ^"$_SD_NAME"[/].*$ ]] \
-#  && [[ -d "$_SD_NAME" ]]
-#  then
+  if $_BOOLEAN_UNLINK \
+  && [[ -f "$_SU_NAME" ]] \
+  && [[ "$_SU_NAME" =~ ^"$_ST_NAME"[.].*$ ]] \
+  && [[ -f "$_ST_NAME" ]] \
+  && [[ "$_ST_NAME" =~ ^"$_SD_NAME"[/].*$ ]] \
+  && [[ -d "$_SD_NAME" ]]
+  then
+#+ marker trap test +#
+    _eko_v "t: outer: pass"
+#- marker trap test -#
     _eko_v ""
     _eko_v "             \$_BOOLEAN_DRYRUN: \"$_BOOLEAN_DRYRUN\""
     _eko_v "             \$_BOOLEAN_UNLINK: \"$_BOOLEAN_UNLINK\""
@@ -846,8 +897,11 @@ function _trap()
 
     # - put the dry-run test here so we get the above report but
     #   (conditionally) prevent the below actions
-#    if ! $_BOOLEAN_DRYRUN
-#    then
+    if ! $_BOOLEAN_DRYRUN
+    then
+#+ marker trap test +#
+      _eko_v "t: inner: pass"
+#- marker trap test -#
 
 #+ testing +#
     _eko_v "#+ test dump +#"
@@ -895,8 +949,16 @@ function _trap()
 #echo \
       touch --date="$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC" "$_SD_NAME"
 # 2>/dev/null
-#    fi
-#  fi
+#+ marker trap test +#
+    else
+      _eko_v "t: inner: fail"
+#- marker trap test -#
+    fi
+#+ marker trap test +#
+  else
+    _eko_v "t: outer: fail"
+#- marker trap test -#
+  fi
 
 # - nope. I assume it's catching the ^C
 #read -p "press the any key to continue: " -n 1 _CHAR
@@ -919,7 +981,9 @@ function _trap()
 
 # - refer to bash(1) section "SHELL BUILTIN COMMANDS" & signal(7) section
 #   "Standard signals" for additional details
-trap _trap SIGINT SIGTERM
+#trap _trap SIGINT SIGTERM
+trap _trap_test SIGINT SIGTERM
+#trap#
 
 function _binary_validate_setup()
 {
@@ -927,7 +991,8 @@ function _binary_validate_setup()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
+#  # _eko_v
   # _pathname_md5sum_md5sum (_FUNCTION_SUM)
   # _pathname_openssl_md5sum (_FUNCTION_SUM)
   # _pathname_openssl_sha1sum (_FUNCTION_SUM)
@@ -1087,7 +1152,8 @@ function _binary_validate_setup()
           _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
         fi
       fi # $_BOOLEAN_NONSPARSE
-      _eko_v "                 \$_OPTIONS_CP: \"$_OPTIONS_CP\""
+#      _eko_v "                 \$_OPTIONS_CP: \"$_OPTIONS_CP\""
+      _eko_pv "\$_OPTIONS_CP:" \""$_OPTIONS_CP\""
     fi
     #- cp -#
   fi # $_BOOLEAN_UNLINK
@@ -1252,7 +1318,8 @@ function _binary_validate_setup()
       then
         # - no doublequotes on the binary or its option. aka: NO CAPES!
         _MY_GID=$($_BINARY_NAME $_BINARY_OPTION)
-        _eko_v "                     \$_MY_GID: \"$_MY_GID\""
+#        _eko_v "                     \$_MY_GID: \"$_MY_GID\""
+        _eko_pv "\$_MY_GID:" \""$_MY_GID\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1262,7 +1329,8 @@ function _binary_validate_setup()
       then
         # - no doublequotes on the binary or its option. aka: NO CAPES!
         _MY_UID=$($_BINARY_NAME $_BINARY_OPTION)
-        _eko_v "                     \$_MY_UID: \"$_MY_UID\""
+#        _eko_v "                     \$_MY_UID: \"$_MY_UID\""
+        _eko_pv "\$_MY_UID:" \""$_MY_UID\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1289,7 +1357,8 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _OPTIONS_LN=$_BINARY_OPTION
-        _eko_v "                 \$_OPTIONS_LN: \"$_OPTIONS_LN\""
+#        _eko_v "                 \$_OPTIONS_LN: \"$_OPTIONS_LN\""
+        _eko_pv "\$_OPTIONS_LN:" \""$_OPTIONS_LN\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1314,7 +1383,8 @@ function _binary_validate_setup()
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
       _FUNCTION_SUM=_pathname_md5sum_md5sum
-      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+#      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+      _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
     fi
     #- md5sum -#
   fi # $_BOOLEAN_MD5SUM $_FUNCTION_SUM
@@ -1378,7 +1448,8 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _FUNCTION_SUM=_pathname_openssl_md5sum
-        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+#        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+        _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1403,7 +1474,8 @@ function _binary_validate_setup()
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
       _FUNCTION_SUM=_pathname_sha1sum_sha1sum
-      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+#      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+      _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
     fi
     #- sha1sum -#
   fi # $_BOOLEAN_SHA1SUM $_FUNCTION_SUM
@@ -1467,7 +1539,8 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _FUNCTION_SUM=_pathname_openssl_sha1sum
-        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+#        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+        _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1492,7 +1565,8 @@ function _binary_validate_setup()
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
       _FUNCTION_SUM=_pathname_sha224sum_sha224sum
-      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+#      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+      _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
     fi
     #- sha224sum -#
   fi # $_BOOLEAN_SHA224SUM $_FUNCTION_SUM
@@ -1556,7 +1630,8 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _FUNCTION_SUM=_pathname_openssl_sha224sum
-        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+#        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+        _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1581,7 +1656,8 @@ function _binary_validate_setup()
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
       _FUNCTION_SUM=_pathname_sha256sum_sha256sum
-      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+#      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+      _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
     fi
     #- sha256sum -#
   fi # $_BOOLEAN_SHA256SUM $_FUNCTION_SUM
@@ -1645,7 +1721,8 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _FUNCTION_SUM=_pathname_openssl_sha256sum
-        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+#        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+        _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1670,7 +1747,8 @@ function _binary_validate_setup()
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
       _FUNCTION_SUM=_pathname_sha384sum_sha384sum
-      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+#      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+      _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
     fi
     #- sha384sum -#
   fi # $_BOOLEAN_SHA384SUM $_FUNCTION_SUM
@@ -1734,7 +1812,8 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _FUNCTION_SUM=_pathname_openssl_sha384sum
-        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+#        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+        _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1759,7 +1838,8 @@ function _binary_validate_setup()
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
       _FUNCTION_SUM=_pathname_sha512sum_sha512sum
-      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+#      _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+      _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
     fi
     #- sha512sum -#
   fi # $_BOOLEAN_SHA512SUM $_FUNCTION_SUM
@@ -1823,7 +1903,8 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _FUNCTION_SUM=_pathname_openssl_sha512sum
-        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+#        _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+        _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1850,7 +1931,8 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _OPTIONS_MV=$_BINARY_OPTION
-        _eko_v "                 \$_OPTIONS_MV: \"$_OPTIONS_MV\""
+#        _eko_v "                 \$_OPTIONS_MV: \"$_OPTIONS_MV\""
+        _eko_pv "\$_OPTIONS_MV:" \""$_OPTIONS_MV\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1897,8 +1979,10 @@ function _binary_validate_setup()
       #   reach this far, then it does exist & it does support the required
       #   options
       _FUNCTION_TRANSFORM=_pathname_transform_realpath
-      _eko_v "           \$_OPTIONS_REALPATH: \"$_OPTIONS_REALPATH\""
-      _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
+#      _eko_v "           \$_OPTIONS_REALPATH: \"$_OPTIONS_REALPATH\""
+#      _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
+      _eko_pv "\$_OPTIONS_REALPATH:" \""$_OPTIONS_REALPATH\""
+      _eko_pv "\$_FUNCTION_TRANSFORM:" \""$_FUNCTION_TRANSFORM\""
     fi
     #- realpath -#
   fi
@@ -1938,7 +2022,8 @@ function _binary_validate_setup()
 
     # - it's ugly, but it definitely works
     _FUNCTION_TRANSFORM=_pathname_transform_bruteforce
-    _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
+#    _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
+    _eko_pv "\$_FUNCTION_TRANSFORM:" \""$_FUNCTION_TRANSFORM\""
   fi
 
   if $_BOOLEAN_HARDLINK \
@@ -1962,7 +2047,8 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _OPTIONS_RM=$_BINARY_OPTION
-        _eko_v "                 \$_OPTIONS_RM: \"$_OPTIONS_RM\""
+#        _eko_v "                 \$_OPTIONS_RM: \"$_OPTIONS_RM\""
+        _eko_pv "\$_OPTIONS_RM:" \""$_OPTIONS_RM\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -2030,7 +2116,8 @@ function _builtin_validate_setup()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
+#  # _eko_v
   # _pathname_transform_cd_pwd (_FUNCTION_TRANSFORM)
   # _show_error
 
@@ -2088,7 +2175,8 @@ function _builtin_validate_setup()
     if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
     then
       _OPTIONS_CD=$_BUILTIN_OPTION
-      _eko_v "                 \$_OPTIONS_CD: \"$_OPTIONS_CD\""
+#      _eko_v "                 \$_OPTIONS_CD: \"$_OPTIONS_CD\""
+      _eko_pv "\$_OPTIONS_CD:" \""$_OPTIONS_CD\""
     fi
   fi
   #- cd -#
@@ -2112,7 +2200,8 @@ function _builtin_validate_setup()
     if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
     then
       _OPTIONS_PWD=$_BUILTIN_OPTION
-      _eko_v "                \$_OPTIONS_PWD: \"$_OPTIONS_PWD\""
+#      _eko_v "                \$_OPTIONS_PWD: \"$_OPTIONS_PWD\""
+      _eko_pv "\$_OPTIONS_PWD:" \""$_OPTIONS_PWD\""
     fi
   fi
   #- pwd -#
@@ -2123,7 +2212,8 @@ function _builtin_validate_setup()
   || [[ -n $_OPTIONS_PWD ]]
   then
     _FUNCTION_TRANSFORM=_pathname_transform_cd_pwd
-    _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
+#    _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
+    _eko_pv "\$_FUNCTION_TRANSFORM:" \""$_FUNCTION_TRANSFORM\""
   fi
 
   #+ read +#
@@ -2142,7 +2232,8 @@ function _builtin_validate_setup()
     if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
     then
       _OPTIONS_READ=$_BUILTIN_OPTION
-      _eko_v "               \$_OPTIONS_READ: \"$_OPTIONS_READ\""
+#      _eko_v "               \$_OPTIONS_READ: \"$_OPTIONS_READ\""
+      _eko_pv "\$_OPTIONS_READ:" \""$_OPTIONS_READ\""
     else
       _show_error \""$_BUILTIN_NAME\" does not support \"$_BUILTIN_OPTION\""
     fi
@@ -2182,6 +2273,25 @@ function _eko_iod()
   #- _eko_iod -#
 }
 
+function _eko_pv()
+{
+  #+ _eko_pv +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # @
+  # _BOOLEAN_VERBOSE
+
+  if $_BOOLEAN_VERBOSE
+  then
+    printf "%30s %s\n" "$1" "$2"
+  fi
+
+  #- _eko_pv -#
+}
+
 function _eko_v()
 {
   #+ _eko_v +#
@@ -2209,7 +2319,8 @@ function _parse_parameters()
   # _binary_validate_setup
   # _builtin_validate_setup
   # _eko_iod
-  # _eko_v
+  # _eko_pv
+#  # _eko_v
   # _pathname_redundant_check
   # _pathname_validate
   # _pathnames_scan
@@ -2655,6 +2766,16 @@ then
 fi
 #- marker *sum conflict type -#
 
+#+ marker *sum dry-run +#
+if [[ 1 == 1 ]]
+then
+  if $_BOOLEAN_DRYRUN
+  then
+    _BOOLEAN_SUM=false
+  fi
+fi
+#- marker *sum dry-run -#
+
   #- _parse_parameters -#
 
   # - technically in the wrong spot, but it's a chicken or egg scenario
@@ -2719,39 +2840,72 @@ fi
     _BOOLEAN_STDOUT=false      # display
   fi
 
-  _eko_v "              \$_BOOLEAN_DEBUG: \"$_BOOLEAN_DEBUG\""
-  _eko_v "             \$_BOOLEAN_DRYRUN: \"$_BOOLEAN_DRYRUN\""
-  _eko_v "              \$_BOOLEAN_ERROR: \"$_BOOLEAN_ERROR\""
-  _eko_v "           \$_BOOLEAN_HARDLINK: \"$_BOOLEAN_HARDLINK\""
-  _eko_v "               \$_BOOLEAN_LONG: \"$_BOOLEAN_LONG\""
-  _eko_v "             \$_BOOLEAN_MD5SUM: \"$_BOOLEAN_MD5SUM\""
-  _eko_v "        \$_BOOLEAN_NANOSECONDS: \"$_BOOLEAN_NANOSECONDS\""
-  _eko_v "          \$_BOOLEAN_NONSPARSE: \"$_BOOLEAN_NONSPARSE\""
-  _eko_v "           \$_BOOLEAN_RELATIVE: \"$_BOOLEAN_RELATIVE\""
-  _eko_v "            \$_BOOLEAN_SHA1SUM: \"$_BOOLEAN_SHA1SUM\""
-  _eko_v "          \$_BOOLEAN_SHA224SUM: \"$_BOOLEAN_SHA224SUM\""
-  _eko_v "          \$_BOOLEAN_SHA256SUM: \"$_BOOLEAN_SHA256SUM\""
-  _eko_v "          \$_BOOLEAN_SHA384SUM: \"$_BOOLEAN_SHA384SUM\""
-  _eko_v "          \$_BOOLEAN_SHA512SUM: \"$_BOOLEAN_SHA512SUM\""
-  _eko_v "             \$_BOOLEAN_SPARSE: \"$_BOOLEAN_SPARSE\""
-  _eko_v "             \$_BOOLEAN_STDOUT: \"$_BOOLEAN_STDOUT\""
-  _eko_v "                \$_BOOLEAN_SUM: \"$_BOOLEAN_SUM\""
-  _eko_v "             \$_BOOLEAN_UNLINK: \"$_BOOLEAN_UNLINK\""
-  _eko_v "            \$_BOOLEAN_VERBOSE: \"$_BOOLEAN_VERBOSE\""
-  _eko_v "               \$_BOOLEAN_XDEV: \"$_BOOLEAN_XDEV\""
-  _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
-  _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
-  _eko_v "                 \$_OPTIONS_CD: \"$_OPTIONS_CD\""
-  _eko_v "                 \$_OPTIONS_CP: \"$_OPTIONS_CP\""
-  _eko_v "                 \$_OPTIONS_LN: \"$_OPTIONS_LN\""
-  _eko_v "                 \$_OPTIONS_MV: \"$_OPTIONS_MV\""
-  _eko_v "                \$_OPTIONS_PWD: \"$_OPTIONS_PWD\""
-  _eko_v "               \$_OPTIONS_READ: \"$_OPTIONS_READ\""
-  _eko_v "           \$_OPTIONS_REALPATH: \"$_OPTIONS_REALPATH\""
-  _eko_v "                 \$_OPTIONS_RM: \"$_OPTIONS_RM\""
-  _eko_v "            \$_OPTION_SUM_SIZE: \"$_OPTION_SUM_SIZE\""
-  _eko_v "      \${#_ARRAY_PATHNAMES[@]}: \"${#_ARRAY_PATHNAMES[@]}\""
-  _eko_v "       \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
+#  _eko_v "              \$_BOOLEAN_DEBUG: \"$_BOOLEAN_DEBUG\""
+#  _eko_v "             \$_BOOLEAN_DRYRUN: \"$_BOOLEAN_DRYRUN\""
+#  _eko_v "              \$_BOOLEAN_ERROR: \"$_BOOLEAN_ERROR\""
+#  _eko_v "           \$_BOOLEAN_HARDLINK: \"$_BOOLEAN_HARDLINK\""
+#  _eko_v "               \$_BOOLEAN_LONG: \"$_BOOLEAN_LONG\""
+#  _eko_v "             \$_BOOLEAN_MD5SUM: \"$_BOOLEAN_MD5SUM\""
+#  _eko_v "        \$_BOOLEAN_NANOSECONDS: \"$_BOOLEAN_NANOSECONDS\""
+#  _eko_v "          \$_BOOLEAN_NONSPARSE: \"$_BOOLEAN_NONSPARSE\""
+#  _eko_v "           \$_BOOLEAN_RELATIVE: \"$_BOOLEAN_RELATIVE\""
+#  _eko_v "            \$_BOOLEAN_SHA1SUM: \"$_BOOLEAN_SHA1SUM\""
+#  _eko_v "          \$_BOOLEAN_SHA224SUM: \"$_BOOLEAN_SHA224SUM\""
+#  _eko_v "          \$_BOOLEAN_SHA256SUM: \"$_BOOLEAN_SHA256SUM\""
+#  _eko_v "          \$_BOOLEAN_SHA384SUM: \"$_BOOLEAN_SHA384SUM\""
+#  _eko_v "          \$_BOOLEAN_SHA512SUM: \"$_BOOLEAN_SHA512SUM\""
+#  _eko_v "             \$_BOOLEAN_SPARSE: \"$_BOOLEAN_SPARSE\""
+#  _eko_v "             \$_BOOLEAN_STDOUT: \"$_BOOLEAN_STDOUT\""
+#  _eko_v "                \$_BOOLEAN_SUM: \"$_BOOLEAN_SUM\""
+#  _eko_v "             \$_BOOLEAN_UNLINK: \"$_BOOLEAN_UNLINK\""
+#  _eko_v "            \$_BOOLEAN_VERBOSE: \"$_BOOLEAN_VERBOSE\""
+#  _eko_v "               \$_BOOLEAN_XDEV: \"$_BOOLEAN_XDEV\""
+#  _eko_v "               \$_FUNCTION_SUM: \"$_FUNCTION_SUM\""
+#  _eko_v "         \$_FUNCTION_TRANSFORM: \"$_FUNCTION_TRANSFORM\""
+#  _eko_v "                 \$_OPTIONS_CD: \"$_OPTIONS_CD\""
+#  _eko_v "                 \$_OPTIONS_CP: \"$_OPTIONS_CP\""
+#  _eko_v "                 \$_OPTIONS_LN: \"$_OPTIONS_LN\""
+#  _eko_v "                 \$_OPTIONS_MV: \"$_OPTIONS_MV\""
+#  _eko_v "                \$_OPTIONS_PWD: \"$_OPTIONS_PWD\""
+#  _eko_v "               \$_OPTIONS_READ: \"$_OPTIONS_READ\""
+#  _eko_v "           \$_OPTIONS_REALPATH: \"$_OPTIONS_REALPATH\""
+#  _eko_v "                 \$_OPTIONS_RM: \"$_OPTIONS_RM\""
+#  _eko_v "            \$_OPTION_SUM_SIZE: \"$_OPTION_SUM_SIZE\""
+#  _eko_v "      \${#_ARRAY_PATHNAMES[@]}: \"${#_ARRAY_PATHNAMES[@]}\""
+#  _eko_v "       \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
+  _eko_pv "\$_BOOLEAN_DEBUG:" \""$_BOOLEAN_DEBUG\""
+  _eko_pv "\$_BOOLEAN_DRYRUN:" \""$_BOOLEAN_DRYRUN\""
+  _eko_pv "\$_BOOLEAN_ERROR:" \""$_BOOLEAN_ERROR\""
+  _eko_pv "\$_BOOLEAN_HARDLINK:" \""$_BOOLEAN_HARDLINK\""
+  _eko_pv "\$_BOOLEAN_LONG:" \""$_BOOLEAN_LONG\""
+  _eko_pv "\$_BOOLEAN_MD5SUM:" \""$_BOOLEAN_MD5SUM\""
+  _eko_pv "\$_BOOLEAN_NANOSECONDS:" \""$_BOOLEAN_NANOSECONDS\""
+  _eko_pv "\$_BOOLEAN_NONSPARSE:" \""$_BOOLEAN_NONSPARSE\""
+  _eko_pv "\$_BOOLEAN_RELATIVE:" \""$_BOOLEAN_RELATIVE\""
+  _eko_pv "\$_BOOLEAN_SHA1SUM:" \""$_BOOLEAN_SHA1SUM\""
+  _eko_pv "\$_BOOLEAN_SHA224SUM:" \""$_BOOLEAN_SHA224SUM\""
+  _eko_pv "\$_BOOLEAN_SHA256SUM:" \""$_BOOLEAN_SHA256SUM\""
+  _eko_pv "\$_BOOLEAN_SHA384SUM:" \""$_BOOLEAN_SHA384SUM\""
+  _eko_pv "\$_BOOLEAN_SHA512SUM:" \""$_BOOLEAN_SHA512SUM\""
+  _eko_pv "\$_BOOLEAN_SPARSE:" \""$_BOOLEAN_SPARSE\""
+  _eko_pv "\$_BOOLEAN_STDOUT:" \""$_BOOLEAN_STDOUT\""
+  _eko_pv "\$_BOOLEAN_SUM:" \""$_BOOLEAN_SUM\""
+  _eko_pv "\$_BOOLEAN_UNLINK:" \""$_BOOLEAN_UNLINK\""
+  _eko_pv "\$_BOOLEAN_VERBOSE:" \""$_BOOLEAN_VERBOSE\""
+  _eko_pv "\$_BOOLEAN_XDEV:" \""$_BOOLEAN_XDEV\""
+  _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
+  _eko_pv "\$_FUNCTION_TRANSFORM:" \""$_FUNCTION_TRANSFORM\""
+  _eko_pv "\$_OPTIONS_CD:" \""$_OPTIONS_CD\""
+  _eko_pv "\$_OPTIONS_CP:" \""$_OPTIONS_CP\""
+  _eko_pv "\$_OPTIONS_LN:" \""$_OPTIONS_LN\""
+  _eko_pv "\$_OPTIONS_MV:" \""$_OPTIONS_MV\""
+  _eko_pv "\$_OPTIONS_PWD:" \""$_OPTIONS_PWD\""
+  _eko_pv "\$_OPTIONS_READ:" \""$_OPTIONS_READ\""
+  _eko_pv "\$_OPTIONS_REALPATH:" \""$_OPTIONS_REALPATH\""
+  _eko_pv "\$_OPTIONS_RM:" \""$_OPTIONS_RM\""
+  _eko_pv "\$_OPTION_SUM_SIZE:" \""$_OPTION_SUM_SIZE\""
+  _eko_pv "\${#_ARRAY_PATHNAMES[@]}:" \""${#_ARRAY_PATHNAMES[@]}\""
+  _eko_pv "\${_ARRAY_PATHNAMES[@]}:" \""${_ARRAY_PATHNAMES[@]}\""
 
   # NOTE:
   # - lots of testing before we go further:
@@ -3151,7 +3305,8 @@ function _pathname_redundant_check()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
+#  # _eko_v
   # _show_error
 
   # variables:
@@ -3176,9 +3331,12 @@ function _pathname_redundant_check()
   # ^ if $_OPTION_PATHNAME passes all of the following tests, it's considered
   #   valid
 
-  _eko_v "            \$_OPTION_PATHNAME: \"$_OPTION_PATHNAME\""
-  _eko_v "      \${#_ARRAY_PATHNAMES[@]}: \"${#_ARRAY_PATHNAMES[@]}\""
-  _eko_v "       \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
+#  _eko_v "            \$_OPTION_PATHNAME: \"$_OPTION_PATHNAME\""
+#  _eko_v "      \${#_ARRAY_PATHNAMES[@]}: \"${#_ARRAY_PATHNAMES[@]}\""
+#  _eko_v "       \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
+  _eko_pv "\$_OPTION_PATHNAME:" \""$_OPTION_PATHNAME\""
+  _eko_pv "\${#_ARRAY_PATHNAMES[@]}:" \""${#_ARRAY_PATHNAMES[@]}\""
+  _eko_pv "\${_ARRAY_PATHNAMES[@]}:" \""${_ARRAY_PATHNAMES[@]}\""
 
   # - reassign so the original variable remains unmodified
   # - conditionally append a trailing "/" while we're at it
@@ -3440,7 +3598,8 @@ function _pathname_transform_bruteforce()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
+#  # _eko_v
 
   # variables:
   # _BASENAME
@@ -3483,7 +3642,8 @@ function _pathname_transform_bruteforce()
   # - into this:
   #   /data/pub/mirrors/slackware/slackware-current/source/l/ncurses
 
-  _eko_v "\$_OPTION_PATHNAME (start)    : \"$_OPTION_PATHNAME\""
+#  _eko_v "\$_OPTION_PATHNAME (start)    : \"$_OPTION_PATHNAME\""
+  _eko_pv "\$_OPTION_PATHNAME (start)    :" \""$_OPTION_PATHNAME\""
 
   #+ goal #1 +#
   # - sanitize $_OPTION_PATHNAME
@@ -3494,7 +3654,8 @@ function _pathname_transform_bruteforce()
   cd -- - &>/dev/null
 
   # - start (sanitized)
-  _eko_v "\$_OPTION_PATHNAME (sanitized): \"$_OPTION_PATHNAME\""
+#  _eko_v "\$_OPTION_PATHNAME (sanitized): \"$_OPTION_PATHNAME\""
+  _eko_pv "\$_OPTION_PATHNAME (sanitized):" \""$_OPTION_PATHNAME\""
   #- goal #1 -#
 
   #+ goal #2 +#
@@ -3508,7 +3669,8 @@ function _pathname_transform_bruteforce()
     _DIRNAME=$(dirname -- "$_OPTION_PATHNAME")
     _BASENAME=$(basename -- "$_OPTION_PATHNAME")
 
-    _eko_v "\$_OPTION_PATHNAME (during)   : \"$_OPTION_PATHNAME\""
+#    _eko_v "\$_OPTION_PATHNAME (during)   : \"$_OPTION_PATHNAME\""
+    _eko_pv "\$_OPTION_PATHNAME (during)   :" \""$_OPTION_PATHNAME\""
 
     # - dual purpose: object of symbolic link or "" if file is not symbolic link
     _LINKNAME=$(find "$_OPTION_PATHNAME" -maxdepth 0 -printf "%l" 2>/dev/null)
@@ -3518,10 +3680,12 @@ function _pathname_transform_bruteforce()
     # - "-n string" = true if the length of string is non-zero
     if [[ -n $_LINKNAME ]]
     then
-      _eko_v " \$_DIRNAME \$_LINKNAME (link) : \"$_DIRNAME\" \"$_LINKNAME\""
+#      _eko_v " \$_DIRNAME \$_LINKNAME (link) : \"$_DIRNAME\" \"$_LINKNAME\""
+      _eko_pv "\$_DIRNAME \$_LINKNAME (link) :" \""$_DIRNAME\" \"$_LINKNAME\""
       _STRING_PATHNAME=$_LINKNAME/$_STRING_PATHNAME
     else
-      _eko_v " \$_DIRNAME \$_BASENAME        : \"$_DIRNAME\" \"$_BASENAME\""
+#      _eko_v " \$_DIRNAME \$_BASENAME        : \"$_DIRNAME\" \"$_BASENAME\""
+      _eko_pv "\$_DIRNAME \$_BASENAME        :" \""$_DIRNAME\" \"$_BASENAME\""
       _STRING_PATHNAME=$_BASENAME/$_STRING_PATHNAME
     fi
 
@@ -3530,7 +3694,8 @@ function _pathname_transform_bruteforce()
   done
 
   # - rebuilt (reconstructed)
-  _eko_v "\$_STRING_PATHNAME (rebuilt)  : \"$_STRING_PATHNAME\""
+#  _eko_v "\$_STRING_PATHNAME (rebuilt)  : \"$_STRING_PATHNAME\""
+  _eko_pv "\$_STRING_PATHNAME (rebuilt)  :" \""$_STRING_PATHNAME\""
 
   # - sanitize $_STRING_PATHNAME
   # - pay attention to the "/" prefix
@@ -3544,7 +3709,8 @@ function _pathname_transform_bruteforce()
   _OPTION_PATHNAME=$_STRING_PATHNAME
 
   # - finish (transformed)
-  _eko_v "\$_OPTION_PATHNAME (finished) : \"$_OPTION_PATHNAME\""
+#  _eko_v "\$_OPTION_PATHNAME (finished) : \"$_OPTION_PATHNAME\""
+  _eko_pv "\$_OPTION_PATHNAME (finished) :" \""$_OPTION_PATHNAME\""
   #- goal #2 -#
 
   _eko_iod "#- _pathname_transform_bruteforce -#"
@@ -3556,7 +3722,8 @@ function _pathname_transform_cd_pwd()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
+#  # _eko_v
 
   # variables:
   # _OPTION_PATHNAME
@@ -3591,7 +3758,8 @@ function _pathname_transform_cd_pwd()
   # - into this:
   #   /data/pub/mirrors/slackware/slackware-current/source/l/ncurses
 
-  _eko_v "\$_OPTION_PATHNAME (start)    : \"$_OPTION_PATHNAME\""
+#  _eko_v "\$_OPTION_PATHNAME (start)    : \"$_OPTION_PATHNAME\""
+  _eko_pv "\$_OPTION_PATHNAME (start)    :" \""$_OPTION_PATHNAME\""
 
   #+ goal #1 & goal #2 +#
   # - done in two simple (& technically redundant) steps
@@ -3604,7 +3772,8 @@ function _pathname_transform_cd_pwd()
   cd -- - &>/dev/null
   #- goal #1 & goal #2 -#
 
-  _eko_v "\$_OPTION_PATHNAME (finished) : \"$_OPTION_PATHNAME\""
+#  _eko_v "\$_OPTION_PATHNAME (finished) : \"$_OPTION_PATHNAME\""
+  _eko_pv "\$_OPTION_PATHNAME (finished) :" \""$_OPTION_PATHNAME\""
 
   _eko_iod "#- _pathname_transform_cd_pwd -#"
 }
@@ -3615,7 +3784,8 @@ function _pathname_transform_realpath()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
+#  # _eko_v
 
   # variables:
   # _OPTION_PATHNAME
@@ -3648,7 +3818,8 @@ function _pathname_transform_realpath()
   # - into this:
   #   /data/pub/mirrors/slackware/slackware-current/source/l/ncurses
 
-  _eko_v "\$_OPTION_PATHNAME (start)    : \"$_OPTION_PATHNAME\""
+#  _eko_v "\$_OPTION_PATHNAME (start)    : \"$_OPTION_PATHNAME\""
+  _eko_pv "\$_OPTION_PATHNAME (start)    :" \""$_OPTION_PATHNAME\""
 
   #+ goal #1 & goal #2 +#
   # - done in a single step
@@ -3656,7 +3827,8 @@ function _pathname_transform_realpath()
   _OPTION_PATHNAME=$(realpath $_OPTIONS_REALPATH -- "$_OPTION_PATHNAME")
   #- goal #1 & goal #2 -#
 
-  _eko_v "\$_OPTION_PATHNAME (finished) : \"$_OPTION_PATHNAME\""
+#  _eko_v "\$_OPTION_PATHNAME (finished) : \"$_OPTION_PATHNAME\""
+  _eko_pv "\$_OPTION_PATHNAME (finished) :" \""$_OPTION_PATHNAME\""
 
   _eko_iod "#- _pathname_transform_realpath -#"
 }
@@ -3667,7 +3839,8 @@ function _pathname_validate()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
+#  # _eko_v
   # _show_error
 
   # variables:
@@ -3697,10 +3870,8 @@ function _pathname_validate()
   # - "-z string" = true if the length of string is zero
   if [[ -z $(find "$_OPTION_PATHNAME" -type d -maxdepth 0 2>/dev/null) ]]
   then
-#+ marker testing +#
-# - possibly keep this. it could be useful for troubleshooting
-_eko_v "            \$_OPTION_PATHNAME: \"$_OPTION_PATHNAME\" (symlink)"
-#- marker testing -#
+#    _eko_v "            \$_OPTION_PATHNAME: \"$_OPTION_PATHNAME\" (symlink)"
+    _eko_pv "\$_OPTION_PATHNAME:" \""$_OPTION_PATHNAME\" (symlink)"
     # - correctly decipher the pathname if the very last element is a symlink
     # - take note of the explicit trailing "/". it's part of the magic
     if [[ -n $(find "$_OPTION_PATHNAME/" -type d -maxdepth 0 2>/dev/null) ]]
@@ -3726,7 +3897,8 @@ _eko_v "            \$_OPTION_PATHNAME: \"$_OPTION_PATHNAME\" (symlink)"
     _show_error \""$_OPTION_PATHNAME\" is not writable"
   fi
 
-  _eko_v "            \$_OPTION_PATHNAME: \"$_OPTION_PATHNAME\" (valid)"
+#  _eko_v "            \$_OPTION_PATHNAME: \"$_OPTION_PATHNAME\" (valid)"
+  _eko_pv "\$_OPTION_PATHNAME:" \""$_OPTION_PATHNAME\" (valid)"
 
   _eko_iod "#- _pathname_validate -#"
 }
@@ -3737,7 +3909,8 @@ function _pathnames_scan()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
+  # _eko_v (only for testing)
 
   # variables:
   # $$
@@ -3885,10 +4058,14 @@ function _pathnames_scan()
     unset _OPTIONS_XDEV
   fi
 
-  _eko_v "          \$_OPTIONS_READWRITE: \"$_OPTIONS_READWRITE\""
-  _eko_v "             \$_OPTIONS_UIDGID: \"$_OPTIONS_UIDGID\""
-  _eko_v "             \$_OPTIONS_UNLINK: \"$_OPTIONS_UNLINK\""
-  _eko_v "               \$_OPTIONS_XDEV: \"$_OPTIONS_XDEV\""
+#  _eko_v "          \$_OPTIONS_READWRITE: \"$_OPTIONS_READWRITE\""
+#  _eko_v "             \$_OPTIONS_UIDGID: \"$_OPTIONS_UIDGID\""
+#  _eko_v "             \$_OPTIONS_UNLINK: \"$_OPTIONS_UNLINK\""
+#  _eko_v "               \$_OPTIONS_XDEV: \"$_OPTIONS_XDEV\""
+  _eko_pv "\$_OPTIONS_READWRITE:" \""$_OPTIONS_READWRITE\""
+  _eko_pv "\$_OPTIONS_UIDGID:" \""$_OPTIONS_UIDGID\""
+  _eko_pv "\$_OPTIONS_UNLINK:" \""$_OPTIONS_UNLINK\""
+  _eko_pv "\$_OPTIONS_XDEV:" \""$_OPTIONS_XDEV\""
 
   # - save the base path, cd to it, reset it to "."
   # - only possible if $_ARRAY_PATHNAMES contains a single pathname. already
@@ -3926,35 +4103,33 @@ function _pathnames_scan()
       if [[ -n "$_ST_NAME" ]]
       then
 
-#+ marker trap test +#
-# - for later:
-# - echo assorted bits of info to stdout to see what we have to work with
-# - also in the segment within $_BOOLEAN_TIMESTAMP after the loops
-
-# - put something like this after every step
-# - this doesn't work for some unknown reason
-#read -p "press the any key to continue: " -n 1 _CHAR
-#- marker trap test -#
-
         #+ DANGER! WILL ROBINSON! DANGER! this is live code +#
         if ! $_BOOLEAN_DRYRUN \
         && $_BOOLEAN_UNLINK
         then
-#+ marker trap test +#
-# 1/8
-# - this is everything known about the original $_ST_NAME
-_eko_v "1/8: \$_ST_DEV: \"$_ST_DEV\""
-_eko_v "1/8: \$_ST_INO: \"$_ST_INO\""
-_eko_v "1/8: \$_ST_MODE: \"$_ST_MODE\""
-_eko_v "1/8: \$_ST_NLINK: \"$_ST_NLINK\""
-_eko_v "1/8: \$_ST_UID: \"$_ST_UID\""
-_eko_v "1/8: \$_ST_GID: \"$_ST_GID\""
-_eko_v "1/8: \$_ST_SIZE: \"$_ST_SIZE\""
-_eko_v "1/8: \$_ST_MTIM_YMD: \"$_ST_MTIM_YMD\""
-_eko_v "1/8: \$_ST_MTIM_HMS: \"$_ST_MTIM_HMS\""
-_eko_v "1/8: \$_ST_MTIM_UTC: \"$_ST_MTIM_UTC\""
-_eko_v "1/8: \$_ST_NAME: \"$_ST_NAME\""
-#- marker trap test -#
+if $_BOOLEAN_TESTING_01
+then
+          # 1/8
+          # - used in 7/8
+          # - this is everything known about the original $_SD_NAME
+          _eko_v "1/8: \$_SD_MTIM_YMD: \"$_SD_MTIM_YMD\""
+          _eko_v "1/8: \$_SD_MTIM_HMS: \"$_SD_MTIM_HMS\""
+          _eko_v "1/8: \$_SD_MTIM_UTC: \"$_SD_MTIM_UTC\""
+          _eko_v "1/8: \$_SD_NAME: \"$_SD_NAME\""
+
+          # - this is everything known about the original $_ST_NAME
+          _eko_v "1/8: \$_ST_DEV: \"$_ST_DEV\""
+          _eko_v "1/8: \$_ST_INO: \"$_ST_INO\""
+          _eko_v "1/8: \$_ST_MODE: \"$_ST_MODE\""
+          _eko_v "1/8: \$_ST_NLINK: \"$_ST_NLINK\""
+          _eko_v "1/8: \$_ST_UID: \"$_ST_UID\""
+          _eko_v "1/8: \$_ST_GID: \"$_ST_GID\""
+          _eko_v "1/8: \$_ST_SIZE: \"$_ST_SIZE\""
+          _eko_v "1/8: \$_ST_MTIM_YMD: \"$_ST_MTIM_YMD\""
+          _eko_v "1/8: \$_ST_MTIM_HMS: \"$_ST_MTIM_HMS\""
+          _eko_v "1/8: \$_ST_MTIM_UTC: \"$_ST_MTIM_UTC\""
+          _eko_v "1/8: \$_ST_NAME: \"$_ST_NAME\""
+fi
           # - be as unique as possible. why such a convoluted file name?
           # - 1: the base name *is* the original file name
           # - 2: "scanfs" to make it easy to find stray temporary files in
@@ -3967,19 +4142,21 @@ _eko_v "1/8: \$_ST_NAME: \"$_ST_NAME\""
           #      is *ahem* unwise enough to process the same directory
           #      hierarchy simultaneously
           _SU_NAME="${_ST_NAME}.scanfs.$_MY_UID:$_MY_GID.$PPID.$$"
-#+ marker trap test +#
-# 2/8
-# - $_SU_NAME all dressed up with nowhere to go
-_eko_v "2/8: \$_SU_NAME: \"$_SU_NAME\""
-#- marker trap test -#
+if $_BOOLEAN_TESTING_01
+then
+          # 2/8
+          # - $_SU_NAME all dressed up with no place to go
+          _eko_v "2/8: \$_SU_NAME: \"$_SU_NAME\""
+fi
 
           # - copy the original file (with various options) to a unique file
           # - take note of what is & what is not doublequoted
+if $_BOOLEAN_TESTING_01
+then
+          # 3/8 (eko precedes action)
+          _eko_v "3/8: \"cp $_OPTIONS_CP -- \"$_ST_NAME\" \"$_SU_NAME\""
+fi
           cp $_OPTIONS_CP -- "$_ST_NAME" "$_SU_NAME"
-#+ marker trap test +#
-# 3/8
-_eko_v "3/8: \"cp $_OPTIONS_CP -- \"$_ST_NAME\" \"$_SU_NAME\""
-#- marker trap test -#
 
           # - get stat(2) info of the newly created unique file, save
           #   everything as _ST_* (except for _ST_NAME itself). this/these
@@ -4000,41 +4177,45 @@ _eko_v "3/8: \"cp $_OPTIONS_CP -- \"$_ST_NAME\" \"$_SU_NAME\""
           -type f \
           -maxdepth 0 \
           -printf "%D %i %M %n %U %G %s %TY-%Tm-%Td %TH:%TM:%TS %TZ\n" 2>/dev/null)
-#+ marker trap test +#
-# 4/8
-# - this is everything known about the newly created $_SU_NAME
-# - take careful note: _ST_* & _SU_NAME below. this is deliberate
-_eko_v "4/8: \$_ST_DEV: \"$_ST_DEV\""
-_eko_v "4/8: \$_ST_INO: \"$_ST_INO\""
-_eko_v "4/8: \$_ST_MODE: \"$_ST_MODE\""
-_eko_v "4/8: \$_ST_NLINK: \"$_ST_NLINK\""
-_eko_v "4/8: \$_ST_UID: \"$_ST_UID\""
-_eko_v "4/8: \$_ST_GID: \"$_ST_GID\""
-_eko_v "4/8: \$_ST_SIZE: \"$_ST_SIZE\""
-_eko_v "4/8: \$_ST_MTIM_YMD: \"$_ST_MTIM_YMD\""
-_eko_v "4/8: \$_ST_MTIM_HMS: \"$_ST_MTIM_HMS\""
-_eko_v "4/8: \$_ST_MTIM_UTC: \"$_ST_MTIM_UTC\""
-_eko_v "4/8: \$_SU_NAME: \"$_SU_NAME\""
-#- marker trap test -#
+if $_BOOLEAN_TESTING_01
+then
+          # 4/8
+          # - this is everything known about the newly created $_SU_NAME
+          # - take careful note: _ST_* & _SU_NAME below. this is deliberate as
+          #   what is currently _SU_NAME will become _ST_NAME in 5/8
+          _eko_v "4/8: \$_ST_DEV: \"$_ST_DEV\""
+          _eko_v "4/8: \$_ST_INO: \"$_ST_INO\""
+          _eko_v "4/8: \$_ST_MODE: \"$_ST_MODE\""
+          _eko_v "4/8: \$_ST_NLINK: \"$_ST_NLINK\""
+          _eko_v "4/8: \$_ST_UID: \"$_ST_UID\""
+          _eko_v "4/8: \$_ST_GID: \"$_ST_GID\""
+          _eko_v "4/8: \$_ST_SIZE: \"$_ST_SIZE\""
+          _eko_v "4/8: \$_ST_MTIM_YMD: \"$_ST_MTIM_YMD\""
+          _eko_v "4/8: \$_ST_MTIM_HMS: \"$_ST_MTIM_HMS\""
+          _eko_v "4/8: \$_ST_MTIM_UTC: \"$_ST_MTIM_UTC\""
+          _eko_v "4/8: \$_SU_NAME: \"$_SU_NAME\""
+fi
 
           # - move the newly created unique file into place, overwriting the
           #   original file
           # - take note of what is & what is not doublequoted
+if $_BOOLEAN_TESTING_01
+then
+          # 5/8 (eko precedes action)
+          _eko_v "5/8: \"mv $_OPTIONS_MV -- \"$_SU_NAME\" \"$_ST_NAME\""
+fi
           mv $_OPTIONS_MV -- "$_SU_NAME" "$_ST_NAME"
-#+ marker trap test +#
-# 5/8
-_eko_v "5/8: \"mv $_OPTIONS_MV -- \"$_SU_NAME\" \"$_ST_NAME\""
-#- marker trap test -#
 
           # - since at least one file was manipulated in the current
           #   directory, the directory's timestamp will need to be restored
           # - flag it now, restore it immediately after processing the current
           #   directory
           _BOOLEAN_TIMESTAMP=true
-#+ marker trap test +#
-# 6/8
-_eko_v "6/8: \$_BOOLEAN_TIMESTAMP: \"$_BOOLEAN_TIMESTAMP\""
-#- marker trap test -#
+if $_BOOLEAN_TESTING_01
+then
+          # 6/8
+          _eko_v "6/8: \$_BOOLEAN_TIMESTAMP: \"$_BOOLEAN_TIMESTAMP\""
+fi
         fi
         #- DANGER! WILL ROBINSON! DANGER! this is live code -#
 
@@ -4134,18 +4315,20 @@ _eko_v "6/8: \$_BOOLEAN_TIMESTAMP: \"$_BOOLEAN_TIMESTAMP\""
     if $_BOOLEAN_TIMESTAMP
     then
       # - take careful note: $_SD_* & not $_ST_* or $_SU_*
+if $_BOOLEAN_TESTING_01
+then
+      # 7/8 (eko precedes action)
+      _eko_v "7/8: \"touch --date=\"$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC\" \"$_SD_NAME\" 2>/dev/null"
+fi
       touch --date="$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC" "$_SD_NAME" 2>/dev/null
-#+ marker trap test +#
-# 7/8
-_eko_v "7/8: \"touch --date=\"$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC\" \"$_SD_NAME\" 2>/dev/null"
-#- marker trap test -#
 
       # - reset the flag for the next iteration
       _BOOLEAN_TIMESTAMP=false
-#+ marker trap test +#
-# 8/8
-_eko_v "8/8: \$_BOOLEAN_TIMESTAMP: \"$_BOOLEAN_TIMESTAMP\""
-#- marker trap test -#
+if $_BOOLEAN_TESTING_01
+then
+      # 8/8
+      _eko_v "8/8: \$_BOOLEAN_TIMESTAMP: \"$_BOOLEAN_TIMESTAMP\""
+fi
     fi
     #- DANGER! WILL ROBINSON! DANGER! this is live code -#
 

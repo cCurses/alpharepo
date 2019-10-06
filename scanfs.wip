@@ -77,8 +77,15 @@ _BOOLEAN_TESTING_01=true # enabled
 #   sqlite3 stub in this script
 
 # 2019-10-06
+# - added/appended "# builtins:" listings in each function & in main to keep
+#   track of "echo" &/or "printf" usage. technically speaking, "(none)" is a
+#   misnomer as it's only in reference to these 2 builtins
 # - "function _parse_parameters" added/improved error detection/reports for
 #   multiple calls to the same *sum option & for *sum size/type conflicts
+# - "function _parse_parameters" added the following variable:
+#  add: _PREVIOUS_SUM
+# ^ it's an internal use only variable for use in "function _pathnames_scan"
+#   to prevent conflicts if more than 1 of the 6 *sum routines is called
 # - removed the following headers/footers & the conditional wraps within each:
 #   #+ marker *sum conflict size +# / #- marker *sum conflict size -#
 #   #+ marker *sum conflict type +# / #- marker *sum conflict type -#
@@ -664,6 +671,9 @@ function _trap()
   # rm
   # touch
 
+  # builtins:
+  # (none)
+
   # NOTE:
   # - hardlinking & unlinking will require slightly different actions
   #   hardlinking: restore parent directory's timestamp
@@ -786,6 +796,9 @@ function _trap_test()
   # binaries:
   # rm
   # touch
+
+  # builtins:
+  # echo (#'d out)
 
 beeps
 
@@ -1063,6 +1076,9 @@ function _binary_validate_setup()
   # sha512sum
   # sort
   # touch
+
+  # builtins:
+  # echo
 
   # NOTE:
   # - rather than test a given binary's version in hopes of figuring out which
@@ -2138,8 +2154,12 @@ function _builtin_validate_setup()
   # _OPTIONS_PWD (pwd options, not script options)
   # _OPTIONS_READ (read options, not script options)
 
+  # binaries:
+  # (none)
+
   # builtins:
   # cd (in combination with pwd, fallback to basename/dirname/find/realpath)
+  # echo
   # pwd (in combination with cd, fallback to basename/dirname/find/realpath)
   # read
 
@@ -2264,8 +2284,15 @@ function _eko_iod()
   # FUNCNAME (single dimension indexed array)
   # _BOOLEAN_DEBUG
 
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+  # printf
+
   # NOTE:
-  # - why $(( ${#FUNCNAME[@]} - 3 ))? to account for main, parent, current
+  # - why "$(( ${#FUNCNAME[@]} - 3 ))"? to account for main, parent, current
   # - pay special attention to the "*" in "%*s". it's part of the magic
 
   if $_BOOLEAN_DEBUG
@@ -2292,6 +2319,18 @@ function _eko_pv()
   # @
   # _BOOLEAN_VERBOSE
 
+  # binaries:
+  # (none)
+
+  # builtins:
+  # printf
+
+  # NOTE:
+  # - why "%30s"? to simplify setting column width in verbose reports. a
+  #   single change here affects the output throughout the script
+  # - pay special attention to the differences in setup & calling syntax of
+  #   _eko_pv vs that of _eko_v
+
   if $_BOOLEAN_VERBOSE
   then
     printf "%30s %s\n" "$1" "$2"
@@ -2310,6 +2349,12 @@ function _eko_v()
   # variables:
   # @
   # _BOOLEAN_VERBOSE
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
 
   if $_BOOLEAN_VERBOSE
   then
@@ -2377,6 +2422,12 @@ function _parse_parameters()
   # _OPTION_PATHNAME
   # _OPTION_SUM_SIZE
   # _PREVIOUS_SUM
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # (none)
 
   # NOTE:
   # - boolean variables are proper toggles
@@ -2732,9 +2783,9 @@ function _parse_parameters()
     shift
   done
 
-  # - why? dry-run means exactly that. do as little as possible
-  if $_BOOLEAN_SUM \
-  && $_BOOLEAN_DRYRUN
+  # - why? "-D, --dry-run" means exactly that. do as little as possible
+  if $_BOOLEAN_DRYRUN \
+  && $_BOOLEAN_SUM
   then
     _BOOLEAN_SUM=false
   fi
@@ -3019,6 +3070,9 @@ function _pathname_md5sum_md5sum()
   # head
   # md5sum
 
+  # builtins:
+  # (none)
+
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
   then
@@ -3055,6 +3109,9 @@ function _pathname_openssl_md5sum()
   # binaries:
   # head
   # openssl (fallback to supported *sum variants: md5 & sha1/224/256/384/512)
+
+  # builtins:
+  # (none)
 
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
@@ -3093,6 +3150,9 @@ function _pathname_openssl_sha1sum()
   # head
   # openssl (fallback to supported *sum variants: md5 & sha1/224/256/384/512)
 
+  # builtins:
+  # (none)
+
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
   then
@@ -3129,6 +3189,9 @@ function _pathname_openssl_sha224sum()
   # binaries:
   # head
   # openssl (fallback to supported *sum variants: md5 & sha1/224/256/384/512)
+
+  # builtins:
+  # (none)
 
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
@@ -3167,6 +3230,9 @@ function _pathname_openssl_sha256sum()
   # head
   # openssl (fallback to supported *sum variants: md5 & sha1/224/256/384/512)
 
+  # builtins:
+  # (none)
+
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
   then
@@ -3204,6 +3270,9 @@ function _pathname_openssl_sha384sum()
   # head
   # openssl (fallback to supported *sum variants: md5 & sha1/224/256/384/512)
 
+  # builtins:
+  # (none)
+
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
   then
@@ -3240,6 +3309,9 @@ function _pathname_openssl_sha512sum()
   # binaries:
   # head
   # openssl (fallback to supported *sum variants: md5 & sha1/224/256/384/512)
+
+  # builtins:
+  # (none)
 
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
@@ -3283,6 +3355,12 @@ function _pathname_redundant_check()
   # _OPTION_PATHNAME
   # _RHS
   # _RLEN
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # (none)
 
   # NOTE:
   # - succeeds: $_FUNCTION_TRANSFORM
@@ -3386,6 +3464,9 @@ function _pathname_sha1sum_sha1sum()
   # head
   # sha1sum
 
+  # builtins:
+  # (none)
+
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
   then
@@ -3422,6 +3503,9 @@ function _pathname_sha224sum_sha224sum()
   # binaries:
   # head
   # sha224sum
+
+  # builtins:
+  # (none)
 
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
@@ -3460,6 +3544,9 @@ function _pathname_sha256sum_sha256sum()
   # head
   # sha256sum
 
+  # builtins:
+  # (none)
+
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
   then
@@ -3497,6 +3584,9 @@ function _pathname_sha384sum_sha384sum()
   # head
   # sha384sum
 
+  # builtins:
+  # (none)
+
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
   then
@@ -3533,6 +3623,9 @@ function _pathname_sha512sum_sha512sum()
   # binaries:
   # head
   # sha512sum
+
+  # builtins:
+  # (none)
 
   # - "-z string" = true if the length of string is zero
   if [[ -z $_OPTION_SUM_SIZE ]]
@@ -3575,6 +3668,9 @@ function _pathname_transform_bruteforce()
   # basename (fallback with dirname/find to realpath)
   # dirname (fallback with basename/find to realpath)
   # find
+
+  # builtins:
+  # (none)
 
   # NOTE:
   # - succeeds: _pathname_validate
@@ -3693,7 +3789,11 @@ function _pathname_transform_cd_pwd()
   # _OPTIONS_CD (cd options, not script options)
   # _OPTIONS_PWD (pwd options, not script options)
 
+  # binaries:
+  # (none)
+
   # builtins:
+  # (none)
   # cd (in combination with pwd, fallback to basename/dirname/find/realpath)
   # pwd (in combination with cd, fallback to basename/dirname/find/realpath)
 
@@ -3757,6 +3857,9 @@ function _pathname_transform_realpath()
   # binaries:
   # realpath
 
+  # builtins:
+  # (none)
+
   # NOTE:
   # - succeeds: _pathname_validate
   # - precedes: _pathname_redundant_check
@@ -3811,6 +3914,9 @@ function _pathname_validate()
 
   # binaries:
   # find
+
+  # builtins:
+  # (none)
 
   # NOTE:
   # - succeeds: _OPTION_PATHNAME assignment
@@ -3929,6 +4035,7 @@ function _pathnames_scan()
   # touch
 
   # builtins:
+  # printf
   # read
 
   # NOTE:
@@ -4226,9 +4333,10 @@ fi
         then
           if $_BOOLEAN_SUM
           then
+            echo
             # - generate *sum of the file (full or $_OPTION_SUM_SIZE)
             $_FUNCTION_SUM
-            printf "\n%30s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n" \
+            printf "%30s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n" \
             \$_ST_DEV: \""$_ST_DEV\"" \
             \$_ST_INO: \""$_ST_INO \"" \
             \$_ST_MODE: \""$_ST_MODE\"" \
@@ -4327,6 +4435,9 @@ function _show_error()
   # variables:
   # @
 
+  # builtins:
+  # echo
+
   # - output to stderr, not stdout
   # - be explicit for clarity
   echo "Error: $@" 1>&2
@@ -4345,6 +4456,9 @@ function _show_help()
 
   # variables:
   # (none)
+
+  # builtins:
+  # echo
 
   echo "Provide at least 1 parameter: <PathName> [OPTION] [[OPTION]]
 
@@ -4398,6 +4512,9 @@ function _show_warning()
   # variables:
   # (none)
 
+  # builtins:
+  # echo
+
   echo "
 WARNING!
 
@@ -4436,6 +4553,12 @@ TL;DR version: You break it, you get to keep both halves
 
 # variables:
 # @
+
+# binaries:
+# (none)
+
+# builtins:
+# (none)
 
 _parse_parameters "$@"
 

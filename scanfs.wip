@@ -54,9 +54,6 @@ _BOOLEAN_TESTING_01=true # enabled
 # - remove select portions of the script that have been #'d out (done?)
 
 # - remove the following headers/footers & the conditional wraps within each:
-#   #+ marker *sum conflict size +# / #- marker *sum conflict size -#
-#   #+ marker *sum conflict type +# / #- marker *sum conflict type -#
-#   #+ marker *sum dry-run +# / #- marker *sum dry-run -#
 #   #+ marker edit +# / #- marker edit -#
 #   #disabled# < keep this one (useful for testing)
 
@@ -80,6 +77,12 @@ _BOOLEAN_TESTING_01=true # enabled
 #   sqlite3 stub in this script
 
 # 2019-10-06
+# - "function _parse_parameters" added/improved error detection/reports for
+#   multiple calls to the same *sum option & for *sum size/type conflicts
+# - removed the following headers/footers & the conditional wraps within each:
+#   #+ marker *sum conflict size +# / #- marker *sum conflict size -#
+#   #+ marker *sum conflict type +# / #- marker *sum conflict type -#
+#   #+ marker *sum dry-run +# / #- marker *sum dry-run -#
 # - changed the following lines throughout the script:
 #  was: _eko_v "      \$_FOO: \"$_FOO\""
 #   is: _eko_pv "\$_FOO:" \""$_FOO\""
@@ -499,6 +502,7 @@ _BOOLEAN_TESTING_01=true # enabled
   # _OPTIONS_XDEV (find options. not script options)
   # _OPTION_PATHNAME
   # _OPTION_SUM_SIZE
+  # _PREVIOUS_SUM
   # _RHS
   # _RLEN
   # _SD_MTIM_HMS (contrivance. not from stat(2))
@@ -537,6 +541,7 @@ _BOOLEAN_TESTING_01=true # enabled
 # _OPTIONS_UIDGID (find options. not script options)
 # _OPTIONS_UNLINK (find options. not script options)
 # _OPTIONS_XDEV (find options. not script options)
+# _PREVIOUS_SUM
 # NOTE: (script function use & abuse)
 # - script functions are always in the form "_foo"
   # _binary_validate_setup
@@ -591,9 +596,11 @@ _BOOLEAN_TESTING_01=true # enabled
 # _OPTIONS_UIDGID (find options. not script options)
 # _OPTIONS_UNLINK (find options. not script options)
 # _OPTIONS_XDEV (find options. not script options)
+# _PREVIOUS_SUM
 
 # - doing this here so we get no suprises in "function _binary_validate_setup",
-#   "function _builtin_validate_setup", & "function _pathnames_scan"
+#   "function _builtin_validate_setup", "function _parse_parameters", &
+#   "function _pathnames_scan"
 unset _FUNCTION_SUM
 unset _FUNCTION_TRANSFORM
 unset _MY_GID
@@ -610,6 +617,7 @@ unset _OPTIONS_RM
 unset _OPTIONS_UIDGID
 unset _OPTIONS_UNLINK
 unset _OPTIONS_XDEV
+unset _PREVIOUS_SUM
 
 # - the locale specified by the environment affects sort order. set LC_ALL=C
 #   to get the traditional sort order that uses native byte values
@@ -2368,6 +2376,7 @@ function _parse_parameters()
   # _OPTIONS_RM (rm options, not script options)
   # _OPTION_PATHNAME
   # _OPTION_SUM_SIZE
+  # _PREVIOUS_SUM
 
   # NOTE:
   # - boolean variables are proper toggles
@@ -2409,6 +2418,7 @@ function _parse_parameters()
   unset _ARRAY_PATHNAMES
   unset _OPTION_PATHNAME
   unset _OPTION_SUM_SIZE
+  unset _PREVIOUS_SUM
 
   #- parameter defaults -#
 
@@ -2420,6 +2430,8 @@ function _parse_parameters()
   #   to be specified in any order
   # - "-p, --pathname" is an exception. it's additive, not a toggle. hence the
   #   array
+  # - the various *sum options are also exceptions. additional tests are
+  #   performed in the loop to prevent multiple/conflicting invocations
 
   while [[ $# -gt 0 ]]
   do
@@ -2428,116 +2440,101 @@ function _parse_parameters()
       | --sha1sum )
         if $_BOOLEAN_SHA1SUM
         then
+          _show_error \""-1, --sha1sum\" specified multiple times"
+        fi
+        if $_BOOLEAN_SHA1SUM
+        then
           _BOOLEAN_SHA1SUM=false
         else
           _BOOLEAN_SHA1SUM=true
         fi
-#+ marker *sum conflict type +#
-if [[ 1 == 1 ]]
-then
-        if $_BOOLEAN_SHA1SUM
+        if $_BOOLEAN_SUM
         then
-          if $_BOOLEAN_SUM
-          then
-            _show_error "sha1sum conflict"
-          else
-            _BOOLEAN_SUM=true
-          fi
+          _show_error \""-1, --sha1sum\" conflicts with \"$_PREVIOUS_SUM\""
+        else
+          _BOOLEAN_SUM=true
+          _PREVIOUS_SUM="-1, --sha1sum"
         fi
-fi
-#- marker *sum conflict type -#
       ;;
       ( -224 \
       | --sha224sum )
+        if $_BOOLEAN_SHA224SUM
+        then
+          _show_error \""-224, --sha224sum\" specified multiple times"
+        fi
         if $_BOOLEAN_SHA224SUM
         then
           _BOOLEAN_SHA224SUM=false
         else
           _BOOLEAN_SHA224SUM=true
         fi
-#+ marker *sum conflict type +#
-if [[ 1 == 1 ]]
-then
-        if $_BOOLEAN_SHA224SUM
+        if $_BOOLEAN_SUM
         then
-          if $_BOOLEAN_SUM
-          then
-            _show_error "sha224sum conflict"
-          else
-            _BOOLEAN_SUM=true
-          fi
+          _show_error \""-224, --sha224sum\" conflicts with \"$_PREVIOUS_SUM\""
+         else
+          _BOOLEAN_SUM=true
+          _PREVIOUS_SUM="-224, --sha224sum"
         fi
-fi
-#- marker *sum conflict type -#
       ;;
       ( -256 \
       | --sha256sum )
+        if $_BOOLEAN_SHA256SUM
+        then
+          _show_error \""-256, --sha256sum\" specified multiple times"
+        fi
         if $_BOOLEAN_SHA256SUM
         then
           _BOOLEAN_SHA256SUM=false
         else
           _BOOLEAN_SHA256SUM=true
         fi
-#+ marker *sum conflict type +#
-if [[ 1 == 1 ]]
-then
-        if $_BOOLEAN_SHA256SUM
+        if $_BOOLEAN_SUM
         then
-          if $_BOOLEAN_SUM
-          then
-            _show_error "sha256sum conflict"
-          else
-            _BOOLEAN_SUM=true
-          fi
+          _show_error \""-256, --sha256sum\" conflicts with \"$_PREVIOUS_SUM\""
+        else
+          _BOOLEAN_SUM=true
+          _PREVIOUS_SUM="-256, --sha256sum"
         fi
-fi
-#- marker *sum conflict type -#
       ;;
       ( -384 \
       | --sha384sum )
+        if $_BOOLEAN_SHA384SUM
+        then
+          _show_error \""-384, --sha384sum\" specified multiple times"
+        fi
         if $_BOOLEAN_SHA384SUM
         then
           _BOOLEAN_SHA384SUM=false
         else
           _BOOLEAN_SHA384SUM=true
         fi
-#+ marker *sum conflict type +#
-if [[ 1 == 1 ]]
-then
-        if $_BOOLEAN_SHA384SUM
+        if $_BOOLEAN_SUM
         then
-          if $_BOOLEAN_SUM
-          then
-            _show_error "sha384sum conflict"
-          else
-            _BOOLEAN_SUM=true
-          fi
+          _show_error \""-384, --sha384sum\" conflicts with \"$_PREVIOUS_SUM\""
+        else
+          _BOOLEAN_SUM=true
+          _PREVIOUS_SUM="-384, --sha384sum"
         fi
-fi
-#- marker *sum conflict type -#
       ;;
       ( -512 \
       | --sha512sum )
+        if $_BOOLEAN_SHA512SUM
+        then
+          _show_error \""-512, --sha512sum\" specified multiple times"
+        fi
         if $_BOOLEAN_SHA512SUM
         then
           _BOOLEAN_SHA512SUM=false
         else
           _BOOLEAN_SHA512SUM=true
         fi
-#+ marker *sum conflict type +#
-if [[ 1 == 1 ]]
-then
-        if $_BOOLEAN_SHA512SUM
+        if $_BOOLEAN_SUM
         then
-          if $_BOOLEAN_SUM
-          then
-            _show_error "sha512sum conflict"
-          else
-            _BOOLEAN_SUM=true
-          fi
+          _show_error \""-512, --sha512sum\" conflicts with \"$_PREVIOUS_SUM\""
+        else
+          _BOOLEAN_SUM=true
+          _PREVIOUS_SUM="-512, --sha512sum"
         fi
-fi
-#- marker *sum conflict type -#
       ;;
       ( -D \
       | --dry-run )
@@ -2620,24 +2617,21 @@ fi
       | --md5sum )
         if $_BOOLEAN_MD5SUM
         then
+          _show_error \""-m, --md5sum\" specified multiple times"
+        fi
+        if $_BOOLEAN_MD5SUM
+        then
           _BOOLEAN_MD5SUM=false
         else
           _BOOLEAN_MD5SUM=true
         fi
-#+ marker *sum conflict type +#
-if [[ 1 == 1 ]]
-then
-        if $_BOOLEAN_MD5SUM
+        if $_BOOLEAN_SUM
         then
-          if $_BOOLEAN_SUM
-          then
-            _show_error "md5sum conflict"
-          else
-            _BOOLEAN_SUM=true
-          fi
+          _show_error \""-m, --md5sum\" conflicts with \"$_PREVIOUS_SUM\""
+        else
+          _BOOLEAN_SUM=true
+          _PREVIOUS_SUM="-m, --md5sum"
         fi
-fi
-#- marker *sum conflict type -#
       ;;
       ( -n \
       | --nanoseconds )
@@ -2693,22 +2687,15 @@ fi
         if [[ ${2:0:1} == - ]] \
         || [[ -z $2 ]]
         then
-          _show_error "*sum buffer size not specified"
+          _show_error \""-s, --size\" not specified"
         else
-#+ marker *sum conflict size +#
-if [[ 1 == 1 ]]
-then
           # - "-n string" = true if the length of string is non-zero
           if [[ -n $_OPTION_SUM_SIZE ]]
           then
-            _show_error "*sum buffer size previously specified"
+            _show_error \""-s, --size\" specified multiple times"
           else
             _OPTION_SUM_SIZE=$2
           fi
-else
-          _OPTION_SUM_SIZE=$2
-fi
-#- marker *sum conflict size -#
         fi
         shift
       ;;
@@ -2745,36 +2732,12 @@ fi
     shift
   done
 
-#+ marker *sum conflict type +#
-# - why do this? if any single 1 of the 6 *sum types is specified exactly
-#   twice on the commandline, the boolean for that individual *sum type will
-#   be toggled back & forth to "false", but _BOOLEAN_SUM will be set to "true",
-#   causing _FUNCTION_SUM (defined as "" at this point) to be uselessly called
-#   in the most time critical function ("function _pathnames_scan")
-if [[ 1 == 1 ]]
-then
-  if ! $_BOOLEAN_MD5SUM \
-  && ! $_BOOLEAN_SHA1SUM \
-  && ! $_BOOLEAN_SHA224SUM \
-  && ! $_BOOLEAN_SHA256SUM \
-  && ! $_BOOLEAN_SHA384SUM \
-  && ! $_BOOLEAN_SHA512SUM \
-  && $_BOOLEAN_SUM
+  # - why? dry-run means exactly that. do as little as possible
+  if $_BOOLEAN_SUM \
+  && $_BOOLEAN_DRYRUN
   then
     _BOOLEAN_SUM=false
   fi
-fi
-#- marker *sum conflict type -#
-
-#+ marker *sum dry-run +#
-if [[ 1 == 1 ]]
-then
-  if $_BOOLEAN_DRYRUN
-  then
-    _BOOLEAN_SUM=false
-  fi
-fi
-#- marker *sum dry-run -#
 
   #- _parse_parameters -#
 

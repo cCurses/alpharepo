@@ -12,12 +12,6 @@
 # - optionally unlink files that were previously hardlinked
 
 # TODO:
-# - "function _eko_pv" does not support arrays as it should. it displays only
-#   the first element of the array. this can be seen in
-#   "function _parse_parameters" & "function _pathname_redundant_check"
-# - for now, simply use "function _eko_v" for arrays to get proper output
-# - test code has been left in place for later inspection. keyword: "position"
-
 # - whatinhell did I break? the error trap is not entered *at all* when ^C is
 #   pressed. first & foremost, this obviously needs figuring out. HELP!
 # > for now. do *NOT* abort the script when it's unlinking files & everything
@@ -55,7 +49,7 @@ _BOOLEAN_TESTING_01=true # enabled
 # > one thought comes immediately to mind: assuming permissions permit it,
 #   as non-root, unlink files owned by someone else & see what happens
 
-# - ensure the changelog has been accurately updated. that'll be fun :(
+# - ensure the changelog has been accurately updated. (in progress)
 
 # - remove select portions of the script that have been #'d out (done?)
 
@@ -82,7 +76,26 @@ _BOOLEAN_TESTING_01=true # enabled
 #   standalone script snippets for testing so there's no need to retain the
 #   sqlite3 stub in this script
 
-# 2019-10-06
+# 2019-10-07
+# - "function _pathnames_scan" changed the following lines:
+# > verbose with *sum
+#  was: printf "%30s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n" \
+#   is: printf "%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n" \
+# > verbose without *sum
+#  was: printf "\n%30s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n" \
+#   is: printf "\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n" \
+# - changed the following lines throughout the script:
+#  was: _eko_pv "\$_FOO:" \""$_FOO\""
+#   is: _eko_pv \$_FOO: \""$_FOO\""
+# ^ there are several unchanged ("function _pathname_transform_bruteforce",
+#   "function _pathname_transform_cd_pwd", &
+#   "function _pathname_transform_realpath") since the left-hand side in each
+#   contains whitespace
+# - "function _eko_pv" changed/added the following lines for array support:
+#  was: printf "%30s %s\n" "$1" "$2"
+#   is: printf "%30s " "$1"
+#  add: shift
+#  add: echo "$@"
 # - added/appended "# builtins:" listings in each function & in main to keep
 #   track of "echo" &/or "printf" usage. technically speaking, "(none)" is a
 #   misnomer as it's only in reference to these 2 builtins
@@ -748,12 +761,12 @@ function _trap()
   && [[ -d "$_SD_NAME" ]]
   then
     _eko_v ""
-    _eko_pv "\$_BOOLEAN_DRYRUN:" \""$_BOOLEAN_DRYRUN\""
-    _eko_pv "\$_BOOLEAN_UNLINK:" \""$_BOOLEAN_UNLINK\""
-    _eko_pv "\$_SU_NAME:" \""$_SU_NAME\""
-    _eko_pv "\$_ST_NAME:" \""$_ST_NAME\""
-    _eko_pv "\$_SD_NAME:" \""$_SD_NAME\""
-    _eko_pv "\$_SD_MTIM:" \""$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC\""
+    _eko_pv \$_BOOLEAN_DRYRUN: \""$_BOOLEAN_DRYRUN\""
+    _eko_pv \$_BOOLEAN_UNLINK: \""$_BOOLEAN_UNLINK\""
+    _eko_pv \$_SU_NAME: \""$_SU_NAME\""
+    _eko_pv \$_ST_NAME: \""$_ST_NAME\""
+    _eko_pv \$_SD_NAME: \""$_SD_NAME\""
+    _eko_pv \$_SD_MTIM: \""$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC\""
 
     # - put the dry-run test here so we get the above report but
     #   (conditionally) prevent the below actions
@@ -919,12 +932,12 @@ function _trap_test()
     _eko_v "t: outer: pass"
 #- marker trap test -#
     _eko_v ""
-    _eko_pv "\$_BOOLEAN_DRYRUN:" \""$_BOOLEAN_DRYRUN\""
-    _eko_pv "\$_BOOLEAN_UNLINK:" \""$_BOOLEAN_UNLINK\""
-    _eko_pv "\$_SU_NAME:" \""$_SU_NAME\""
-    _eko_pv "\$_ST_NAME:" \""$_ST_NAME\""
-    _eko_pv "\$_SD_NAME:" \""$_SD_NAME\""
-    _eko_pv "\$_SD_MTIM:" \""$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC\""
+    _eko_pv \$_BOOLEAN_DRYRUN: \""$_BOOLEAN_DRYRUN\""
+    _eko_pv \$_BOOLEAN_UNLINK: \""$_BOOLEAN_UNLINK\""
+    _eko_pv \$_SU_NAME: \""$_SU_NAME\""
+    _eko_pv \$_ST_NAME: \""$_ST_NAME\""
+    _eko_pv \$_SD_NAME: \""$_SD_NAME\""
+    _eko_pv \$_SD_MTIM: \""$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC\""
 
     # - put the dry-run test here so we get the above report but
     #   (conditionally) prevent the below actions
@@ -940,7 +953,7 @@ function _trap_test()
     # - NOTE: parent directory's timestamp restored if files are non-sparse
     # - TODO: test again with sparse files
     # - TODO: verify that this file does, in fact, exist
-    _eko_pv "\$_SU_NAME:" \""$_SU_NAME\""
+    _eko_pv \$_SU_NAME: \""$_SU_NAME\""
 #- testing -#
 
       # - this succeeds (I think. see above)
@@ -959,12 +972,12 @@ function _trap_test()
 
 #+ testing +#
     # - all 3 are correct
-    _eko_pv "\$_SD_MTIM_YMD:" \""$_SD_MTIM_YMD\""
-    _eko_pv "\$_SD_MTIM_HMS:" \""$_SD_MTIM_HMS\""
-    _eko_pv "\$_SD_MTIM_UTC:" \""$_SD_MTIM_UTC\""
+    _eko_pv \$_SD_MTIM_YMD: \""$_SD_MTIM_YMD\""
+    _eko_pv \$_SD_MTIM_HMS: \""$_SD_MTIM_HMS\""
+    _eko_pv \$_SD_MTIM_UTC: \""$_SD_MTIM_UTC\""
 
     # - so is this
-    _eko_pv "\$_SD_NAME:" \""$_SD_NAME\""
+    _eko_pv \$_SD_NAME: \""$_SD_NAME\""
     _eko_v "#- test dump -#"
 #- testing -#
 
@@ -1185,7 +1198,7 @@ function _binary_validate_setup()
           _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
         fi
       fi # $_BOOLEAN_NONSPARSE
-      _eko_pv "\$_OPTIONS_CP:" \""$_OPTIONS_CP\""
+      _eko_pv \$_OPTIONS_CP: \""$_OPTIONS_CP\""
     fi
     #- cp -#
   fi # $_BOOLEAN_UNLINK
@@ -1350,7 +1363,7 @@ function _binary_validate_setup()
       then
         # - no doublequotes on the binary or its option. aka: NO CAPES!
         _MY_GID=$($_BINARY_NAME $_BINARY_OPTION)
-        _eko_pv "\$_MY_GID:" \""$_MY_GID\""
+        _eko_pv \$_MY_GID: \""$_MY_GID\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1360,7 +1373,7 @@ function _binary_validate_setup()
       then
         # - no doublequotes on the binary or its option. aka: NO CAPES!
         _MY_UID=$($_BINARY_NAME $_BINARY_OPTION)
-        _eko_pv "\$_MY_UID:" \""$_MY_UID\""
+        _eko_pv \$_MY_UID: \""$_MY_UID\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1387,7 +1400,7 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _OPTIONS_LN=$_BINARY_OPTION
-        _eko_pv "\$_OPTIONS_LN:" \""$_OPTIONS_LN\""
+        _eko_pv \$_OPTIONS_LN: \""$_OPTIONS_LN\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1412,7 +1425,7 @@ function _binary_validate_setup()
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
       _FUNCTION_SUM=_pathname_md5sum_md5sum
-      _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
+      _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
     fi
     #- md5sum -#
   fi # $_BOOLEAN_MD5SUM $_FUNCTION_SUM
@@ -1476,7 +1489,7 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _FUNCTION_SUM=_pathname_openssl_md5sum
-        _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
+        _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1501,7 +1514,7 @@ function _binary_validate_setup()
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
       _FUNCTION_SUM=_pathname_sha1sum_sha1sum
-      _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
+      _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
     fi
     #- sha1sum -#
   fi # $_BOOLEAN_SHA1SUM $_FUNCTION_SUM
@@ -1565,7 +1578,7 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _FUNCTION_SUM=_pathname_openssl_sha1sum
-        _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
+        _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1590,7 +1603,7 @@ function _binary_validate_setup()
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
       _FUNCTION_SUM=_pathname_sha224sum_sha224sum
-      _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
+      _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
     fi
     #- sha224sum -#
   fi # $_BOOLEAN_SHA224SUM $_FUNCTION_SUM
@@ -1654,7 +1667,7 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _FUNCTION_SUM=_pathname_openssl_sha224sum
-        _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
+        _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1679,7 +1692,7 @@ function _binary_validate_setup()
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
       _FUNCTION_SUM=_pathname_sha256sum_sha256sum
-      _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
+      _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
     fi
     #- sha256sum -#
   fi # $_BOOLEAN_SHA256SUM $_FUNCTION_SUM
@@ -1743,7 +1756,7 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _FUNCTION_SUM=_pathname_openssl_sha256sum
-        _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
+        _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1768,7 +1781,7 @@ function _binary_validate_setup()
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
       _FUNCTION_SUM=_pathname_sha384sum_sha384sum
-      _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
+      _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
     fi
     #- sha384sum -#
   fi # $_BOOLEAN_SHA384SUM $_FUNCTION_SUM
@@ -1832,7 +1845,7 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _FUNCTION_SUM=_pathname_openssl_sha384sum
-        _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
+        _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1857,7 +1870,7 @@ function _binary_validate_setup()
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
       _FUNCTION_SUM=_pathname_sha512sum_sha512sum
-      _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
+      _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
     fi
     #- sha512sum -#
   fi # $_BOOLEAN_SHA512SUM $_FUNCTION_SUM
@@ -1921,7 +1934,7 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _FUNCTION_SUM=_pathname_openssl_sha512sum
-        _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
+        _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1948,7 +1961,7 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _OPTIONS_MV=$_BINARY_OPTION
-        _eko_pv "\$_OPTIONS_MV:" \""$_OPTIONS_MV\""
+        _eko_pv \$_OPTIONS_MV: \""$_OPTIONS_MV\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -1995,8 +2008,8 @@ function _binary_validate_setup()
       #   reach this far, then it does exist & it does support the required
       #   options
       _FUNCTION_TRANSFORM=_pathname_transform_realpath
-      _eko_pv "\$_OPTIONS_REALPATH:" \""$_OPTIONS_REALPATH\""
-      _eko_pv "\$_FUNCTION_TRANSFORM:" \""$_FUNCTION_TRANSFORM\""
+      _eko_pv \$_OPTIONS_REALPATH: \""$_OPTIONS_REALPATH\""
+      _eko_pv \$_FUNCTION_TRANSFORM: \""$_FUNCTION_TRANSFORM\""
     fi
     #- realpath -#
   fi
@@ -2036,7 +2049,7 @@ function _binary_validate_setup()
 
     # - it's ugly, but it definitely works
     _FUNCTION_TRANSFORM=_pathname_transform_bruteforce
-    _eko_pv "\$_FUNCTION_TRANSFORM:" \""$_FUNCTION_TRANSFORM\""
+    _eko_pv \$_FUNCTION_TRANSFORM: \""$_FUNCTION_TRANSFORM\""
   fi
 
   if $_BOOLEAN_HARDLINK \
@@ -2060,7 +2073,7 @@ function _binary_validate_setup()
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _OPTIONS_RM=$_BINARY_OPTION
-        _eko_pv "\$_OPTIONS_RM:" \""$_OPTIONS_RM\""
+        _eko_pv \$_OPTIONS_RM: \""$_OPTIONS_RM\""
       else
         _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
       fi
@@ -2190,7 +2203,7 @@ function _builtin_validate_setup()
     if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
     then
       _OPTIONS_CD=$_BUILTIN_OPTION
-      _eko_pv "\$_OPTIONS_CD:" \""$_OPTIONS_CD\""
+      _eko_pv \$_OPTIONS_CD: \""$_OPTIONS_CD\""
     fi
   fi
   #- cd -#
@@ -2214,7 +2227,7 @@ function _builtin_validate_setup()
     if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
     then
       _OPTIONS_PWD=$_BUILTIN_OPTION
-      _eko_pv "\$_OPTIONS_PWD:" \""$_OPTIONS_PWD\""
+      _eko_pv \$_OPTIONS_PWD: \""$_OPTIONS_PWD\""
     fi
   fi
   #- pwd -#
@@ -2225,7 +2238,7 @@ function _builtin_validate_setup()
   || [[ -n $_OPTIONS_PWD ]]
   then
     _FUNCTION_TRANSFORM=_pathname_transform_cd_pwd
-    _eko_pv "\$_FUNCTION_TRANSFORM:" \""$_FUNCTION_TRANSFORM\""
+    _eko_pv \$_FUNCTION_TRANSFORM: \""$_FUNCTION_TRANSFORM\""
   fi
 
   #+ read +#
@@ -2244,7 +2257,7 @@ function _builtin_validate_setup()
     if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
     then
       _OPTIONS_READ=$_BUILTIN_OPTION
-      _eko_pv "\$_OPTIONS_READ:" \""$_OPTIONS_READ\""
+      _eko_pv \$_OPTIONS_READ: \""$_OPTIONS_READ\""
     else
       _show_error \""$_BUILTIN_NAME\" does not support \"$_BUILTIN_OPTION\""
     fi
@@ -2306,27 +2319,21 @@ function _eko_pv()
   # (none)
 
   # builtins:
+  # echo
   # printf
 
   # NOTE:
   # - why "%30s"? to simplify setting column width in verbose reports. a
-  #   single change here affects the output throughout the script
+  #   single change here affects the output throughout the script (with the
+  #   exception of "function _pathnames_scan" where printf is called directly)
   # - pay special attention to the differences in setup & calling syntax of
   #   _eko_pv vs that of _eko_v
-  # - this function does not support arrays. for arrays, use "function _eko_v"
-  # - "use this for now"
 
   if $_BOOLEAN_VERBOSE
   then
-if [[ 0 == 1 ]]
-then
-    printf "%30s %s\n" "$1" "$2"
-else
-    # - clumsy, but it does the job
     printf "%30s " "$1"
     shift
     echo "$@"
-fi
   fi
 
   #- _eko_pv -#
@@ -2366,7 +2373,6 @@ function _parse_parameters()
   # _builtin_validate_setup
   # _eko_iod
   # _eko_pv
-  # _eko_v
   # _pathname_redundant_check
   # _pathname_validate
   # _pathnames_scan
@@ -2847,50 +2853,39 @@ function _parse_parameters()
     _BOOLEAN_STDOUT=false      # display
   fi
 
-  _eko_pv "\$_BOOLEAN_DEBUG:" \""$_BOOLEAN_DEBUG\""
-  _eko_pv "\$_BOOLEAN_DRYRUN:" \""$_BOOLEAN_DRYRUN\""
-  _eko_pv "\$_BOOLEAN_ERROR:" \""$_BOOLEAN_ERROR\""
-  _eko_pv "\$_BOOLEAN_HARDLINK:" \""$_BOOLEAN_HARDLINK\""
-  _eko_pv "\$_BOOLEAN_LONG:" \""$_BOOLEAN_LONG\""
-  _eko_pv "\$_BOOLEAN_MD5SUM:" \""$_BOOLEAN_MD5SUM\""
-  _eko_pv "\$_BOOLEAN_NANOSECONDS:" \""$_BOOLEAN_NANOSECONDS\""
-  _eko_pv "\$_BOOLEAN_NONSPARSE:" \""$_BOOLEAN_NONSPARSE\""
-  _eko_pv "\$_BOOLEAN_RELATIVE:" \""$_BOOLEAN_RELATIVE\""
-  _eko_pv "\$_BOOLEAN_SHA1SUM:" \""$_BOOLEAN_SHA1SUM\""
-  _eko_pv "\$_BOOLEAN_SHA224SUM:" \""$_BOOLEAN_SHA224SUM\""
-  _eko_pv "\$_BOOLEAN_SHA256SUM:" \""$_BOOLEAN_SHA256SUM\""
-  _eko_pv "\$_BOOLEAN_SHA384SUM:" \""$_BOOLEAN_SHA384SUM\""
-  _eko_pv "\$_BOOLEAN_SHA512SUM:" \""$_BOOLEAN_SHA512SUM\""
-  _eko_pv "\$_BOOLEAN_SPARSE:" \""$_BOOLEAN_SPARSE\""
-  _eko_pv "\$_BOOLEAN_STDOUT:" \""$_BOOLEAN_STDOUT\""
-  _eko_pv "\$_BOOLEAN_SUM:" \""$_BOOLEAN_SUM\""
-  _eko_pv "\$_BOOLEAN_UNLINK:" \""$_BOOLEAN_UNLINK\""
-  _eko_pv "\$_BOOLEAN_VERBOSE:" \""$_BOOLEAN_VERBOSE\""
-  _eko_pv "\$_BOOLEAN_XDEV:" \""$_BOOLEAN_XDEV\""
-  _eko_pv "\$_FUNCTION_SUM:" \""$_FUNCTION_SUM\""
-  _eko_pv "\$_FUNCTION_TRANSFORM:" \""$_FUNCTION_TRANSFORM\""
-  _eko_pv "\$_OPTIONS_CD:" \""$_OPTIONS_CD\""
-  _eko_pv "\$_OPTIONS_CP:" \""$_OPTIONS_CP\""
-  _eko_pv "\$_OPTIONS_LN:" \""$_OPTIONS_LN\""
-  _eko_pv "\$_OPTIONS_MV:" \""$_OPTIONS_MV\""
-  _eko_pv "\$_OPTIONS_PWD:" \""$_OPTIONS_PWD\""
-  _eko_pv "\$_OPTIONS_READ:" \""$_OPTIONS_READ\""
-  _eko_pv "\$_OPTIONS_REALPATH:" \""$_OPTIONS_REALPATH\""
-  _eko_pv "\$_OPTIONS_RM:" \""$_OPTIONS_RM\""
-  _eko_pv "\$_OPTION_SUM_SIZE:" \""$_OPTION_SUM_SIZE\""
-  _eko_pv "\${#_ARRAY_PATHNAMES[@]}:" \""${#_ARRAY_PATHNAMES[@]}\""
-
-  _eko_pv "\${_ARRAY_PATHNAMES[@]}:" \""${_ARRAY_PATHNAMES[@]}\""
-
-# - correct position. incorrect field count
-#  _eko_pv "1>\${_ARRAY_PATHNAMES[@]}:" \""${_ARRAY_PATHNAMES[@]}\""
-# - incorrect position. correct field count
-#  _eko_v "2>\${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
-# - correct position. correct field count
-#  _eko_v "3>     \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
-
-  # - "use this for now"
-#  _eko_v "       \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
+  _eko_pv \$_BOOLEAN_DEBUG: \""$_BOOLEAN_DEBUG\""
+  _eko_pv \$_BOOLEAN_DRYRUN: \""$_BOOLEAN_DRYRUN\""
+  _eko_pv \$_BOOLEAN_ERROR: \""$_BOOLEAN_ERROR\""
+  _eko_pv \$_BOOLEAN_HARDLINK: \""$_BOOLEAN_HARDLINK\""
+  _eko_pv \$_BOOLEAN_LONG: \""$_BOOLEAN_LONG\""
+  _eko_pv \$_BOOLEAN_MD5SUM: \""$_BOOLEAN_MD5SUM\""
+  _eko_pv \$_BOOLEAN_NANOSECONDS: \""$_BOOLEAN_NANOSECONDS\""
+  _eko_pv \$_BOOLEAN_NONSPARSE: \""$_BOOLEAN_NONSPARSE\""
+  _eko_pv \$_BOOLEAN_RELATIVE: \""$_BOOLEAN_RELATIVE\""
+  _eko_pv \$_BOOLEAN_SHA1SUM: \""$_BOOLEAN_SHA1SUM\""
+  _eko_pv \$_BOOLEAN_SHA224SUM: \""$_BOOLEAN_SHA224SUM\""
+  _eko_pv \$_BOOLEAN_SHA256SUM: \""$_BOOLEAN_SHA256SUM\""
+  _eko_pv \$_BOOLEAN_SHA384SUM: \""$_BOOLEAN_SHA384SUM\""
+  _eko_pv \$_BOOLEAN_SHA512SUM: \""$_BOOLEAN_SHA512SUM\""
+  _eko_pv \$_BOOLEAN_SPARSE: \""$_BOOLEAN_SPARSE\""
+  _eko_pv \$_BOOLEAN_STDOUT: \""$_BOOLEAN_STDOUT\""
+  _eko_pv \$_BOOLEAN_SUM: \""$_BOOLEAN_SUM\""
+  _eko_pv \$_BOOLEAN_UNLINK: \""$_BOOLEAN_UNLINK\""
+  _eko_pv \$_BOOLEAN_VERBOSE: \""$_BOOLEAN_VERBOSE\""
+  _eko_pv \$_BOOLEAN_XDEV: \""$_BOOLEAN_XDEV\""
+  _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
+  _eko_pv \$_FUNCTION_TRANSFORM: \""$_FUNCTION_TRANSFORM\""
+  _eko_pv \$_OPTIONS_CD: \""$_OPTIONS_CD\""
+  _eko_pv \$_OPTIONS_CP: \""$_OPTIONS_CP\""
+  _eko_pv \$_OPTIONS_LN: \""$_OPTIONS_LN\""
+  _eko_pv \$_OPTIONS_MV: \""$_OPTIONS_MV\""
+  _eko_pv \$_OPTIONS_PWD: \""$_OPTIONS_PWD\""
+  _eko_pv \$_OPTIONS_READ: \""$_OPTIONS_READ\""
+  _eko_pv \$_OPTIONS_REALPATH: \""$_OPTIONS_REALPATH\""
+  _eko_pv \$_OPTIONS_RM: \""$_OPTIONS_RM\""
+  _eko_pv \$_OPTION_SUM_SIZE: \""$_OPTION_SUM_SIZE\""
+  _eko_pv \${#_ARRAY_PATHNAMES[@]}: \""${#_ARRAY_PATHNAMES[@]}\""
+  _eko_pv \${_ARRAY_PATHNAMES[@]}: \""${_ARRAY_PATHNAMES[@]}\""
 
   # NOTE:
   # - lots of testing before we go further:
@@ -3312,7 +3307,6 @@ function _pathname_redundant_check()
   # functions:
   # _eko_iod
   # _eko_pv
-  # _eko_v
   # _show_error
 
   # variables:
@@ -3343,20 +3337,9 @@ function _pathname_redundant_check()
   # ^ if $_OPTION_PATHNAME passes all of the following tests, it's considered
   #   valid
 
-  _eko_pv "\$_OPTION_PATHNAME:" \""$_OPTION_PATHNAME\""
-  _eko_pv "\${#_ARRAY_PATHNAMES[@]}:" \""${#_ARRAY_PATHNAMES[@]}\""
-
-  _eko_pv "\${_ARRAY_PATHNAMES[@]}:" \""${_ARRAY_PATHNAMES[@]}\""
-
-# - correct position. incorrect field count
-#  _eko_pv "4>\${_ARRAY_PATHNAMES[@]}:" \""${_ARRAY_PATHNAMES[@]}\""
-# - incorrect position. correct field count
-#  _eko_v "5>\${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
-# - correct position. correct field count
-#  _eko_v "6>     \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
-
-  # - "use this for now"
-#  _eko_v "       \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
+  _eko_pv \$_OPTION_PATHNAME: \""$_OPTION_PATHNAME\""
+  _eko_pv \${#_ARRAY_PATHNAMES[@]}: \""${#_ARRAY_PATHNAMES[@]}\""
+  _eko_pv \${_ARRAY_PATHNAMES[@]}: \""${_ARRAY_PATHNAMES[@]}\""
 
   # - reassign so the original variable remains unmodified
   # - conditionally append a trailing "/" while we're at it
@@ -3907,7 +3890,7 @@ function _pathname_validate()
     # - take note of the explicit trailing "/". it's part of the magic
     if [[ -n $(find "$_OPTION_PATHNAME/" -type d -maxdepth 0 2>/dev/null) ]]
     then
-      _eko_pv "\$_OPTION_PATHNAME:" \""$_OPTION_PATHNAME\" (symlink)"
+      _eko_pv \$_OPTION_PATHNAME: \""$_OPTION_PATHNAME\" (symlink)"
       _OPTION_PATHNAME+=/
     else
       _show_error \""$_OPTION_PATHNAME\" is not a directory"
@@ -3929,7 +3912,7 @@ function _pathname_validate()
     _show_error \""$_OPTION_PATHNAME\" is not writable"
   fi
 
-  _eko_pv "\$_OPTION_PATHNAME:" \""$_OPTION_PATHNAME\" (valid)"
+  _eko_pv \$_OPTION_PATHNAME: \""$_OPTION_PATHNAME\" (valid)"
 
   _eko_iod "#- _pathname_validate -#"
 }
@@ -4091,10 +4074,10 @@ function _pathnames_scan()
     unset _OPTIONS_XDEV
   fi
 
-  _eko_pv "\$_OPTIONS_READWRITE:" \""$_OPTIONS_READWRITE\""
-  _eko_pv "\$_OPTIONS_UIDGID:" \""$_OPTIONS_UIDGID\""
-  _eko_pv "\$_OPTIONS_UNLINK:" \""$_OPTIONS_UNLINK\""
-  _eko_pv "\$_OPTIONS_XDEV:" \""$_OPTIONS_XDEV\""
+  _eko_pv \$_OPTIONS_READWRITE: \""$_OPTIONS_READWRITE\""
+  _eko_pv \$_OPTIONS_UIDGID: \""$_OPTIONS_UIDGID\""
+  _eko_pv \$_OPTIONS_UNLINK: \""$_OPTIONS_UNLINK\""
+  _eko_pv \$_OPTIONS_XDEV: \""$_OPTIONS_XDEV\""
 
   # - save the base path, cd to it, reset it to "."
   # - only possible if $_ARRAY_PATHNAMES contains a single pathname. already
@@ -4295,7 +4278,7 @@ fi
             echo
             # - generate *sum of the file (full or $_OPTION_SUM_SIZE)
             $_FUNCTION_SUM
-            printf "%30s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n" \
+            printf "%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n" \
             \$_ST_DEV: \""$_ST_DEV\"" \
             \$_ST_INO: \""$_ST_INO \"" \
             \$_ST_MODE: \""$_ST_MODE\"" \
@@ -4307,7 +4290,7 @@ fi
             \$_ST_SUM: \""$_ST_SUM\"" \
             \$_ST_NAME: \""$_ST_NAME\""
           else
-            printf "\n%30s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n" \
+            printf "\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n" \
             \$_ST_DEV: \""$_ST_DEV\"" \
             \$_ST_INO: \""$_ST_INO\"" \
             \$_ST_MODE: \""$_ST_MODE\"" \

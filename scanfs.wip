@@ -2314,10 +2314,19 @@ function _eko_pv()
   # - pay special attention to the differences in setup & calling syntax of
   #   _eko_pv vs that of _eko_v
   # - this function does not support arrays. for arrays, use "function _eko_v"
+  # - "use this for now"
 
   if $_BOOLEAN_VERBOSE
   then
+if [[ 0 == 1 ]]
+then
     printf "%30s %s\n" "$1" "$2"
+else
+    # - clumsy, but it does the job
+    printf "%30s " "$1"
+    shift
+    echo "$@"
+fi
   fi
 
   #- _eko_pv -#
@@ -2871,7 +2880,7 @@ function _parse_parameters()
   _eko_pv "\$_OPTION_SUM_SIZE:" \""$_OPTION_SUM_SIZE\""
   _eko_pv "\${#_ARRAY_PATHNAMES[@]}:" \""${#_ARRAY_PATHNAMES[@]}\""
 
-#  _eko_pv "\${_ARRAY_PATHNAMES[@]}:" \""${_ARRAY_PATHNAMES[@]}\""
+  _eko_pv "\${_ARRAY_PATHNAMES[@]}:" \""${_ARRAY_PATHNAMES[@]}\""
 
 # - correct position. incorrect field count
 #  _eko_pv "1>\${_ARRAY_PATHNAMES[@]}:" \""${_ARRAY_PATHNAMES[@]}\""
@@ -2880,8 +2889,8 @@ function _parse_parameters()
 # - correct position. correct field count
 #  _eko_v "3>     \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
 
-  # - use this for now
-  _eko_v "       \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
+  # - "use this for now"
+#  _eko_v "       \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
 
   # NOTE:
   # - lots of testing before we go further:
@@ -3337,7 +3346,7 @@ function _pathname_redundant_check()
   _eko_pv "\$_OPTION_PATHNAME:" \""$_OPTION_PATHNAME\""
   _eko_pv "\${#_ARRAY_PATHNAMES[@]}:" \""${#_ARRAY_PATHNAMES[@]}\""
 
-#  _eko_pv "\${_ARRAY_PATHNAMES[@]}:" \""${_ARRAY_PATHNAMES[@]}\""
+  _eko_pv "\${_ARRAY_PATHNAMES[@]}:" \""${_ARRAY_PATHNAMES[@]}\""
 
 # - correct position. incorrect field count
 #  _eko_pv "4>\${_ARRAY_PATHNAMES[@]}:" \""${_ARRAY_PATHNAMES[@]}\""
@@ -3346,8 +3355,8 @@ function _pathname_redundant_check()
 # - correct position. correct field count
 #  _eko_v "6>     \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
 
-  # - use this for now
-  _eko_v "       \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
+  # - "use this for now"
+#  _eko_v "       \${_ARRAY_PATHNAMES[@]}: \"${_ARRAY_PATHNAMES[@]}\""
 
   # - reassign so the original variable remains unmodified
   # - conditionally append a trailing "/" while we're at it
@@ -3988,6 +3997,7 @@ function _pathnames_scan()
   # touch
 
   # builtins:
+  # echo
   # printf
   # read
 

@@ -11,6 +11,9 @@
 # - scan the named filesystem segment(s) & report findings in various formats
 # - optionally unlink files that were previously hardlinked
 
+# - new ideas. keywords "IDEA: (too strict?)"
+# - new ideas. keywords "IDEA: (nested tests?)"
+
 # TODO:
 # - whatinhell did I break? the error trap is not entered *at all* when ^C is
 #   pressed. first & foremost, this obviously needs figuring out. HELP!
@@ -58,12 +61,6 @@ _BOOLEAN_TESTING_01=true # enabled
 #   #disabled# < keep this one (useful for testing)
 
 # TODO:
-# - possibly use printf elsewhere. most instances of "-v, --verbose"
-# ^ this will require a complete rethink of how _eko_v currently does things
-# - alternate approach: define _eko_pv (verbose via printf) & use that for
-#   special occasions (done) (TODO: it's still in _trap & _trap_test)
-
-# TODO:
 # - figure out hardlinking
 # - the first & greatest hurdle is coming up with an *efficient* method of
 #   populating an sqlite3 db (aka: as fast as possible while retaining 100%
@@ -76,7 +73,52 @@ _BOOLEAN_TESTING_01=true # enabled
 #   standalone script snippets for testing so there's no need to retain the
 #   sqlite3 stub in this script
 
-# 2019-10-07
+# 2019-10-09
+# * below is not quite right. -d & -v & -m (& friends) (all together) should
+#   be able to be displayed together
+
+# - "function _parse_parameters" changed the following lines as the tests were
+#   too coarse. separated them out for completeness:
+#  was: # - "-d" & "-l" & "-m/-1/-224/-256/-384/-512" are mutually exclusive. error exit
+#   is: # - "-d" & "-l" are mutually exclusive. error exit
+#   is: # - "-d" & "-m/-1/-224/-256/-384/-512" are mutually exclusive. error exit
+#  was: # - cosmetic: stdout is extremely garbled
+#  was: # - "-d" & "-l" & "-m/-1/-224/-256/-384/-512" are mutually exclusive
+#  was: if $_BOOLEAN_DEBUG \
+#  was: && $_BOOLEAN_LONG \
+#  was: && $_BOOLEAN_SUM
+#  was: then
+#  was:   _show_error \""-d\" & \"-l\" & \"-m/-1/-224/-256/-384/-512\" are mutually exclusive"
+#  was: fi
+#   is: # - cosmetic: stdout is extremely garbled
+#   is: # - "-d" & "-l" are mutually exclusive
+#   is: if $_BOOLEAN_DEBUG \
+#   is: && $_BOOLEAN_LONG
+#   is: then
+#   is:   _show_error \""-d\" & \"-l\" are mutually exclusive"
+#   is: fi
+#   is: # - redundant: *sum results are not displayed so don't calculate them
+#   is: # - "-d" & "-m/-1/-224/-256/-384/-512" are mutually exclusive
+#   is: if $_BOOLEAN_DEBUG \
+#   is: && $_BOOLEAN_SUM
+#   is: then
+#   is:   _show_error \""-d\" & \"-m/-1/-224/-256/-384/-512\" are mutually exclusive"
+#   is: fi
+# - "function _parse_parameters" reordered the options to match what is
+#   displayed in "function _show_help" to simplify maintenance
+# - "function _eko_v" removed
+# - changed the following lines globally:
+#  was: _eko_v "$_FOO"
+#   is: _eko_pv "" "$_FOO"
+# - "function _eko_pv" changed/added the following lines for unformatted
+#   (non-columnized) output in verbose mode. simply pass "" as the first
+#   parameter:
+#  was: printf "%30s " "$1"
+#   is: # - "-n string" = true if the length of string is non-zero
+#   is: if [[ -n $1 ]]
+#   is: then
+#   is:   printf "%30s " "$1"
+#   is: fi
 # - "function _pathnames_scan" changed the following lines:
 # > verbose with *sum
 #  was: printf "%30s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n" \
@@ -84,7 +126,7 @@ _BOOLEAN_TESTING_01=true # enabled
 # > verbose without *sum
 #  was: printf "\n%30s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n %29s %s\n" \
 #   is: printf "\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n%30s %s\n" \
-# - changed the following lines throughout the script:
+# - changed the following lines globally:
 #  was: _eko_pv "\$_FOO:" \""$_FOO\""
 #   is: _eko_pv \$_FOO: \""$_FOO\""
 # ^ there are several unchanged ("function _pathname_transform_bruteforce",
@@ -109,7 +151,7 @@ _BOOLEAN_TESTING_01=true # enabled
 #   #+ marker *sum conflict size +# / #- marker *sum conflict size -#
 #   #+ marker *sum conflict type +# / #- marker *sum conflict type -#
 #   #+ marker *sum dry-run +# / #- marker *sum dry-run -#
-# - changed the following lines throughout the script:
+# - changed the following lines globally:
 #  was: _eko_v "      \$_FOO: \"$_FOO\""
 #   is: _eko_pv "\$_FOO:" \""$_FOO\""
 # - "function _eko_pv" added for properly formatted verbose output
@@ -122,10 +164,12 @@ _BOOLEAN_TESTING_01=true # enabled
 #   is: # - 6: "$$" for an additional degree of uniqueness in case the user
 #  was: _SU_NAME="${_ST_NAME}.scanfs.$_MY_UID.$PPID.$$"
 #   is: _SU_NAME="${_ST_NAME}.scanfs.$_MY_UID:$_MY_GID.$PPID.$$"
+# ^ for an extra degree of uniqueness (nothing exceeds like excess)
 #  was: printf "%4s %10s %s %4s %4s %3s %14s %s %s %s %s %s\n" \
 #   is: printf "%4s %10s %s %4s %4s %-3s %14s %s %s %s %s %s\n" \
 #  was: printf "%4s %10s %s %4s %4s %3s %14s %s %s %s %s\n" \
 #   is: printf "%4s %10s %s %4s %4s %-3s %14s %s %s %s %s\n" \
+# ^ to left justify $_ST_GID (mimicking "ls -l")
 # - performed simple timing tests of the various *sum routines to get a rough
 #   idea of their relative performance. kept the raw information in the script
 #   for future reference. look for the following tags:
@@ -140,7 +184,7 @@ _BOOLEAN_TESTING_01=true # enabled
 #  was:               toggle: \"-D -E -H -N -S -U -d -l -m -n -r -v -x\"
 #   is:          additive: \"-p\"
 #   is:            toggle: \"-D -E -H -N -S -U -d -l -n -r -v -x\"
-#   is: single invocation: \"-m -1 -224 -256 -384 -512, -s\"
+#   is: single invocation: \"-m -1 -224 -256 -384 -512 -s\"
 # - "function _parse_parameters" added logic for dealing with *sum size
 #   conflicts. the new routine is wrapped in the following tags temporarily:
 #   #+ marker *sum conflict size +# / #- marker *sum conflict size -#
@@ -151,8 +195,8 @@ _BOOLEAN_TESTING_01=true # enabled
 #   small changes to list everything.
 # - "function _parse_parameters" added the following variable:
 #  add: _BOOLEAN_SUM
-# ^ it's a catch-all variable for use in "function _pathnames_scan" to signify
-#   that one of the many *sum routines should be called
+# ^ it's an internal use only variable for use in "function _pathnames_scan"
+#   to signify that one of the many *sum routines should be called
 # - added the following functions:
 #  add: function _pathname_openssl_sha1sum()
 #  add: function _pathname_openssl_sha224sum()
@@ -574,7 +618,6 @@ _BOOLEAN_TESTING_01=true # enabled
   # _builtin_validate_setup
   # _eko_iod
   # _eko_pv
-  # _eko_v
   # _pathname_md5sum_md5sum (_FUNCTION_SUM)
   # _pathname_openssl_md5sum (_FUNCTION_SUM)
   # _pathname_openssl_sha1sum (_FUNCTION_SUM)
@@ -674,7 +717,6 @@ function _trap()
   # functions:
   # _eko_iod
   # _eko_pv
-  # _eko_v
 
   # variables:
   # _BOOLEAN_DRYRUN
@@ -760,7 +802,7 @@ function _trap()
   && [[ "$_ST_NAME" =~ ^"$_SD_NAME"[/].*$ ]] \
   && [[ -d "$_SD_NAME" ]]
   then
-    _eko_v ""
+    _eko_pv "" ""
     _eko_pv \$_BOOLEAN_DRYRUN: \""$_BOOLEAN_DRYRUN\""
     _eko_pv \$_BOOLEAN_UNLINK: \""$_BOOLEAN_UNLINK\""
     _eko_pv \$_SU_NAME: \""$_SU_NAME\""
@@ -801,7 +843,6 @@ function _trap_test()
   # functions:
   # _eko_iod
   # _eko_pv
-  # _eko_v
 
   # variables:
   # _BOOLEAN_DRYRUN
@@ -899,20 +940,20 @@ function _trap_test()
 #   routine is reached
 
 # IDEA: (different approach #3)
-# - just dump everything used in this function to stdout via _eko_v *outside*
+# - just dump everything used in this function to stdout via _eko_pv *outside*
 #   any conditionals. let's get a view of anything/everything available
 
 #+ marker trap test +#
   # - currently untested
-  _eko_v "t: \$_BOOLEAN_DRYRUN: \"$_BOOLEAN_DRYRUN\""
-  _eko_v "t: \$_BOOLEAN_UNLINK: \"$_BOOLEAN_UNLINK\""
-  _eko_v "t: \$_OPTIONS_RM: \"$_OPTIONS_RM\""
-  _eko_v "t: \$_SD_NAME: \"$_SD_NAME\""
-  _eko_v "t: \$_ST_NAME: \"$_ST_NAME\""
-  _eko_v "t: \$_SU_NAME: \"$_SU_NAME\""
-  _eko_v "t: \$_SD_MTIM_YMD: \"$_SD_MTIM_YMD\""
-  _eko_v "t: \$_SD_MTIM_HMS: \"$_SD_MTIM_HMS\""
-  _eko_v "t: \$_SD_MTIM_UTC: \"$_SD_MTIM_UTC\""
+  _eko_pv "" "t: \$_BOOLEAN_DRYRUN: \"$_BOOLEAN_DRYRUN\""
+  _eko_pv "" "t: \$_BOOLEAN_UNLINK: \"$_BOOLEAN_UNLINK\""
+  _eko_pv "" "t: \$_OPTIONS_RM: \"$_OPTIONS_RM\""
+  _eko_pv "" "t: \$_SD_NAME: \"$_SD_NAME\""
+  _eko_pv "" "t: \$_ST_NAME: \"$_ST_NAME\""
+  _eko_pv "" "t: \$_SU_NAME: \"$_SU_NAME\""
+  _eko_pv "" "t: \$_SD_MTIM_YMD: \"$_SD_MTIM_YMD\""
+  _eko_pv "" "t: \$_SD_MTIM_HMS: \"$_SD_MTIM_HMS\""
+  _eko_pv "" "t: \$_SD_MTIM_UTC: \"$_SD_MTIM_UTC\""
 #- marker trap test -#
 
 # TODO:
@@ -929,9 +970,9 @@ function _trap_test()
   && [[ -d "$_SD_NAME" ]]
   then
 #+ marker trap test +#
-    _eko_v "t: outer: pass"
+    _eko_pv "" "t: outer: pass"
 #- marker trap test -#
-    _eko_v ""
+    _eko_pv "" ""
     _eko_pv \$_BOOLEAN_DRYRUN: \""$_BOOLEAN_DRYRUN\""
     _eko_pv \$_BOOLEAN_UNLINK: \""$_BOOLEAN_UNLINK\""
     _eko_pv \$_SU_NAME: \""$_SU_NAME\""
@@ -944,11 +985,11 @@ function _trap_test()
     if ! $_BOOLEAN_DRYRUN
     then
 #+ marker trap test +#
-      _eko_v "t: inner: pass"
+      _eko_pv "" "t: inner: pass"
 #- marker trap test -#
 
 #+ testing +#
-    _eko_v "#+ test dump +#"
+    _eko_pv "" "#+ test dump +#"
     # - does this file exist? parent directory's timestamp is updated, so?
     # - NOTE: parent directory's timestamp restored if files are non-sparse
     # - TODO: test again with sparse files
@@ -978,7 +1019,7 @@ function _trap_test()
 
     # - so is this
     _eko_pv \$_SD_NAME: \""$_SD_NAME\""
-    _eko_v "#- test dump -#"
+    _eko_pv "" "#- test dump -#"
 #- testing -#
 
 # NOTE:
@@ -995,12 +1036,12 @@ function _trap_test()
 # 2>/dev/null
 #+ marker trap test +#
     else
-      _eko_v "t: inner: fail"
+      _eko_pv "" "t: inner: fail"
 #- marker trap test -#
     fi
 #+ marker trap test +#
   else
-    _eko_v "t: outer: fail"
+    _eko_pv "" "t: outer: fail"
 #- marker trap test -#
   fi
 
@@ -2297,7 +2338,6 @@ function _eko_iod()
     # - $((expression))
     # - ${#parameter}
     printf "%*s" $(( ${#FUNCNAME[@]} - 3 ))
-
     echo "$@"
   fi
 
@@ -2323,45 +2363,24 @@ function _eko_pv()
   # printf
 
   # NOTE:
-  # - why "%30s"? to simplify setting column width in verbose reports. a
-  #   single change here affects the output throughout the script (with the
-  #   exception of "function _pathnames_scan" where printf is called directly)
-  # - pay special attention to the differences in setup & calling syntax of
-  #   _eko_pv vs that of _eko_v
+  # - why "%30s "? to simplify setting column width in verbose reports. a
+  #   single change here affects the output globally (with the exception of
+  #   "function _pathnames_scan" where printf is called directly)
+  # - unformatted (non-columnized) output is now supported. simply pass "" as
+  #   the first parameter
 
   if $_BOOLEAN_VERBOSE
   then
-    printf "%30s " "$1"
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $1 ]]
+    then
+      printf "%30s " "$1"
+    fi
     shift
     echo "$@"
   fi
 
   #- _eko_pv -#
-}
-
-function _eko_v()
-{
-  #+ _eko_v +#
-
-  # functions:
-  # (none)
-
-  # variables:
-  # @
-  # _BOOLEAN_VERBOSE
-
-  # binaries:
-  # (none)
-
-  # builtins:
-  # echo
-
-  if $_BOOLEAN_VERBOSE
-  then
-    echo "$@"
-  fi
-
-  #- _eko_v -#
 }
 
 function _parse_parameters()
@@ -2486,6 +2505,163 @@ function _parse_parameters()
   while [[ $# -gt 0 ]]
   do
     case $1 in
+      ( -p \
+      | --pathname )
+        # - ${parameter:offset:length}
+        # - "-z string" = true if the length of string is zero
+        if [[ ${2:0:1} == - ]] \
+        || [[ -z $2 ]]
+        then
+          _show_error "pathname not specified"
+        else
+          # - keep adding paths until another option is specified or until
+          #   we've reached the end of the commandline
+          # - globs are now supported. refer to bash(1) section
+          #   "Pattern Matching" for additional details
+          # - (special thanks to dive in OFTC #slackware for sparking the idea
+          #   of adding glob support)
+          # - ${parameter:offset:length}
+          # - "-z string" = true if the length of string is zero
+          until [[ ${2:0:1} == - ]] \
+          || [[ -z $2 ]]
+          do
+            # - blindly save what was passed. it will be tested after the loop
+            _ARRAY_HOLDNAMES+=( "$2" )
+            shift
+          done
+        fi
+        # - (special thanks to karlmag in OFTC #slackware for finding the
+        #   troublemaker below: "you're shifting too much :-P")
+        #shift
+      ;;
+      ( -D \
+      | --dry-run )
+        if $_BOOLEAN_DRYRUN
+        then
+          _BOOLEAN_DRYRUN=false
+        else
+          _BOOLEAN_DRYRUN=true
+        fi
+      ;;
+      ( -E \
+      | --error )
+        if $_BOOLEAN_ERROR
+        then
+          _BOOLEAN_ERROR=false
+        else
+          _BOOLEAN_ERROR=true
+        fi
+      ;;
+      ( -H \
+      | --hardlink )
+        if $_BOOLEAN_HARDLINK
+        then
+          _BOOLEAN_HARDLINK=false
+        else
+          _BOOLEAN_HARDLINK=true
+        fi
+      ;;
+      ( -N \
+      | --non-sparse )
+        if $_BOOLEAN_NONSPARSE
+        then
+          _BOOLEAN_NONSPARSE=false
+        else
+          _BOOLEAN_NONSPARSE=true
+        fi
+      ;;
+      ( -S \
+      | --sparse )
+        if $_BOOLEAN_SPARSE
+        then
+          _BOOLEAN_SPARSE=false
+        else
+          _BOOLEAN_SPARSE=true
+        fi
+      ;;
+      ( -U \
+      | --unlink )
+        if $_BOOLEAN_UNLINK
+        then
+          _BOOLEAN_UNLINK=false
+        else
+          _BOOLEAN_UNLINK=true
+        fi
+      ;;
+      ( -d \
+      | --debug )
+        if $_BOOLEAN_DEBUG
+        then
+          _BOOLEAN_DEBUG=false
+        else
+          _BOOLEAN_DEBUG=true
+        fi
+      ;;
+      ( -l \
+      | --long )
+        if $_BOOLEAN_LONG
+        then
+          _BOOLEAN_LONG=false
+        else
+          _BOOLEAN_LONG=true
+        fi
+      ;;
+      ( -n \
+      | --nanoseconds )
+        if $_BOOLEAN_NANOSECONDS
+        then
+          _BOOLEAN_NANOSECONDS=false
+        else
+          _BOOLEAN_NANOSECONDS=true
+        fi
+      ;;
+      ( -r \
+      | --relative )
+        if $_BOOLEAN_RELATIVE
+        then
+          _BOOLEAN_RELATIVE=false
+        else
+          _BOOLEAN_RELATIVE=true
+        fi
+      ;;
+      ( -v \
+      | --verbose )
+        if $_BOOLEAN_VERBOSE
+        then
+          _BOOLEAN_VERBOSE=false
+        else
+          _BOOLEAN_VERBOSE=true
+        fi
+      ;;
+      ( -x \
+      | --xdev )
+        if $_BOOLEAN_XDEV
+        then
+          _BOOLEAN_XDEV=false
+        else
+          _BOOLEAN_XDEV=true
+        fi
+      ;;
+      ( -m \
+      | --md5sum )
+        if $_BOOLEAN_MD5SUM
+        then
+          _show_error \""-m, --md5sum\" specified multiple times"
+        fi
+        if $_BOOLEAN_MD5SUM
+        then
+          _BOOLEAN_MD5SUM=false
+        else
+          _BOOLEAN_MD5SUM=true
+        fi
+        if $_BOOLEAN_SUM
+        then
+          _show_error \""-m, --md5sum\" conflicts with \"$_PREVIOUS_SUM\""
+        else
+          _BOOLEAN_SUM=true
+          _PREVIOUS_SUM="-m, --md5sum"
+        fi
+      ;;
       ( -1 \
       | --sha1sum )
         if $_BOOLEAN_SHA1SUM
@@ -2586,150 +2762,6 @@ function _parse_parameters()
           _PREVIOUS_SUM="-512, --sha512sum"
         fi
       ;;
-      ( -D \
-      | --dry-run )
-        if $_BOOLEAN_DRYRUN
-        then
-          _BOOLEAN_DRYRUN=false
-        else
-          _BOOLEAN_DRYRUN=true
-        fi
-      ;;
-      ( -E \
-      | --error )
-        if $_BOOLEAN_ERROR
-        then
-          _BOOLEAN_ERROR=false
-        else
-          _BOOLEAN_ERROR=true
-        fi
-      ;;
-      ( -H \
-      | --hardlink )
-        if $_BOOLEAN_HARDLINK
-        then
-          _BOOLEAN_HARDLINK=false
-        else
-          _BOOLEAN_HARDLINK=true
-        fi
-      ;;
-      ( -N \
-      | --non-sparse )
-        if $_BOOLEAN_NONSPARSE
-        then
-          _BOOLEAN_NONSPARSE=false
-        else
-          _BOOLEAN_NONSPARSE=true
-        fi
-      ;;
-      ( -S \
-      | --sparse )
-        if $_BOOLEAN_SPARSE
-        then
-          _BOOLEAN_SPARSE=false
-        else
-          _BOOLEAN_SPARSE=true
-        fi
-      ;;
-      ( -U \
-      | --unlink )
-        if $_BOOLEAN_UNLINK
-        then
-          _BOOLEAN_UNLINK=false
-        else
-          _BOOLEAN_UNLINK=true
-        fi
-      ;;
-      ( -W \
-      | -w \
-      | --warning )
-        _show_warning
-      ;;
-      ( -d \
-      | --debug )
-        if $_BOOLEAN_DEBUG
-        then
-          _BOOLEAN_DEBUG=false
-        else
-          _BOOLEAN_DEBUG=true
-        fi
-      ;;
-      ( -l \
-      | --long )
-        if $_BOOLEAN_LONG
-        then
-          _BOOLEAN_LONG=false
-        else
-          _BOOLEAN_LONG=true
-        fi
-      ;;
-      ( -m \
-      | --md5sum )
-        if $_BOOLEAN_MD5SUM
-        then
-          _show_error \""-m, --md5sum\" specified multiple times"
-        fi
-        if $_BOOLEAN_MD5SUM
-        then
-          _BOOLEAN_MD5SUM=false
-        else
-          _BOOLEAN_MD5SUM=true
-        fi
-        if $_BOOLEAN_SUM
-        then
-          _show_error \""-m, --md5sum\" conflicts with \"$_PREVIOUS_SUM\""
-        else
-          _BOOLEAN_SUM=true
-          _PREVIOUS_SUM="-m, --md5sum"
-        fi
-      ;;
-      ( -n \
-      | --nanoseconds )
-        if $_BOOLEAN_NANOSECONDS
-        then
-          _BOOLEAN_NANOSECONDS=false
-        else
-          _BOOLEAN_NANOSECONDS=true
-        fi
-      ;;
-      ( -p \
-      | --pathname )
-        # - ${parameter:offset:length}
-        # - "-z string" = true if the length of string is zero
-        if [[ ${2:0:1} == - ]] \
-        || [[ -z $2 ]]
-        then
-          _show_error "pathname not specified"
-        else
-          # - keep adding paths until another option is specified or until
-          #   we've reached the end of the commandline
-          # - globs are now supported. refer to bash(1) section
-          #   "Pattern Matching" for additional details
-          # - (special thanks to dive in OFTC #slackware for sparking the idea
-          #   of adding glob support)
-          # - ${parameter:offset:length}
-          # - "-z string" = true if the length of string is zero
-          until [[ ${2:0:1} == - ]] \
-          || [[ -z $2 ]]
-          do
-            # - blindly save what was passed. it will be tested after the loop
-            _ARRAY_HOLDNAMES+=( "$2" )
-            shift
-          done
-        fi
-        # - (special thanks to karlmag in OFTC #slackware for finding the
-        #   troublemaker below: "you're shifting too much :-P")
-        #shift
-      ;;
-      ( -r \
-      | --relative )
-        if $_BOOLEAN_RELATIVE
-        then
-          _BOOLEAN_RELATIVE=false
-        else
-          _BOOLEAN_RELATIVE=true
-        fi
-      ;;
       ( -s \
       | --size )
         # - ${parameter:offset:length}
@@ -2749,28 +2781,15 @@ function _parse_parameters()
         fi
         shift
       ;;
-      ( -v \
-      | --verbose )
-        if $_BOOLEAN_VERBOSE
-        then
-          _BOOLEAN_VERBOSE=false
-        else
-          _BOOLEAN_VERBOSE=true
-        fi
-      ;;
-      ( -x \
-      | --xdev )
-        if $_BOOLEAN_XDEV
-        then
-          _BOOLEAN_XDEV=false
-        else
-          _BOOLEAN_XDEV=true
-        fi
-      ;;
       ( "-?" \
       | -h \
       | --help ) # -? must be "-?" or it matches "-<any single character>"
         _show_help
+      ;;
+      ( -W \
+      | -w \
+      | --warning )
+        _show_warning
       ;;
       ( -* )
         _show_error "invalid option \"$1\" specified"
@@ -2887,6 +2906,10 @@ function _parse_parameters()
   _eko_pv \${#_ARRAY_PATHNAMES[@]}: \""${#_ARRAY_PATHNAMES[@]}\""
   _eko_pv \${_ARRAY_PATHNAMES[@]}: \""${_ARRAY_PATHNAMES[@]}\""
 
+  # IDEA: (nested tests?)
+  # - specifically for -s -H -d
+  # - possibly others if they're reordered (-S -l)
+
   # NOTE:
   # - lots of testing before we go further:
   # - done here:
@@ -2900,14 +2923,14 @@ function _parse_parameters()
   # - "-H" & "-r" are mutually exclusive. error exit
   # - "-H" & "-U" are mutually exclusive. error exit
   # - "-N" & "-S" are mutually exclusive. error exit
-  # - "-d" & "-l" & "-m/-1/-224/-256/-384/-512" are mutually exclusive. error exit
+  # - "-d" & "-l" are mutually exclusive. error exit
+  # - "-d" & "-m/-1/-224/-256/-384/-512" are mutually exclusive. error exit
   # - "-l" & "-v" are mutually exclusive. error exit
-  # - done elsewhere:
+  # - done in "function _pathname_validate":
   # - path exists?
-  # - path is a directory?
+  # - path is a directory (or a symlink to a directory)?
   # - path is readable? (necessary for hardlinking/scanning/unlinking)
   # - path is writable? (necessary for hardlinking/unlinking)
-  # ^ these 4 tests are in "function _pathname_validate"
 
   # - I *think* this covers all the bases
   # - these tests need to be done in a (more or less) specific order
@@ -2995,12 +3018,19 @@ function _parse_parameters()
   fi
 
   # - cosmetic: stdout is extremely garbled
-  # - "-d" & "-l" & "-m/-1/-224/-256/-384/-512" are mutually exclusive
+  # - "-d" & "-l" are mutually exclusive
   if $_BOOLEAN_DEBUG \
-  && $_BOOLEAN_LONG \
+  && $_BOOLEAN_LONG
+  then
+    _show_error \""-d\" & \"-l\" are mutually exclusive"
+  fi
+
+  # - redundant: *sum results are not displayed so don't calculate them
+  # - "-d" & "-m/-1/-224/-256/-384/-512" are mutually exclusive
+  if $_BOOLEAN_DEBUG \
   && $_BOOLEAN_SUM
   then
-    _show_error \""-d\" & \"-l\" & \"-m/-1/-224/-256/-384/-512\" are mutually exclusive"
+    _show_error \""-d\" & \"-m/-1/-224/-256/-384/-512\" are mutually exclusive"
   fi
 
   # - cosmetic: stdout is extremely garbled
@@ -3924,7 +3954,6 @@ function _pathnames_scan()
   # functions:
   # _eko_iod
   # _eko_pv
-  # _eko_v (only for testing)
 
   # variables:
   # $$
@@ -4037,6 +4066,16 @@ function _pathnames_scan()
     _OPTIONS_READWRITE="-readable"
   fi
 
+  # IDEA: (too strict?)
+  # - is the conditional below too strict? it seems to be
+  # - more notes later, but remember what was & was not visible when that iso
+  #   was being uploaded elsewhere by someone else (vague enough? :))
+  # ^ attempt to duplicate it locally for testing
+  # - how would changes here affect scans of ro nfs mounts?
+  # - possibly have something like the following for each "find"?
+  #   _OPTIONS_UIDGID_DIRECTORIES
+  #   _OPTIONS_UIDGID_FILES
+
   if ( $_BOOLEAN_HARDLINK \
   || $_BOOLEAN_UNLINK ) \
   && ( [[ $_MY_UID -ne 0 ]] \
@@ -4124,23 +4163,23 @@ then
           # 1/8
           # - used in 7/8
           # - this is everything known about the original $_SD_NAME
-          _eko_v "1/8: \$_SD_MTIM_YMD: \"$_SD_MTIM_YMD\""
-          _eko_v "1/8: \$_SD_MTIM_HMS: \"$_SD_MTIM_HMS\""
-          _eko_v "1/8: \$_SD_MTIM_UTC: \"$_SD_MTIM_UTC\""
-          _eko_v "1/8: \$_SD_NAME: \"$_SD_NAME\""
+          _eko_pv "" "1/8: \$_SD_MTIM_YMD: \"$_SD_MTIM_YMD\""
+          _eko_pv "" "1/8: \$_SD_MTIM_HMS: \"$_SD_MTIM_HMS\""
+          _eko_pv "" "1/8: \$_SD_MTIM_UTC: \"$_SD_MTIM_UTC\""
+          _eko_pv "" "1/8: \$_SD_NAME: \"$_SD_NAME\""
 
           # - this is everything known about the original $_ST_NAME
-          _eko_v "1/8: \$_ST_DEV: \"$_ST_DEV\""
-          _eko_v "1/8: \$_ST_INO: \"$_ST_INO\""
-          _eko_v "1/8: \$_ST_MODE: \"$_ST_MODE\""
-          _eko_v "1/8: \$_ST_NLINK: \"$_ST_NLINK\""
-          _eko_v "1/8: \$_ST_UID: \"$_ST_UID\""
-          _eko_v "1/8: \$_ST_GID: \"$_ST_GID\""
-          _eko_v "1/8: \$_ST_SIZE: \"$_ST_SIZE\""
-          _eko_v "1/8: \$_ST_MTIM_YMD: \"$_ST_MTIM_YMD\""
-          _eko_v "1/8: \$_ST_MTIM_HMS: \"$_ST_MTIM_HMS\""
-          _eko_v "1/8: \$_ST_MTIM_UTC: \"$_ST_MTIM_UTC\""
-          _eko_v "1/8: \$_ST_NAME: \"$_ST_NAME\""
+          _eko_pv "" "1/8: \$_ST_DEV: \"$_ST_DEV\""
+          _eko_pv "" "1/8: \$_ST_INO: \"$_ST_INO\""
+          _eko_pv "" "1/8: \$_ST_MODE: \"$_ST_MODE\""
+          _eko_pv "" "1/8: \$_ST_NLINK: \"$_ST_NLINK\""
+          _eko_pv "" "1/8: \$_ST_UID: \"$_ST_UID\""
+          _eko_pv "" "1/8: \$_ST_GID: \"$_ST_GID\""
+          _eko_pv "" "1/8: \$_ST_SIZE: \"$_ST_SIZE\""
+          _eko_pv "" "1/8: \$_ST_MTIM_YMD: \"$_ST_MTIM_YMD\""
+          _eko_pv "" "1/8: \$_ST_MTIM_HMS: \"$_ST_MTIM_HMS\""
+          _eko_pv "" "1/8: \$_ST_MTIM_UTC: \"$_ST_MTIM_UTC\""
+          _eko_pv "" "1/8: \$_ST_NAME: \"$_ST_NAME\""
 fi
           # - be as unique as possible. why such a convoluted file name?
           # - 1: the base name *is* the original file name
@@ -4158,7 +4197,7 @@ if $_BOOLEAN_TESTING_01
 then
           # 2/8
           # - $_SU_NAME all dressed up with no place to go
-          _eko_v "2/8: \$_SU_NAME: \"$_SU_NAME\""
+          _eko_pv "" "2/8: \$_SU_NAME: \"$_SU_NAME\""
 fi
 
           # - copy the original file (with various options) to a unique file
@@ -4166,7 +4205,7 @@ fi
 if $_BOOLEAN_TESTING_01
 then
           # 3/8 (eko precedes action)
-          _eko_v "3/8: \"cp $_OPTIONS_CP -- \"$_ST_NAME\" \"$_SU_NAME\""
+          _eko_pv "" "3/8: \"cp $_OPTIONS_CP -- \"$_ST_NAME\" \"$_SU_NAME\""
 fi
           cp $_OPTIONS_CP -- "$_ST_NAME" "$_SU_NAME"
 
@@ -4195,17 +4234,17 @@ then
           # - this is everything known about the newly created $_SU_NAME
           # - take careful note: _ST_* & _SU_NAME below. this is deliberate as
           #   what is currently _SU_NAME will become _ST_NAME in 5/8
-          _eko_v "4/8: \$_ST_DEV: \"$_ST_DEV\""
-          _eko_v "4/8: \$_ST_INO: \"$_ST_INO\""
-          _eko_v "4/8: \$_ST_MODE: \"$_ST_MODE\""
-          _eko_v "4/8: \$_ST_NLINK: \"$_ST_NLINK\""
-          _eko_v "4/8: \$_ST_UID: \"$_ST_UID\""
-          _eko_v "4/8: \$_ST_GID: \"$_ST_GID\""
-          _eko_v "4/8: \$_ST_SIZE: \"$_ST_SIZE\""
-          _eko_v "4/8: \$_ST_MTIM_YMD: \"$_ST_MTIM_YMD\""
-          _eko_v "4/8: \$_ST_MTIM_HMS: \"$_ST_MTIM_HMS\""
-          _eko_v "4/8: \$_ST_MTIM_UTC: \"$_ST_MTIM_UTC\""
-          _eko_v "4/8: \$_SU_NAME: \"$_SU_NAME\""
+          _eko_pv "" "4/8: \$_ST_DEV: \"$_ST_DEV\""
+          _eko_pv "" "4/8: \$_ST_INO: \"$_ST_INO\""
+          _eko_pv "" "4/8: \$_ST_MODE: \"$_ST_MODE\""
+          _eko_pv "" "4/8: \$_ST_NLINK: \"$_ST_NLINK\""
+          _eko_pv "" "4/8: \$_ST_UID: \"$_ST_UID\""
+          _eko_pv "" "4/8: \$_ST_GID: \"$_ST_GID\""
+          _eko_pv "" "4/8: \$_ST_SIZE: \"$_ST_SIZE\""
+          _eko_pv "" "4/8: \$_ST_MTIM_YMD: \"$_ST_MTIM_YMD\""
+          _eko_pv "" "4/8: \$_ST_MTIM_HMS: \"$_ST_MTIM_HMS\""
+          _eko_pv "" "4/8: \$_ST_MTIM_UTC: \"$_ST_MTIM_UTC\""
+          _eko_pv "" "4/8: \$_SU_NAME: \"$_SU_NAME\""
 fi
 
           # - move the newly created unique file into place, overwriting the
@@ -4214,7 +4253,7 @@ fi
 if $_BOOLEAN_TESTING_01
 then
           # 5/8 (eko precedes action)
-          _eko_v "5/8: \"mv $_OPTIONS_MV -- \"$_SU_NAME\" \"$_ST_NAME\""
+          _eko_pv "" "5/8: \"mv $_OPTIONS_MV -- \"$_SU_NAME\" \"$_ST_NAME\""
 fi
           mv $_OPTIONS_MV -- "$_SU_NAME" "$_ST_NAME"
 
@@ -4226,7 +4265,7 @@ fi
 if $_BOOLEAN_TESTING_01
 then
           # 6/8
-          _eko_v "6/8: \$_BOOLEAN_TIMESTAMP: \"$_BOOLEAN_TIMESTAMP\""
+          _eko_pv "" "6/8: \$_BOOLEAN_TIMESTAMP: \"$_BOOLEAN_TIMESTAMP\""
 fi
         fi
         #- DANGER! WILL ROBINSON! DANGER! this is live code -#
@@ -4331,7 +4370,7 @@ fi
 if $_BOOLEAN_TESTING_01
 then
       # 7/8 (eko precedes action)
-      _eko_v "7/8: \"touch --date=\"$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC\" \"$_SD_NAME\" 2>/dev/null"
+      _eko_pv "" "7/8: \"touch --date=\"$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC\" \"$_SD_NAME\" 2>/dev/null"
 fi
       touch --date="$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC" "$_SD_NAME" 2>/dev/null
 
@@ -4340,7 +4379,7 @@ fi
 if $_BOOLEAN_TESTING_01
 then
       # 8/8
-      _eko_v "8/8: \$_BOOLEAN_TIMESTAMP: \"$_BOOLEAN_TIMESTAMP\""
+      _eko_pv "" "8/8: \$_BOOLEAN_TIMESTAMP: \"$_BOOLEAN_TIMESTAMP\""
 fi
     fi
     #- DANGER! WILL ROBINSON! DANGER! this is live code -#
@@ -4433,7 +4472,7 @@ Optional parameters:
 There are 3 basic types of parameters:
            additive: \"-p\"
              toggle: \"-D -E -H -N -S -U -d -l -n -r -v -x\"
-  single invocation: \"-m -1 -224 -256 -384 -512, -s\"
+  single invocation: \"-m -1 -224 -256 -384 -512 -s\"
 
 Note:
   Globs are supported with \"-p, --pathname\". Refer to bash(1) section

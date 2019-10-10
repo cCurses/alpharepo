@@ -12,7 +12,6 @@
 # - optionally unlink files that were previously hardlinked
 
 # - new ideas. keywords "IDEA: (too strict?)"
-# - new ideas. keywords "IDEA: (nested tests?)"
 
 # TODO:
 # - whatinhell did I break? the error trap is not entered *at all* when ^C is
@@ -73,15 +72,12 @@ _BOOLEAN_TESTING_01=true # enabled
 #   standalone script snippets for testing so there's no need to retain the
 #   sqlite3 stub in this script
 
-# 2019-10-09
-# * below is not quite right. -d & -v & -m (& friends) (all together) should
-#   be able to be displayed together
-
+# 2019-10-10
 # - "function _parse_parameters" changed the following lines as the tests were
 #   too coarse. separated them out for completeness:
 #  was: # - "-d" & "-l" & "-m/-1/-224/-256/-384/-512" are mutually exclusive. error exit
 #   is: # - "-d" & "-l" are mutually exclusive. error exit
-#   is: # - "-d" & "-m/-1/-224/-256/-384/-512" are mutually exclusive. error exit
+#   is: # - "-d" & "-m/-1/-224/-256/-384/-512" specified without "-v". error exit
 #  was: # - cosmetic: stdout is extremely garbled
 #  was: # - "-d" & "-l" & "-m/-1/-224/-256/-384/-512" are mutually exclusive
 #  was: if $_BOOLEAN_DEBUG \
@@ -97,12 +93,13 @@ _BOOLEAN_TESTING_01=true # enabled
 #   is: then
 #   is:   _show_error \""-d\" & \"-l\" are mutually exclusive"
 #   is: fi
-#   is: # - redundant: *sum results are not displayed so don't calculate them
-#   is: # - "-d" & "-m/-1/-224/-256/-384/-512" are mutually exclusive
+#   is: # - simple logic: the first two require the latter
+#   is: # - "-d" & "-m/-1/-224/-256/-384/-512" specified without "-v"
 #   is: if $_BOOLEAN_DEBUG \
-#   is: && $_BOOLEAN_SUM
+#   is: && $_BOOLEAN_SUM \
+#   is: && ! $_BOOLEAN_VERBOSE
 #   is: then
-#   is:   _show_error \""-d\" & \"-m/-1/-224/-256/-384/-512\" are mutually exclusive"
+#   is:   _show_error \""-d\" & \"-m/-1/-224/-256/-384/-512\" specified without \"-v\""
 #   is: fi
 # - "function _parse_parameters" reordered the options to match what is
 #   displayed in "function _show_help" to simplify maintenance
@@ -2906,10 +2903,6 @@ function _parse_parameters()
   _eko_pv \${#_ARRAY_PATHNAMES[@]}: \""${#_ARRAY_PATHNAMES[@]}\""
   _eko_pv \${_ARRAY_PATHNAMES[@]}: \""${_ARRAY_PATHNAMES[@]}\""
 
-  # IDEA: (nested tests?)
-  # - specifically for -s -H -d
-  # - possibly others if they're reordered (-S -l)
-
   # NOTE:
   # - lots of testing before we go further:
   # - done here:
@@ -2924,7 +2917,7 @@ function _parse_parameters()
   # - "-H" & "-U" are mutually exclusive. error exit
   # - "-N" & "-S" are mutually exclusive. error exit
   # - "-d" & "-l" are mutually exclusive. error exit
-  # - "-d" & "-m/-1/-224/-256/-384/-512" are mutually exclusive. error exit
+  # - "-d" & "-m/-1/-224/-256/-384/-512" specified without "-v". error exit
   # - "-l" & "-v" are mutually exclusive. error exit
   # - done in "function _pathname_validate":
   # - path exists?
@@ -3025,12 +3018,13 @@ function _parse_parameters()
     _show_error \""-d\" & \"-l\" are mutually exclusive"
   fi
 
-  # - redundant: *sum results are not displayed so don't calculate them
-  # - "-d" & "-m/-1/-224/-256/-384/-512" are mutually exclusive
+  # - simple logic: the first two require the latter
+  # - "-d" & "-m/-1/-224/-256/-384/-512" specified without "-v"
   if $_BOOLEAN_DEBUG \
-  && $_BOOLEAN_SUM
+  && $_BOOLEAN_SUM \
+  && ! $_BOOLEAN_VERBOSE
   then
-    _show_error \""-d\" & \"-m/-1/-224/-256/-384/-512\" are mutually exclusive"
+    _show_error \""-d\" & \"-m/-1/-224/-256/-384/-512\" specified without \"-v\""
   fi
 
   # - cosmetic: stdout is extremely garbled
@@ -4180,7 +4174,7 @@ then
           _eko_pv "" "1/8: \$_ST_MTIM_HMS: \"$_ST_MTIM_HMS\""
           _eko_pv "" "1/8: \$_ST_MTIM_UTC: \"$_ST_MTIM_UTC\""
           _eko_pv "" "1/8: \$_ST_NAME: \"$_ST_NAME\""
-fi
+fi # $_BOOLEAN_TESTING_01
           # - be as unique as possible. why such a convoluted file name?
           # - 1: the base name *is* the original file name
           # - 2: "scanfs" to make it easy to find stray temporary files in
@@ -4198,7 +4192,7 @@ then
           # 2/8
           # - $_SU_NAME all dressed up with no place to go
           _eko_pv "" "2/8: \$_SU_NAME: \"$_SU_NAME\""
-fi
+fi # $_BOOLEAN_TESTING_01
 
           # - copy the original file (with various options) to a unique file
           # - take note of what is & what is not doublequoted
@@ -4206,7 +4200,7 @@ if $_BOOLEAN_TESTING_01
 then
           # 3/8 (eko precedes action)
           _eko_pv "" "3/8: \"cp $_OPTIONS_CP -- \"$_ST_NAME\" \"$_SU_NAME\""
-fi
+fi # $_BOOLEAN_TESTING_01
           cp $_OPTIONS_CP -- "$_ST_NAME" "$_SU_NAME"
 
           # - get stat(2) info of the newly created unique file, save
@@ -4245,7 +4239,7 @@ then
           _eko_pv "" "4/8: \$_ST_MTIM_HMS: \"$_ST_MTIM_HMS\""
           _eko_pv "" "4/8: \$_ST_MTIM_UTC: \"$_ST_MTIM_UTC\""
           _eko_pv "" "4/8: \$_SU_NAME: \"$_SU_NAME\""
-fi
+fi # $_BOOLEAN_TESTING_01
 
           # - move the newly created unique file into place, overwriting the
           #   original file
@@ -4254,7 +4248,7 @@ if $_BOOLEAN_TESTING_01
 then
           # 5/8 (eko precedes action)
           _eko_pv "" "5/8: \"mv $_OPTIONS_MV -- \"$_SU_NAME\" \"$_ST_NAME\""
-fi
+fi # $_BOOLEAN_TESTING_01
           mv $_OPTIONS_MV -- "$_SU_NAME" "$_ST_NAME"
 
           # - since at least one file was manipulated in the current
@@ -4266,7 +4260,7 @@ if $_BOOLEAN_TESTING_01
 then
           # 6/8
           _eko_pv "" "6/8: \$_BOOLEAN_TIMESTAMP: \"$_BOOLEAN_TIMESTAMP\""
-fi
+fi # $_BOOLEAN_TESTING_01
         fi
         #- DANGER! WILL ROBINSON! DANGER! this is live code -#
 
@@ -4371,7 +4365,7 @@ if $_BOOLEAN_TESTING_01
 then
       # 7/8 (eko precedes action)
       _eko_pv "" "7/8: \"touch --date=\"$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC\" \"$_SD_NAME\" 2>/dev/null"
-fi
+fi # $_BOOLEAN_TESTING_01
       touch --date="$_SD_MTIM_YMD $_SD_MTIM_HMS $_SD_MTIM_UTC" "$_SD_NAME" 2>/dev/null
 
       # - reset the flag for the next iteration
@@ -4380,7 +4374,7 @@ if $_BOOLEAN_TESTING_01
 then
       # 8/8
       _eko_pv "" "8/8: \$_BOOLEAN_TIMESTAMP: \"$_BOOLEAN_TIMESTAMP\""
-fi
+fi # $_BOOLEAN_TESTING_01
     fi
     #- DANGER! WILL ROBINSON! DANGER! this is live code -#
 

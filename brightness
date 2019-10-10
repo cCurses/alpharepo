@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# brightness v2019.09.23
+# brightness v2019.10.10
 
 # Copyright (C) 2017 - 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -34,11 +34,23 @@
 #   discovering backlight types (replacing the oddball cd/echo method in use
 #   now)
 
+# 2019-10-10
+# - "# functions:", "# variables:", "# binaries:", & "# builtins:" listings
+#   added/appended to each function & in main
+# ^ "# builtins:" is to keep track of "echo" &/or "printf" usage. technically
+#   speaking, "(none)" is a misnomer as it's only in reference to these 2
+#   builtins
+# - "function _eko_v" removed
+# - changed the following lines globally:
+#  was: _eko_v "      \$_FOO: \"$_FOO\""
+#   is: _eko_pv \$_FOO: \""$_FOO\""
+# ^ there are several in the following form since the left-hand side contains
+#   whitespace
+#   is: _eko_pv "\$_FOO:" \""$_FOO\""
+# - "function _eko_pv" added for properly formatted verbose output
 # 2019-09-23
 # - "function _process_numeric" rewrote how non-numerics are trimmed from raw
-#   _PARAMETER_NUMERIC. added _BOOLEAN_NEW & _BOOLEAN_OLD (not selectable from
-#   the commandline) so both routines can coexist until I decide the new
-#   approach is not broken in some way
+#   _PARAMETER_NUMERIC
 # 2019-08-30
 # - "function _backlight_types_display" updated the calculations for accuracy
 #  was: _CURRENT_PERCENT=$(( $ACTUAL_BRIGHTNESS * 100 / $MAX_BRIGHTNESS ))
@@ -168,6 +180,7 @@
   # _eko_S_en
   # _eko_dv
   # _eko_iod
+  # _eko_pv
   # _eko_v
   # _eko_v_en
   # _process_numeric
@@ -222,6 +235,12 @@ function _trap()
   # _BRIGHTNESS_HOLD
   # _ONE_BACKLIGHT_TYPE
 
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+
   # - almost certainly being tripped when running --test, so blindly restore
   #   state if possible
   # - "-n string" = true if the length of string is non-zero
@@ -249,12 +268,18 @@ function _backlight_type_select()
   # functions:
   # _backlight_types_discover
   # _eko_iod
-  # _eko_v
+  # _eko_pv
   # _show_error
 
   # variables:
   # _ALL_BACKLIGHT_TYPES
   # _THIS_BACKLIGHT_TYPE
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # (none)
 
   # - retrieve list of backlight types
   _backlight_types_discover
@@ -267,8 +292,8 @@ function _backlight_type_select()
   fi
 
   # - technically interchangeable at this point. use the latter for clarity
-  #_eko_v "  \$_ALL_BACKLIGHT_TYPES: \"$_ALL_BACKLIGHT_TYPES\" (selected)"
-  _eko_v "  \$_THIS_BACKLIGHT_TYPE: \"$_THIS_BACKLIGHT_TYPE\" (selected)"
+  #_eko_pv \$_ALL_BACKLIGHT_TYPES: \""$_ALL_BACKLIGHT_TYPES\" (selected)"
+  _eko_pv \$_THIS_BACKLIGHT_TYPE: \""$_THIS_BACKLIGHT_TYPE\" (selected)"
 
   _eko_iod "#- _backlight_type_select -#"
 }
@@ -282,7 +307,7 @@ function _backlight_type_test()
   # _eko_S
   # _eko_S_en
   # _eko_iod
-  # _eko_v
+  # _eko_pv
   # _eko_v_en
 
   # variables:
@@ -296,6 +321,9 @@ function _backlight_type_test()
 
   # binaries:
   # sleep
+
+  # builtins:
+  # echo
 
   # NOTE:
   # - there is no need to check if a supported backlight type exists. pruning
@@ -350,13 +378,13 @@ function _backlight_type_test()
       # - id++ = variable post-increment
       ((_PERCENT_BRIGHTNESS++))
     done
-    _eko_v ""
+    _eko_pv "" ""
     _eko_S ""
 
     # - restore state
     echo $_BRIGHTNESS_HOLD >/sys/class/backlight/$_ONE_BACKLIGHT_TYPE/brightness
   else
-   _eko_v "         test progress: none. no permission"
+   _eko_pv "test progress:" "none. no permission"
    _eko_S "Test progress: none. no permission"
   fi
 
@@ -370,7 +398,7 @@ function _backlight_types_blacklist()
   # functions:
   # _backlight_values_get
   # _eko_iod
-  # _eko_v
+  # _eko_pv
   # _show_error
 
   # variables:
@@ -379,6 +407,12 @@ function _backlight_types_blacklist()
   # _ALL_BACKLIGHT_TYPES
   # _BLACKLIST
   # _ONE_BACKLIGHT_TYPE
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
 
   # no doublequotes on purpose
   for _ONE_BACKLIGHT_TYPE in $_ALL_BACKLIGHT_TYPES
@@ -398,7 +432,7 @@ function _backlight_types_blacklist()
   done
 
   # - what we set
-  _eko_v "  \$_ALL_BACKLIGHT_TYPES: \"$_ALL_BACKLIGHT_TYPES\" (blacklist)"
+  _eko_pv \$_ALL_BACKLIGHT_TYPES: \""$_ALL_BACKLIGHT_TYPES\" (blacklist)"
 
   # - "-z string" = true if the length of string is zero
   if [[ -z $_ALL_BACKLIGHT_TYPES ]]
@@ -415,11 +449,17 @@ function _backlight_types_discover()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
   # _show_error
 
   # variables:
   # _ALL_BACKLIGHT_TYPES
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
 
   # - could be a custom kernel completely lacking /sys/class/backlight/
   # - "-d file" = true if file exists & is a directory
@@ -441,7 +481,7 @@ function _backlight_types_discover()
   # - "-n string" = true if the length of string is non-zero
   if [[ -n $_ALL_BACKLIGHT_TYPES ]]
   then
-    _eko_v "  \$_ALL_BACKLIGHT_TYPES: \"$_ALL_BACKLIGHT_TYPES\" (discover)"
+    _eko_pv \$_ALL_BACKLIGHT_TYPES: \""$_ALL_BACKLIGHT_TYPES\" (discover)"
   else
     _show_error "backlight not available"
   fi
@@ -460,7 +500,7 @@ function _backlight_types_display()
   # _eko_S
   # _eko_S_en
   # _eko_iod
-  # _eko_v
+  # _eko_pv
 
   # variables:
   # ACTUAL_BRIGHTNESS (read-only)
@@ -473,6 +513,12 @@ function _backlight_types_display()
   # _ONE_BACKLIGHT_TYPE
   # _PARAMETER_NUMERIC
   # _PREVIOUS_PERCENT
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # (none)
 
   # NOTE:
   # - $_ALL_BACKLIGHT_TYPES may contain one or more entries at this point with
@@ -564,12 +610,12 @@ function _backlight_types_display()
     _PREVIOUS_PERCENT=$(( ( $BRIGHTNESS * 100 + ( $MAX_BRIGHTNESS / 2 ) ) / $MAX_BRIGHTNESS ))
 
     # - what we set
-    _eko_v "   \$_ONE_BACKLIGHT_TYPE: \"$_ONE_BACKLIGHT_TYPE\" (display)"
-    _eko_v "     \$ACTUAL_BRIGHTNESS: \"$ACTUAL_BRIGHTNESS\""
-    _eko_v "            \$BRIGHTNESS: \"$BRIGHTNESS\""
-    _eko_v "        \$MAX_BRIGHTNESS: \"$MAX_BRIGHTNESS\""
-    _eko_v "     \$_PREVIOUS_PERCENT: \"${_PREVIOUS_PERCENT}%\""
-    _eko_v "      \$_CURRENT_PERCENT: \"${_CURRENT_PERCENT}%\""
+    _eko_pv \$_ONE_BACKLIGHT_TYPE: \""$_ONE_BACKLIGHT_TYPE\" (display)"
+    _eko_pv \$ACTUAL_BRIGHTNESS: \""$ACTUAL_BRIGHTNESS\""
+    _eko_pv \$BRIGHTNESS: \""$BRIGHTNESS\""
+    _eko_pv \$MAX_BRIGHTNESS: \""$MAX_BRIGHTNESS\""
+    _eko_pv \$_PREVIOUS_PERCENT: \""${_PREVIOUS_PERCENT}%\""
+    _eko_pv \$_CURRENT_PERCENT: \""${_CURRENT_PERCENT}%\""
     _eko_S_en "Backlight type: $_ONE_BACKLIGHT_TYPE"
     _eko_S_en " (settings: $ACTUAL_BRIGHTNESS $BRIGHTNESS $MAX_BRIGHTNESS)"
     _eko_S " (${_CURRENT_PERCENT}% ${_PREVIOUS_PERCENT}% 100%)"
@@ -595,6 +641,12 @@ function _backlight_types_list()
   # variables:
   # _ALL_BACKLIGHT_TYPES
   # _PLURAL
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # (none)
 
   # concept:
   # - show the user absolutely everything that's available
@@ -623,10 +675,16 @@ function _backlight_types_prioritise()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
 
   # variables:
   # _ALL_BACKLIGHT_TYPES
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
 
   # - since "intel_backlight" permits finer control than other backlight
   #   types, ensure it's first in the list if it exists
@@ -636,7 +694,7 @@ function _backlight_types_prioritise()
     # - ${parameter/pattern/string}
     _ALL_BACKLIGHT_TYPES=$(echo intel_backlight ${_ALL_BACKLIGHT_TYPES/intel_backlight/})
 
-    _eko_v "  \$_ALL_BACKLIGHT_TYPES: \"$_ALL_BACKLIGHT_TYPES\" (prioritise)"
+    _eko_pv \$_ALL_BACKLIGHT_TYPES: \""$_ALL_BACKLIGHT_TYPES\" (prioritise)"
   fi
 
   _eko_iod "#- _backlight_types_prioritise -#"
@@ -649,7 +707,7 @@ function _backlight_value_set()
   # functions:
   # _backlight_values_get
   # _eko_iod
-  # _eko_v
+  # _eko_pv
 
   # variables:
   # BRIGHTNESS        (read-write)
@@ -658,6 +716,12 @@ function _backlight_value_set()
   # _PARAMETER_NUMERIC
   # _PARAMETER_PERCENT
   # _PARAMETER_PLUSMINUS
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # (none)
 
 #+ marker set +#
 
@@ -679,8 +743,8 @@ function _backlight_value_set()
   # - numeric with %/+/-: 33%+ (relative)
   # - numeric with %/+/-: 33%- (relative)
 
-  _eko_v "        \$MAX_BRIGHTNESS: \"$MAX_BRIGHTNESS\""
-  _eko_v "            \$BRIGHTNESS: \"$BRIGHTNESS\""
+  _eko_pv \$MAX_BRIGHTNESS: \""$MAX_BRIGHTNESS\""
+  _eko_pv \$BRIGHTNESS: \""$BRIGHTNESS\""
 
   # test: 1/4 (correct)
   # - raw numeric: 33 (absolute)
@@ -694,11 +758,11 @@ function _backlight_value_set()
   if [[ -z $_PARAMETER_PERCENT ]] \
   && [[ -z $_PARAMETER_PLUSMINUS ]]
   then
-    _eko_v "            raw numeric: \"$_PARAMETER_NUMERIC\" (absolute)"
+    _eko_pv "raw numeric:" \""$_PARAMETER_NUMERIC\" (absolute)"
 
     _NEW_BRIGHTNESS=$_PARAMETER_NUMERIC
 
-    _eko_v "       \$_NEW_BRIGHTNESS: \"$_NEW_BRIGHTNESS\""
+    _eko_pv \$_NEW_BRIGHTNESS: \""$_NEW_BRIGHTNESS\""
   fi
 
   # test: 2/4 (correct)
@@ -762,13 +826,13 @@ function _backlight_value_set()
   if [[ -z $_PARAMETER_PERCENT ]] \
   && [[ -n $_PARAMETER_PLUSMINUS ]]
   then
-    _eko_v "       numeric with +/-: \"$_PARAMETER_NUMERIC$_PARAMETER_PLUSMINUS\" (relative)"
+    _eko_pv "numeric with +/-:" \""$_PARAMETER_NUMERIC$_PARAMETER_PLUSMINUS\" (relative)"
 
     # - $((expression))
     _NEW_BRIGHTNESS=$(( $BRIGHTNESS $_PARAMETER_PLUSMINUS $_PARAMETER_NUMERIC ))
 
 
-    _eko_v "       \$_NEW_BRIGHTNESS: \"$_NEW_BRIGHTNESS\""
+    _eko_pv \$_NEW_BRIGHTNESS: \""$_NEW_BRIGHTNESS\""
   fi
 
   # test: 3/4 (correct)
@@ -809,14 +873,14 @@ function _backlight_value_set()
   if [[ -n $_PARAMETER_PERCENT ]] \
   && [[ -z $_PARAMETER_PLUSMINUS ]]
   then
-    _eko_v "         numeric with %: \"$_PARAMETER_NUMERIC$_PARAMETER_PERCENT\" (absolute)"
+    _eko_pv "numeric with %:" \""$_PARAMETER_NUMERIC$_PARAMETER_PERCENT\" (absolute)"
 
     # - "+ 50" & "/ 100" is to handle rounding an integer *up* by .5
     # - "+ 5" & "/ 10" doesn't work. rounds an integer *down* (truncates)
     # - $((expression))
     _NEW_BRIGHTNESS=$(( ( $MAX_BRIGHTNESS * $_PARAMETER_NUMERIC + 50 ) / 100 ))
 
-    _eko_v "       \$_NEW_BRIGHTNESS: \"$_NEW_BRIGHTNESS\""
+    _eko_pv \$_NEW_BRIGHTNESS: \""$_NEW_BRIGHTNESS\""
   fi
 
   # test: 4/4 (correct)
@@ -879,7 +943,7 @@ function _backlight_value_set()
   if [[ -n $_PARAMETER_PERCENT ]] \
   && [[ -n $_PARAMETER_PLUSMINUS ]]
   then
-    _eko_v "     numeric with %/+/-: \"$_PARAMETER_NUMERIC$_PARAMETER_PERCENT$_PARAMETER_PLUSMINUS\" (relative)"
+    _eko_pv "numeric with %/+/-:" \""$_PARAMETER_NUMERIC$_PARAMETER_PERCENT$_PARAMETER_PLUSMINUS\" (relative)"
 
     # - "+ 50" & "/ 100" is to handle rounding an integer *up* by .5
     # - "+ 5" & "/ 10" doesn't work. rounds an integer *down* (truncates)
@@ -887,19 +951,19 @@ function _backlight_value_set()
     _NEW_BRIGHTNESS=$(( $BRIGHTNESS $_PARAMETER_PLUSMINUS ( $MAX_BRIGHTNESS * $_PARAMETER_NUMERIC + 50 ) / 100 ))
 
 
-    _eko_v "       \$_NEW_BRIGHTNESS: \"$_NEW_BRIGHTNESS\""
+    _eko_pv \$_NEW_BRIGHTNESS: \""$_NEW_BRIGHTNESS\""
   fi
 
   if [[ $_NEW_BRIGHTNESS -lt 0 ]]
   then
     _NEW_BRIGHTNESS=0
-    _eko_v "       \$_NEW_BRIGHTNESS: \"$_NEW_BRIGHTNESS\" (range limit: minimum)"
+    _eko_pv \$_NEW_BRIGHTNESS: \""$_NEW_BRIGHTNESS\" (range limit: minimum)"
   fi
 
   if [[ $_NEW_BRIGHTNESS -gt $MAX_BRIGHTNESS ]]
   then
     _NEW_BRIGHTNESS=$MAX_BRIGHTNESS
-    _eko_v "       \$_NEW_BRIGHTNESS: \"$_NEW_BRIGHTNESS\" (range limit: maximum)"
+    _eko_pv \$_NEW_BRIGHTNESS: \""$_NEW_BRIGHTNESS\" (range limit: maximum)"
   fi
 
   # - "-n string" = true if the length of string is non-zero
@@ -931,6 +995,12 @@ function _backlight_values_get()
   # MAX_BRIGHTNESS    (read-only)
   # _ONE_BACKLIGHT_TYPE
 
+  # binaries:
+  # (none)
+
+  # builtins:
+  # (none)
+
   # - what we get
   ACTUAL_BRIGHTNESS=$(< /sys/class/backlight/$_ONE_BACKLIGHT_TYPE/actual_brightness)
   BRIGHTNESS=$(< /sys/class/backlight/$_ONE_BACKLIGHT_TYPE/brightness)
@@ -953,6 +1023,9 @@ function _binary_validate()
 
   # binaries:
   # find
+
+  # builtins:
+  # echo
 
   # NOTE:
   # - rather than test a given binary's version in hopes of figuring out which
@@ -1041,6 +1114,12 @@ function _eko_S()
   # @
   # _BOOLEAN_STDOUT
 
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+
   if $_BOOLEAN_STDOUT
   then
     echo "$@"
@@ -1059,6 +1138,12 @@ function _eko_S_en()
   # variables:
   # @
   # _BOOLEAN_STDOUT
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
 
   if $_BOOLEAN_STDOUT
   then
@@ -1079,6 +1164,15 @@ function _eko_dv()
   # @
   # _BOOLEAN_DEBUG
   # _BOOLEAN_VERBOSE
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+
+  # builtins:
+  # echo
 
   if $_BOOLEAN_DEBUG \
   || $_BOOLEAN_VERBOSE
@@ -1102,8 +1196,15 @@ function _eko_iod()
   # FUNCNAME (single dimension indexed array)
   # _BOOLEAN_DEBUG
 
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+  # printf
+
   # NOTE:
-  # - why $(( ${#FUNCNAME[@]} - 3 ))? to account for main, parent, current
+  # - why "$(( ${#FUNCNAME[@]} - 3 ))"? to account for main, parent, current
   # - pay special attention to the "*" in "%*s". it's part of the magic
 
   if $_BOOLEAN_DEBUG
@@ -1112,30 +1213,49 @@ function _eko_iod()
     # - $((expression))
     # - ${#parameter}
     printf "%*s" $(( ${#FUNCNAME[@]} - 3 ))
-
     echo "$@"
   fi
 
   #- _eko_iod -#
 }
 
-function _eko_v()
+function _eko_pv()
 {
-  #+ _eko_v +#
+  #+ _eko_pv +#
 
   # functions:
   # (none)
 
   # variables:
+  # 1
   # @
   # _BOOLEAN_VERBOSE
 
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+  # printf
+
+  # NOTE:
+  # - why "%24s "? to simplify setting column width in verbose reports. a
+  #   single change here affects the output globally
+  # - unformatted (non-columnized) output is now supported. simply pass "" as
+  #   the first parameter
+
   if $_BOOLEAN_VERBOSE
   then
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $1 ]]
+    then
+      printf "%24s " "$1"
+    fi
+    shift
     echo "$@"
   fi
 
-  #- _eko_v -#
+  #- _eko_pv -#
 }
 
 function _eko_v_en()
@@ -1148,6 +1268,12 @@ function _eko_v_en()
   # variables:
   # @
   # _BOOLEAN_VERBOSE
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
 
   if $_BOOLEAN_VERBOSE
   then
@@ -1166,7 +1292,7 @@ function _parse_parameters()
   # _backlight_types_list
   # _binary_validate
   # _eko_iod
-  # _eko_v
+  # _eko_pv
   # _process_numeric
   # _show_error
   # _show_help
@@ -1184,6 +1310,12 @@ function _parse_parameters()
   # _BOOLEAN_VERBOSE
   # _RAW_NUMERIC
   # _THIS_BACKLIGHT_TYPE
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # (none)
 
   # NOTE:
   # - boolean variables are proper toggles
@@ -1211,7 +1343,6 @@ function _parse_parameters()
 
   #+ parameter defaults +#
 
-#+ marker boolean +#
   _BOOLEAN_ALL=false     # action
   _BOOLEAN_DEBUG=false   # display
   _BOOLEAN_LIST=false    # display
@@ -1219,7 +1350,6 @@ function _parse_parameters()
   _BOOLEAN_STDOUT=true   # display
   _BOOLEAN_TEST=false    # action
   _BOOLEAN_VERBOSE=false # display
-#- marker boolean -#
   unset _RAW_NUMERIC
   unset _THIS_BACKLIGHT_TYPE
 
@@ -1330,24 +1460,21 @@ function _parse_parameters()
   if $_BOOLEAN_DEBUG \
   || $_BOOLEAN_VERBOSE
   then
-#+ marker boolean +#
     _BOOLEAN_STDOUT=false  # display
-#- marker boolean -#
   fi
 
-  _eko_v "          \$_BOOLEAN_ALL: \"$_BOOLEAN_ALL\""
-  _eko_v "        \$_BOOLEAN_DEBUG: \"$_BOOLEAN_DEBUG\""
-  _eko_v "         \$_BOOLEAN_LIST: \"$_BOOLEAN_LIST\""
-  _eko_v "        \$_BOOLEAN_QUIET: \"$_BOOLEAN_QUIET\""
-  _eko_v "       \$_BOOLEAN_STDOUT: \"$_BOOLEAN_STDOUT\""
-  _eko_v "         \$_BOOLEAN_TEST: \"$_BOOLEAN_TEST\""
-  _eko_v "      \$_BOOLEAN_VERBOSE: \"$_BOOLEAN_VERBOSE\""
-  _eko_v "          \$_RAW_NUMERIC: \"$_RAW_NUMERIC\""
-  _eko_v "  \$_THIS_BACKLIGHT_TYPE: \"$_THIS_BACKLIGHT_TYPE\""
+  _eko_pv \$_BOOLEAN_ALL: \""$_BOOLEAN_ALL\""
+  _eko_pv \$_BOOLEAN_DEBUG: \""$_BOOLEAN_DEBUG\""
+  _eko_pv \$_BOOLEAN_LIST: \""$_BOOLEAN_LIST\""
+  _eko_pv \$_BOOLEAN_QUIET: \""$_BOOLEAN_QUIET\""
+  _eko_pv \$_BOOLEAN_STDOUT: \""$_BOOLEAN_STDOUT\""
+  _eko_pv \$_BOOLEAN_TEST: \""$_BOOLEAN_TEST\""
+  _eko_pv \$_BOOLEAN_VERBOSE: \""$_BOOLEAN_VERBOSE\""
+  _eko_pv \$_RAW_NUMERIC: \""$_RAW_NUMERIC\""
+  _eko_pv \$_THIS_BACKLIGHT_TYPE: \""$_THIS_BACKLIGHT_TYPE\""
 
   if $_BOOLEAN_QUIET
   then
-#+ marker boolean +#
     #_BOOLEAN_ALL=false     # action
     _BOOLEAN_DEBUG=false   # display
     _BOOLEAN_LIST=false    # display
@@ -1355,7 +1482,6 @@ function _parse_parameters()
     _BOOLEAN_STDOUT=false  # display
     #_BOOLEAN_TEST=false    # action
     _BOOLEAN_VERBOSE=false # display
-#- marker boolean -#
   fi
 
   if $_BOOLEAN_LIST
@@ -1388,13 +1514,11 @@ function _process_numeric()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
   # _show_error
 
   # variables:
   # #
-  # _BOOLEAN_NEW (only used internally for testing)
-  # _BOOLEAN_OLD (only used internally for testing)
   # _CHAR
   # _OFFSET
   # _PARAMETER_NUMERIC
@@ -1402,25 +1526,22 @@ function _process_numeric()
   # _PARAMETER_PLUSMINUS
   # _RAW_NUMERIC
 
-  #+ marker testing +#
-# - disable "new" & enable "old"
-#  _BOOLEAN_NEW=false
-#  _BOOLEAN_OLD=true
-# - enable "new" & disable "old"
-#
-  _BOOLEAN_NEW=true
-#
-  _BOOLEAN_OLD=false
+  # binaries:
+  # (none)
 
+  # builtins:
+  # (none)
+
+  #+ marker testing +#
   # interesting tidbit:
   # - in "function _parse_parameters":
   # - call "_process_numeric $_RAW_NUMERIC" = both variables can be referenced
   # - call "_process_numeric" = only _RAW_NUMERIC can be referenced
 
-#  _eko_v
-#  _eko_v "                    \$@: \"$@\""
-#  _eko_v "         \$_RAW_NUMERIC: \"$_RAW_NUMERIC\""
-#  _eko_v
+#  _eko_pv "" ""
+#  _eko_pv \$@: \""$@\""
+#  _eko_pv \$_RAW_NUMERIC: \""$_RAW_NUMERIC\""
+#  _eko_pv "" ""
   #- marker testing -#
 
   # NOTE:
@@ -1429,98 +1550,45 @@ function _process_numeric()
   # - we start with this
   _PARAMETER_NUMERIC=$_RAW_NUMERIC
 
-  _eko_v "    \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (raw)"
+  _eko_pv \$_PARAMETER_NUMERIC: \""$_PARAMETER_NUMERIC\" (raw)"
 
-  if $_BOOLEAN_NEW
-  then
-    # - trim all non-numerics from both ends, starting with the left
+  # - trim all non-numerics from both ends, starting with the left
 
-    # - single character from the left
-#    _eko_v "${_PARAMETER_NUMERIC:0:1}"
-    # - what remains
-#    _eko_v "${_PARAMETER_NUMERIC:1}"
+  # - single character from the left
+#  _eko_pv "" ${_PARAMETER_NUMERIC:0:1}
+  # - what remains
+#  _eko_pv "" ${_PARAMETER_NUMERIC:1}
 
-    # - ${parameter:offset:length}
-    while [[ ${_PARAMETER_NUMERIC:0:1} != [0-9] ]]
-    do
-      # - ${parameter:offset}
-      _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:1}
-#
-      _eko_v "<   \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim left)"
-    done
-    _eko_v "    \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim left)"
-  fi
-
-  if $_BOOLEAN_OLD
-  then
-    # - trim all non-numerics from both ends, starting with the left
-
-    _OFFSET=0
-    # - ${#parameter}
-    # - ${parameter:offset:length}
-    while [[ $_OFFSET -lt ${#_PARAMETER_NUMERIC} ]] \
-    && [[ ! ${_PARAMETER_NUMERIC:$_OFFSET:1} =~ [0-9] ]]
-    do
-      # - ((expression))
-      # - id++ = variable post-increment
-      ((_OFFSET++))
-#
-      _eko_v "<              \$_OFFSET: \"$_OFFSET\" (trim left)"
-    done
+  # - ${parameter:offset:length}
+  while [[ ${_PARAMETER_NUMERIC:0:1} != [0-9] ]]
+  do
     # - ${parameter:offset}
-    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:$_OFFSET}
-    _eko_v "    \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim left)"
-  fi
+    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:1}
+  done
+  _eko_pv \$_PARAMETER_NUMERIC: \""$_PARAMETER_NUMERIC\" (trim left)"
 
-  if $_BOOLEAN_NEW
-  then
-    # - trim all non-numerics from both ends, & then the right
+  # - trim all non-numerics from both ends, & then the right
 
-    # - single character from the right (the space *must* be present)
-#    _eko_v "${_PARAMETER_NUMERIC: -1:1}"
-    # - what remains
-#    _eko_v "${_PARAMETER_NUMERIC:0: -1}" (the space *must* be present)
+  # - single character from the right (the space *must* be present)
+#  _eko_pv "" ${_PARAMETER_NUMERIC: -1:1} # (the space *must* be present)
+  # - what remains
+#  _eko_pv "" ${_PARAMETER_NUMERIC:0: -1} # (the space *must* be present)
 
+  # - ${parameter:offset:length}
+  while [[ ${_PARAMETER_NUMERIC: -1:1} != [0-9] ]]
+  do
     # - ${parameter:offset:length}
-    while [[ ${_PARAMETER_NUMERIC: -1:1} != [0-9] ]]
-    do
-      # - ${parameter:offset:length}
-      _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0: -1}
-#
-      _eko_v ">   \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim right)"
-    done
-    _eko_v "    \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim right)"
-  fi
-
-  if $_BOOLEAN_OLD
-  then
-    # - trim all non-numerics from both ends, & then the right
-
-    # - ${#parameter}
-    _OFFSET=${#_PARAMETER_NUMERIC}
-    # - ${parameter:offset:length}
-    # - $((expression))
-    while [[ $_OFFSET -gt 0 ]] \
-    && [[ ! ${_PARAMETER_NUMERIC:$(( $_OFFSET - 1 )):1} =~ [0-9] ]]
-    do
-      # - ((expression))
-      # - id-- = variable post-decrement
-      ((_OFFSET--))
-#
-      _eko_v ">              \$_OFFSET: \"$_OFFSET\" (trim right)"
-    done
-    # - ${parameter:offset:length}
-    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0:$_OFFSET}
-    _eko_v "    \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim right)"
-  fi
+    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0: -1}
+  done
+  _eko_pv \$_PARAMETER_NUMERIC: \""$_PARAMETER_NUMERIC\" (trim right)"
 
   # - validate what remains
   # - if there are non-numerics *within* $_PARAMETER_NUMERIC, that's a fail
   if [[ $_PARAMETER_NUMERIC =~ ^[0-9]+$ ]]
   then
-    _eko_v "                 status: pass"
+    _eko_pv status: pass
   else
-    _eko_v "                 status: fail"
+    _eko_pv status: fail
     _show_error "invalid parameter \"$_PARAMETER_NUMERIC\" specified"
   fi
 
@@ -1558,10 +1626,10 @@ function _process_numeric()
   # - we finish with this
   # - numerics (mandatory), percent (if present), plus/minus (if present) all
   #   tucked safely away in separate variables for later use
-  _eko_v "    \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (finished)"
-  _eko_v "    \$_PARAMETER_PERCENT: \"$_PARAMETER_PERCENT\" (finished)"
-  _eko_v "  \$_PARAMETER_PLUSMINUS: \"$_PARAMETER_PLUSMINUS\" (finished)"
-  _eko_v "                example: \"$_PARAMETER_NUMERIC$_PARAMETER_PERCENT$_PARAMETER_PLUSMINUS\""
+  _eko_pv \$_PARAMETER_NUMERIC: \""$_PARAMETER_NUMERIC\" (finished)"
+  _eko_pv \$_PARAMETER_PERCENT: \""$_PARAMETER_PERCENT\" (finished)"
+  _eko_pv \$_PARAMETER_PLUSMINUS: \""$_PARAMETER_PLUSMINUS\" (finished)"
+  _eko_pv example: \""$_PARAMETER_NUMERIC$_PARAMETER_PERCENT$_PARAMETER_PLUSMINUS\""
 
   _eko_iod "#- _process_numeric -#"
 }
@@ -1575,6 +1643,12 @@ function _show_error()
 
   # variables:
   # @
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
 
   # - output to stderr, not stdout
   # - be explicit for clarity
@@ -1594,6 +1668,12 @@ function _show_help()
 
   # variables:
   # (none)
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
 
   echo "Provide 0 or more parameters
 
@@ -1638,6 +1718,12 @@ Note:
 # variables:
 # @
 # _THIS_BACKLIGHT_TYPE
+
+# binaries:
+# (none)
+
+# builtins:
+# (none)
 
 _parse_parameters "$@"
 

@@ -1043,7 +1043,6 @@ function _parse_parameters()
 
   #+ parameter defaults +#
 
-#+ marker boolean +#
   _BOOLEAN_DEBUG=false   # display
   _BOOLEAN_GET=false     # action
   _BOOLEAN_MUTE=false    # action
@@ -1053,7 +1052,6 @@ function _parse_parameters()
   _BOOLEAN_TOGGLE=false  # action
   _BOOLEAN_UNMUTE=false  # action
   _BOOLEAN_VERBOSE=false # display
-#- marker boolean -#
   unset _RAW_NUMERIC
 
   #- parameter defaults -#
@@ -1168,9 +1166,7 @@ function _parse_parameters()
   if $_BOOLEAN_DEBUG \
   || $_BOOLEAN_VERBOSE
   then
-#+ marker boolean +#
     _BOOLEAN_STDOUT=false  # display
-#- marker boolean -#
   fi
 
   _eko_v "           \$_BOOLEAN_DEBUG: \"$_BOOLEAN_DEBUG\""
@@ -1186,7 +1182,6 @@ function _parse_parameters()
 
   if $_BOOLEAN_QUIET
   then
-#+ marker boolean +#
     _BOOLEAN_DEBUG=false   # display
     #_BOOLEAN_GET=false     # action
     #_BOOLEAN_MUTE=false    # action
@@ -1196,7 +1191,6 @@ function _parse_parameters()
     #_BOOLEAN_TOGGLE=false  # action
     #_BOOLEAN_UNMUTE=false  # action
     _BOOLEAN_VERBOSE=false # display
-#- marker boolean -#
   fi
 
   # - "-r file" = true if file exists & is readable

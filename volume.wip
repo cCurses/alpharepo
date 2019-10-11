@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# volume v2019.09.23
+# volume v2019.10.11
 
 # Copyright (C) 2005 - 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -29,11 +29,37 @@
 # - individual channels: single parameter, comma separated. just like amixer
 #   expects
 
+# 2019-10-11
+# - "function _show_help" reordered the options listed so that "-d, --debug",
+#   "-v, --verbose", & "-?, -h, --help" are the last options displayed
+# - "function _parse_parameters" reordered the options parsed to match what is
+#   displayed in "function _show_help" to simplify maintenance
+# - "# functions:", "# variables:", "# binaries:", & "# builtins:" listings
+#   added/appended to each function & in main
+# ^ "# builtins:" is to keep track of "echo" &/or "printf" usage. technically
+#   speaking, "(none)" is a misnomer as it's only in reference to these 2
+#   builtins
+# - "function _eko_S" removed
+# - changed the following lines globally:
+#  was: _eko_S "      \$_FOO: \"$_FOO\""
+#   is: _eko_pS \$_FOO: \""$_FOO\""
+# ^ there are several in the following form since the left-hand side contains
+#   whitespace
+#  was: _eko_S "      Foo Bar:" \""$_FOO\""
+#   is: _eko_pS "Foo Bar:" \""$_FOO\""
+# - "function _eko_pS" added for properly formatted stdout output
+# - "function _eko_v" removed
+# - changed the following lines globally:
+#  was: _eko_v "      \$_FOO: \"$_FOO\""
+#   is: _eko_pv \$_FOO: \""$_FOO\""
+# ^ there are several in the following form since the left-hand side contains
+#   whitespace
+#  was: _eko_v "      Foo Bar:" \""$_FOO\""
+#   is: _eko_pv "Foo Bar:" \""$_FOO\""
+# - "function _eko_pv" added for properly formatted verbose output
 # 2019-09-23
 # - "function _process_numeric" rewrote how non-numerics are trimmed from raw
-#   _PARAMETER_NUMERIC. added _BOOLEAN_NEW & _BOOLEAN_OLD (not selectable from
-#   the commandline) so both routines can coexist until I decide the new
-#   approach is not broken in some way
+#   _PARAMETER_NUMERIC
 # 2019-08-27
 # - "function _calculate_percent" completely reworked & tested the calculation
 #  was: _PLAYBACK_PERCENT=$(( ( $1 * 100 + 50 ) / $2 ))
@@ -178,11 +204,9 @@
   # _amixer_sset_master_set
   # _binary_validate_setup
   # _calculate_percent
-  # _eko_S
-#  # _eko_S_en
   # _eko_iod
-  # _eko_v
-#  # _eko_v_en
+  # _eko_pS
+  # _eko_pv
   # _process_numeric
   # _show_error
   # _show_help
@@ -205,9 +229,9 @@ function _amixer_sget_master_get()
 
   # functions:
   # _calculate_percent
-  # _eko_S
   # _eko_iod
-  # _eko_v
+  # _eko_pS
+  # _eko_pv
 #  # _volume_set
 
   # variables:
@@ -228,55 +252,61 @@ function _amixer_sget_master_get()
   # _PLAYBACK_SIDE_RIGHT
   # _PLAYBACK_WOOFER
 
+  # binaries:
+  # (none)
+
+  # builtins:
+  # (none)
+
   # - "-n string" = true if the length of string is non-zero
   if [[ -n $_PLAYBACK_LIMITS_MINIMUM ]]
   then
-    _eko_v " \$_PLAYBACK_LIMITS_MINIMUM: \"$_PLAYBACK_LIMITS_MINIMUM\""
-    _eko_S " Playback Limits Minimum: \"$_PLAYBACK_LIMITS_MINIMUM\""
+    _eko_pv \$_PLAYBACK_LIMITS_MINIMUM: \""$_PLAYBACK_LIMITS_MINIMUM\""
+    _eko_pS "Playback Limits Minimum:" \""$_PLAYBACK_LIMITS_MINIMUM\""
   fi
 
   # - "-n string" = true if the length of string is non-zero
   if [[ -n $_PLAYBACK_LIMITS_MAXIMUM ]]
   then
-    _eko_v " \$_PLAYBACK_LIMITS_MAXIMUM: \"$_PLAYBACK_LIMITS_MAXIMUM\""
-    _eko_S " Playback Limits Maximum: \"$_PLAYBACK_LIMITS_MAXIMUM\""
+    _eko_pv \$_PLAYBACK_LIMITS_MAXIMUM: \""$_PLAYBACK_LIMITS_MAXIMUM\""
+    _eko_pS "Playback Limits Maximum:" \""$_PLAYBACK_LIMITS_MAXIMUM\""
   fi
 
   # - "-n string" = true if the length of string is non-zero
   if [[ -n $_PLAYBACK_MONO ]]
   then
     _calculate_percent $_PLAYBACK_MONO $_PLAYBACK_LIMITS_MAXIMUM
-    _eko_v "           \$_PLAYBACK_MONO: \"$_PLAYBACK_MONO\" (${_PLAYBACK_PERCENT}%)"
-    _eko_S "           Playback Mono: \"$_PLAYBACK_MONO\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pv \$_PLAYBACK_MONO: \""$_PLAYBACK_MONO\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pS "Playback Mono:" \""$_PLAYBACK_MONO\" (${_PLAYBACK_PERCENT}%)"
   fi
 
   # - "-n string" = true if the length of string is non-zero
   if [[ -n $_PLAYBACK_FRONT_LEFT ]]
   then
     _calculate_percent $_PLAYBACK_FRONT_LEFT $_PLAYBACK_LIMITS_MAXIMUM
-    _eko_v "     \$_PLAYBACK_FRONT_LEFT: \"$_PLAYBACK_FRONT_LEFT\" (${_PLAYBACK_PERCENT}%)"
-    _eko_S "     Playback Front Left: \"$_PLAYBACK_FRONT_LEFT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pv \$_PLAYBACK_FRONT_LEFT: \""$_PLAYBACK_FRONT_LEFT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pS "Playback Front Left:" \""$_PLAYBACK_FRONT_LEFT\" (${_PLAYBACK_PERCENT}%)"
   fi
 
   # - "-n string" = true if the length of string is non-zero
   if [[ -n $_PLAYBACK_FRONT_CENTER ]]
   then
     _calculate_percent $_PLAYBACK_FRONT_CENTER $_PLAYBACK_LIMITS_MAXIMUM
-    _eko_v "   \$_PLAYBACK_FRONT_CENTER: \"$_PLAYBACK_FRONT_CENTER\" (${_PLAYBACK_PERCENT}%)"
-    _eko_S "   Playback Front Center: \"$_PLAYBACK_FRONT_CENTER\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pv \$_PLAYBACK_FRONT_CENTER: \""$_PLAYBACK_FRONT_CENTER\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pS "Playback Front Center:" \""$_PLAYBACK_FRONT_CENTER\" (${_PLAYBACK_PERCENT}%)"
   fi
 
   # - "-n string" = true if the length of string is non-zero
   if [[ -n $_PLAYBACK_FRONT_RIGHT ]]
   then
     _calculate_percent $_PLAYBACK_FRONT_RIGHT $_PLAYBACK_LIMITS_MAXIMUM
-    _eko_v "    \$_PLAYBACK_FRONT_RIGHT: \"$_PLAYBACK_FRONT_RIGHT\" (${_PLAYBACK_PERCENT}%)"
-    _eko_S "    Playback Front Right: \"$_PLAYBACK_FRONT_RIGHT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pv \$_PLAYBACK_FRONT_RIGHT: \""$_PLAYBACK_FRONT_RIGHT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pS "Playback Front Right:" \""$_PLAYBACK_FRONT_RIGHT\" (${_PLAYBACK_PERCENT}%)"
 #    if [[ -n $_PARAMETER_NUMERIC ]]
 #    then
 ##      _volume_set $_PLAYBACK_FRONT_RIGHT
 #      _volume_set 33
-#      _eko_v ">             \$_NEW_VOLUME: \"$_NEW_VOLUME\""
+#      _eko_pv "> \$_NEW_VOLUME:" \""$_NEW_VOLUME\""
 #    fi
   fi
 
@@ -284,53 +314,53 @@ function _amixer_sget_master_get()
   if [[ -n $_PLAYBACK_SIDE_LEFT ]]
   then
     _calculate_percent $_PLAYBACK_SIDE_LEFT $_PLAYBACK_LIMITS_MAXIMUM
-    _eko_v "      \$_PLAYBACK_SIDE_LEFT: \"$_PLAYBACK_SIDE_LEFT\" (${_PLAYBACK_PERCENT}%)"
-    _eko_S "      Playback Side Left: \"$_PLAYBACK_SIDE_LEFT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pv \$_PLAYBACK_SIDE_LEFT: \""$_PLAYBACK_SIDE_LEFT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pS "Playback Side Left:" \""$_PLAYBACK_SIDE_LEFT\" (${_PLAYBACK_PERCENT}%)"
   fi
 
   # - "-n string" = true if the length of string is non-zero
   if [[ -n $_PLAYBACK_SIDE_RIGHT ]]
   then
     _calculate_percent $_PLAYBACK_SIDE_RIGHT $_PLAYBACK_LIMITS_MAXIMUM
-    _eko_v "     \$_PLAYBACK_SIDE_RIGHT: \"$_PLAYBACK_SIDE_RIGHT\" (${_PLAYBACK_PERCENT}%)"
-    _eko_S "     Playback Side Right: \"$_PLAYBACK_SIDE_RIGHT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pv \$_PLAYBACK_SIDE_RIGHT: \""$_PLAYBACK_SIDE_RIGHT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pS "Playback Side Right:" \""$_PLAYBACK_SIDE_RIGHT\" (${_PLAYBACK_PERCENT}%)"
   fi
 
   # - "-n string" = true if the length of string is non-zero
   if [[ -n $_PLAYBACK_REAR_LEFT ]]
   then
     _calculate_percent $_PLAYBACK_REAR_LEFT $_PLAYBACK_LIMITS_MAXIMUM
-    _eko_v "      \$_PLAYBACK_REAR_LEFT: \"$_PLAYBACK_REAR_LEFT\" (${_PLAYBACK_PERCENT}%)"
-    _eko_S "      Playback Rear Left: \"$_PLAYBACK_REAR_LEFT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pv \$_PLAYBACK_REAR_LEFT: \""$_PLAYBACK_REAR_LEFT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pS "Playback Rear Left:" \""$_PLAYBACK_REAR_LEFT\" (${_PLAYBACK_PERCENT}%)"
   fi
 
   # - "-n string" = true if the length of string is non-zero
   if [[ -n $_PLAYBACK_REAR_CENTER ]]
   then
     _calculate_percent $_PLAYBACK_REAR_CENTER $_PLAYBACK_LIMITS_MAXIMUM
-    _eko_v "    \$_PLAYBACK_REAR_CENTER: \"$_PLAYBACK_REAR_CENTER\" (${_PLAYBACK_PERCENT}%)"
-    _eko_S "    Playback Rear Center: \"$_PLAYBACK_REAR_CENTER\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pv \$_PLAYBACK_REAR_CENTER: \""$_PLAYBACK_REAR_CENTER\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pS "Playback Rear Center:" \""$_PLAYBACK_REAR_CENTER\" (${_PLAYBACK_PERCENT}%)"
   fi
 
   # - "-n string" = true if the length of string is non-zero
   if [[ -n $_PLAYBACK_REAR_RIGHT ]]
   then
     _calculate_percent $_PLAYBACK_REAR_RIGHT $_PLAYBACK_LIMITS_MAXIMUM
-    _eko_v "     \$_PLAYBACK_REAR_RIGHT: \"$_PLAYBACK_REAR_RIGHT\" (${_PLAYBACK_PERCENT}%)"
-    _eko_S "     Playback Rear Right: \"$_PLAYBACK_REAR_RIGHT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pv \$_PLAYBACK_REAR_RIGHT: \""$_PLAYBACK_REAR_RIGHT\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pS "Playback Rear Right:" \""$_PLAYBACK_REAR_RIGHT\" (${_PLAYBACK_PERCENT}%)"
   fi
 
   # - "-n string" = true if the length of string is non-zero
   if [[ -n $_PLAYBACK_WOOFER ]]
   then
     _calculate_percent $_PLAYBACK_WOOFER $_PLAYBACK_LIMITS_MAXIMUM
-    _eko_v "         \$_PLAYBACK_WOOFER: \"$_PLAYBACK_WOOFER\" (${_PLAYBACK_PERCENT}%)"
-    _eko_S "         Playback Woofer: \"$_PLAYBACK_WOOFER\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pv \$_PLAYBACK_WOOFER: \""$_PLAYBACK_WOOFER\" (${_PLAYBACK_PERCENT}%)"
+    _eko_pS "Playback Woofer:" \""$_PLAYBACK_WOOFER\" (${_PLAYBACK_PERCENT}%)"
   fi
 
   # - assumption: this is global (ie: for all channels)
-  _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
-  _eko_S "           Playback Mute: \"$_PLAYBACK_MUTE\""
+  _eko_pv \$_PLAYBACK_MUTE: \""$_PLAYBACK_MUTE\""
+  _eko_pS "Playback Mute:" \""$_PLAYBACK_MUTE\""
 
   _eko_iod "#- _amixer_sget_master_get -#"
 
@@ -343,7 +373,7 @@ function _amixer_sget_master_parse()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
 
   # variables:
   # _AMIXER_SGET_MASTER
@@ -362,6 +392,12 @@ function _amixer_sget_master_parse()
   # _PLAYBACK_SIDE_RIGHT
   # _PLAYBACK_WOOFER
   # _XX0
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # (none)
 
   # NOTE:
   # - "$_AMIXER_SGET_MASTER" is reverenced while bounded by doublequotes to
@@ -416,8 +452,8 @@ function _amixer_sget_master_parse()
       <<< \
       $_LINE
 
-      _eko_v " \$_PLAYBACK_LIMITS_MINIMUM: \"$_PLAYBACK_LIMITS_MINIMUM\""
-      _eko_v " \$_PLAYBACK_LIMITS_MAXIMUM: \"$_PLAYBACK_LIMITS_MAXIMUM\""
+      _eko_pv \$_PLAYBACK_LIMITS_MINIMUM: \""$_PLAYBACK_LIMITS_MINIMUM\""
+      _eko_pv \$_PLAYBACK_LIMITS_MAXIMUM: \""$_PLAYBACK_LIMITS_MAXIMUM\""
     fi
 
     if [[ $_LINE =~ ^"Mono: Playback " ]]
@@ -437,8 +473,8 @@ function _amixer_sget_master_parse()
         _PLAYBACK_MUTE=true
       fi
 
-      _eko_v "           \$_PLAYBACK_MONO: \"$_PLAYBACK_MONO\""
-      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+      _eko_pv \$_PLAYBACK_MONO: \""$_PLAYBACK_MONO\""
+      _eko_pv \$_PLAYBACK_MUTE: \""$_PLAYBACK_MUTE\""
     fi
 
     if [[ $_LINE =~ ^"Front Left: Playback " ]]
@@ -459,8 +495,8 @@ function _amixer_sget_master_parse()
         _PLAYBACK_MUTE=true
       fi
 
-      _eko_v "     \$_PLAYBACK_FRONT_LEFT: \"$_PLAYBACK_FRONT_LEFT\""
-      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+      _eko_pv \$_PLAYBACK_FRONT_LEFT: \""$_PLAYBACK_FRONT_LEFT\""
+      _eko_pv \$_PLAYBACK_MUTE: \""$_PLAYBACK_MUTE\""
     fi
 
     if [[ $_LINE =~ ^"Front Center: Playback " ]]
@@ -481,8 +517,8 @@ function _amixer_sget_master_parse()
         _PLAYBACK_MUTE=true
       fi
 
-      _eko_v "   \$_PLAYBACK_FRONT_CENTER: \"$_PLAYBACK_FRONT_CENTER\""
-      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+      _eko_pv \$_PLAYBACK_FRONT_CENTER: \""$_PLAYBACK_FRONT_CENTER\""
+      _eko_pv \$_PLAYBACK_MUTE: \""$_PLAYBACK_MUTE\""
     fi
 
     if [[ $_LINE =~ ^"Front Right: Playback " ]]
@@ -503,8 +539,8 @@ function _amixer_sget_master_parse()
         _PLAYBACK_MUTE=true
       fi
 
-      _eko_v "    \$_PLAYBACK_FRONT_RIGHT: \"$_PLAYBACK_FRONT_RIGHT\""
-      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+      _eko_pv \$_PLAYBACK_FRONT_RIGHT: \""$_PLAYBACK_FRONT_RIGHT\""
+      _eko_pv \$_PLAYBACK_MUTE: \""$_PLAYBACK_MUTE\""
     fi
 
     if [[ $_LINE =~ ^"Side Left: Playback " ]]
@@ -525,8 +561,8 @@ function _amixer_sget_master_parse()
         _PLAYBACK_MUTE=true
       fi
 
-      _eko_v "      \$_PLAYBACK_SIDE_LEFT: \"$_PLAYBACK_SIDE_LEFT\""
-      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+      _eko_pv \$_PLAYBACK_SIDE_LEFT: \""$_PLAYBACK_SIDE_LEFT\""
+      _eko_pv \$_PLAYBACK_MUTE: \""$_PLAYBACK_MUTE\""
     fi
 
     if [[ $_LINE =~ ^"Side Right: Playback " ]]
@@ -547,8 +583,8 @@ function _amixer_sget_master_parse()
         _PLAYBACK_MUTE=true
       fi
 
-      _eko_v "     \$_PLAYBACK_SIDE_RIGHT: \"$_PLAYBACK_SIDE_RIGHT\""
-      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+      _eko_pv \$_PLAYBACK_SIDE_RIGHT: \""$_PLAYBACK_SIDE_RIGHT\""
+      _eko_pv \$_PLAYBACK_MUTE: \""$_PLAYBACK_MUTE\""
     fi
 
     if [[ $_LINE =~ ^"Rear Left: Playback " ]]
@@ -569,8 +605,8 @@ function _amixer_sget_master_parse()
         _PLAYBACK_MUTE=true
       fi
 
-      _eko_v "      \$_PLAYBACK_REAR_LEFT: \"$_PLAYBACK_REAR_LEFT\""
-      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+      _eko_pv \$_PLAYBACK_REAR_LEFT: \""$_PLAYBACK_REAR_LEFT\""
+      _eko_pv \$_PLAYBACK_MUTE: \""$_PLAYBACK_MUTE\""
     fi
 
     if [[ $_LINE =~ ^"Rear Center: Playback " ]]
@@ -591,8 +627,8 @@ function _amixer_sget_master_parse()
         _PLAYBACK_MUTE=true
       fi
 
-      _eko_v "    \$_PLAYBACK_REAR_CENTER: \"$_PLAYBACK_REAR_CENTER\""
-      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+      _eko_pv \$_PLAYBACK_REAR_CENTER: \""$_PLAYBACK_REAR_CENTER\""
+      _eko_pv \$_PLAYBACK_MUTE: \""$_PLAYBACK_MUTE\""
     fi
 
     if [[ $_LINE =~ ^"Rear Right: Playback " ]]
@@ -613,8 +649,8 @@ function _amixer_sget_master_parse()
         _PLAYBACK_MUTE=true
       fi
 
-      _eko_v "     \$_PLAYBACK_REAR_RIGHT: \"$_PLAYBACK_REAR_RIGHT\""
-      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+      _eko_pv \$_PLAYBACK_REAR_RIGHT: \""$_PLAYBACK_REAR_RIGHT\""
+      _eko_pv \$_PLAYBACK_MUTE: \""$_PLAYBACK_MUTE\""
     fi
 
     if [[ $_LINE =~ ^"Woofer: Playback " ]]
@@ -634,8 +670,8 @@ function _amixer_sget_master_parse()
         _PLAYBACK_MUTE=true
       fi
 
-      _eko_v "         \$_PLAYBACK_WOOFER: \"$_PLAYBACK_WOOFER\""
-      _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
+      _eko_pv \$_PLAYBACK_WOOFER: \""$_PLAYBACK_WOOFER\""
+      _eko_pv \$_PLAYBACK_MUTE: \""$_PLAYBACK_MUTE\""
     fi
   done \
   <<< \
@@ -650,7 +686,7 @@ function _amixer_sset_master_set()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
 
   # variables:
   # _BOOLEAN_MUTE
@@ -660,6 +696,10 @@ function _amixer_sset_master_set()
 
   # binaries:
   # amixer
+
+  # builtins:
+  # (none)
+  # echo (for testing only)
 
   # IDEA:
   # - use this single function to selectively make all required changes
@@ -706,11 +746,11 @@ function _amixer_sset_master_set()
 #    echo "amixer --quiet sset Master unmute"
 #  fi
 
-  _eko_v "            \$_BOOLEAN_MUTE: \"$_BOOLEAN_MUTE\""
-  _eko_v "          \$_BOOLEAN_TOGGLE: \"$_BOOLEAN_TOGGLE\""
-  _eko_v "          \$_BOOLEAN_UNMUTE: \"$_BOOLEAN_UNMUTE\""
-  _eko_v "           \$_PLAYBACK_MUTE: \"$_PLAYBACK_MUTE\""
-  _eko_S "           Playback Mute: \"$_PLAYBACK_MUTE\""
+  _eko_pv \$_BOOLEAN_MUTE: \""$_BOOLEAN_MUTE\""
+  _eko_pv \$_BOOLEAN_TOGGLE: \""$_BOOLEAN_TOGGLE\""
+  _eko_pv \$_BOOLEAN_UNMUTE: \""$_BOOLEAN_UNMUTE\""
+  _eko_pv \$_PLAYBACK_MUTE: \""$_PLAYBACK_MUTE\""
+  _eko_pS "Playback Mute:" \""$_PLAYBACK_MUTE\""
 
   _eko_iod "#- _amixer_sset_master_set -#"
 }
@@ -731,6 +771,9 @@ function _binary_validate_setup()
 
   # binaries:
   # amixer
+
+  # builtins:
+  # echo
 
   # NOTE:
   # - rather than test a given binary's version in hopes of figuring out which
@@ -797,12 +840,18 @@ function _calculate_percent()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
 
   # variables:
   # 1
   # 2
   # _PLAYBACK_PERCENT
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # (none)
 
   # NOTE:
   # - $1 is the referenced channel (ie: $_PLAYBACK_FRONT_LEFT)
@@ -876,50 +925,11 @@ function _calculate_percent()
   # - keeping this "just in case". this & the above form seem to work. almost
   #_PLAYBACK_PERCENT=$(( $1 * 100 / $2 ))
 
-  _eko_v "                        \$1: \"$1\""
-  _eko_v "                        \$2: \"$2\""
-  _eko_v "        \$_PLAYBACK_PERCENT: \"${_PLAYBACK_PERCENT}%\""
+  _eko_pv \$1: \""$1\""
+  _eko_pv \$2: \""$2\""
+  _eko_pv \$_PLAYBACK_PERCENT: \""${_PLAYBACK_PERCENT}%\""
 
   _eko_iod "#- _calculate_percent -#"
-}
-
-function _eko_S()
-{
-  #+ _eko_S +#
-
-  # functions:
-  # (none)
-
-  # variables:
-  # @
-  # _BOOLEAN_STDOUT
-
-  if $_BOOLEAN_STDOUT
-  then
-    echo "$@"
-  fi
-
-  #- _eko_S -#
-}
-
-# - currently unused. keep it for future use
-function _eko_S_en()
-{
-  #+ _eko_S_en +#
-
-  # functions:
-  # (none)
-
-  # variables:
-  # @
-  # _BOOLEAN_STDOUT
-
-  if $_BOOLEAN_STDOUT
-  then
-    echo -en "$@"
-  fi
-
-  #- _eko_S_en -#
 }
 
 function _eko_iod()
@@ -935,8 +945,15 @@ function _eko_iod()
   # FUNCNAME (single dimension indexed array)
   # _BOOLEAN_DEBUG
 
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+  # printf
+
   # NOTE:
-  # - why $(( ${#FUNCNAME[@]} - 3 ))? to account for main, parent, current
+  # - why "$(( ${#FUNCNAME[@]} - 3 ))"? to account for main, parent, current
   # - pay special attention to the "*" in "%*s". it's part of the magic
 
   if $_BOOLEAN_DEBUG
@@ -945,50 +962,88 @@ function _eko_iod()
     # - $((expression))
     # - ${#parameter}
     printf "%*s" $(( ${#FUNCNAME[@]} - 3 ))
-
     echo "$@"
   fi
 
   #- _eko_iod -#
 }
 
-function _eko_v()
+function _eko_pS()
 {
-  #+ _eko_v +#
+  #+ _eko_pS +#
 
   # functions:
   # (none)
 
   # variables:
+  # 1
   # @
-  # _BOOLEAN_VERBOSE
+  # _BOOLEAN_STDOUT
 
-  if $_BOOLEAN_VERBOSE
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+  # printf
+
+  # NOTE:
+  # - why "%25s "? to simplify setting column width in stdout reports. a
+  #   single change here affects the output globally
+  # - unformatted (non-columnized) output is now supported. simply pass "" as
+  #   the first parameter
+
+  if $_BOOLEAN_STDOUT
   then
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $1 ]]
+    then
+      printf "%25s " "$1"
+    fi
+    shift
     echo "$@"
   fi
 
-  #- _eko_v -#
+  #- _eko_pS -#
 }
 
-# - currently unused. keep it for future use
-function _eko_v_en()
+function _eko_pv()
 {
-  #+ _eko_v_en +#
+  #+ _eko_pv +#
 
   # functions:
   # (none)
 
   # variables:
+  # 1
   # @
   # _BOOLEAN_VERBOSE
 
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+  # printf
+
+  # NOTE:
+  # - why "%27s "? to simplify setting column width in verbose reports. a
+  #   single change here affects the output globally
+  # - unformatted (non-columnized) output is now supported. simply pass "" as
+  #   the first parameter
+
   if $_BOOLEAN_VERBOSE
   then
-    echo -en "$@"
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $1 ]]
+    then
+      printf "%27s " "$1"
+    fi
+    shift
+    echo "$@"
   fi
 
-  #- _eko_v_en -#
+  #- _eko_pv -#
 }
 
 function _parse_parameters()
@@ -1001,7 +1056,7 @@ function _parse_parameters()
   # _amixer_sset_master_set
   # _binary_validate_setup
   # _eko_iod
-  # _eko_v
+  # _eko_pv
   # _process_numeric
   # _show_error
   # _show_help
@@ -1021,6 +1076,12 @@ function _parse_parameters()
   # _BOOLEAN_VERBOSE
   # _RAW_NUMERIC
 
+  # binaries:
+  # (none)
+
+  # builtins:
+  # (none)
+
   # NOTE:
   # - boolean variables are proper toggles
 
@@ -1037,7 +1098,7 @@ function _parse_parameters()
   # - immediately *after* while/do/done loop sets all _BOOLEAN_* if true
 
   # - _BOOLEAN_STDOUT
-  # - companion functions: _eko_S/_eko_S_en
+  # - companion function: _eko_pS
   # - default: true
   # - *not* toggled in while/do/done loop like the others
 
@@ -1059,15 +1120,6 @@ function _parse_parameters()
   while [[ $# -gt 0 ]]
   do
     case $1 in
-      ( -d \
-      | --debug )
-        if $_BOOLEAN_DEBUG
-        then
-          _BOOLEAN_DEBUG=false
-        else
-          _BOOLEAN_DEBUG=true
-        fi
-      ;;
       ( -g \
       | --get )
         if $_BOOLEAN_GET
@@ -1122,6 +1174,18 @@ function _parse_parameters()
           _BOOLEAN_UNMUTE=true
         fi
       ;;
+      ( *[0-9]* )
+        _RAW_NUMERIC=$1
+      ;;
+      ( -d \
+      | --debug )
+        if $_BOOLEAN_DEBUG
+        then
+          _BOOLEAN_DEBUG=false
+        else
+          _BOOLEAN_DEBUG=true
+        fi
+      ;;
       ( -v \
       | --verbose )
         if $_BOOLEAN_VERBOSE
@@ -1130,9 +1194,6 @@ function _parse_parameters()
         else
           _BOOLEAN_VERBOSE=true
         fi
-      ;;
-      ( *[0-9]* )
-        _RAW_NUMERIC=$1
       ;;
       ( "-?" \
       | -h \
@@ -1169,16 +1230,16 @@ function _parse_parameters()
     _BOOLEAN_STDOUT=false  # display
   fi
 
-  _eko_v "           \$_BOOLEAN_DEBUG: \"$_BOOLEAN_DEBUG\""
-  _eko_v "             \$_BOOLEAN_GET: \"$_BOOLEAN_GET\""
-  _eko_v "            \$_BOOLEAN_MUTE: \"$_BOOLEAN_MUTE\""
-  _eko_v "           \$_BOOLEAN_QUIET: \"$_BOOLEAN_QUIET\""
-  _eko_v "             \$_BOOLEAN_SET: \"$_BOOLEAN_SET\""
-  _eko_v "          \$_BOOLEAN_STDOUT: \"$_BOOLEAN_STDOUT\""
-  _eko_v "          \$_BOOLEAN_TOGGLE: \"$_BOOLEAN_TOGGLE\""
-  _eko_v "          \$_BOOLEAN_UNMUTE: \"$_BOOLEAN_UNMUTE\""
-  _eko_v "         \$_BOOLEAN_VERBOSE: \"$_BOOLEAN_VERBOSE\""
-  _eko_v "             \$_RAW_NUMERIC: \"$_RAW_NUMERIC\""
+  _eko_pv \$_BOOLEAN_DEBUG: \""$_BOOLEAN_DEBUG\""
+  _eko_pv \$_BOOLEAN_GET: \""$_BOOLEAN_GET\""
+  _eko_pv \$_BOOLEAN_MUTE: \""$_BOOLEAN_MUTE\""
+  _eko_pv \$_BOOLEAN_QUIET: \""$_BOOLEAN_QUIET\""
+  _eko_pv \$_BOOLEAN_SET: \""$_BOOLEAN_SET\""
+  _eko_pv \$_BOOLEAN_STDOUT: \""$_BOOLEAN_STDOUT\""
+  _eko_pv \$_BOOLEAN_TOGGLE: \""$_BOOLEAN_TOGGLE\""
+  _eko_pv \$_BOOLEAN_UNMUTE: \""$_BOOLEAN_UNMUTE\""
+  _eko_pv \$_BOOLEAN_VERBOSE: \""$_BOOLEAN_VERBOSE\""
+  _eko_pv \$_RAW_NUMERIC: \""$_RAW_NUMERIC\""
 
   if $_BOOLEAN_QUIET
   then
@@ -1238,13 +1299,11 @@ function _process_numeric()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
   # _show_error
 
   # variables:
   # #
-  # _BOOLEAN_NEW (only used internally for testing)
-  # _BOOLEAN_OLD (only used internally for testing)
   # _CHAR
   # _OFFSET
   # _PARAMETER_NUMERIC
@@ -1252,25 +1311,25 @@ function _process_numeric()
   # _PARAMETER_PLUSMINUS
   # _RAW_NUMERIC
 
-  #+ marker testing +#
-# - disable "new" & enable "old"
-#  _BOOLEAN_NEW=false
-#  _BOOLEAN_OLD=true
-# - enable "new" & disable "old"
-#
-  _BOOLEAN_NEW=true
-#
-  _BOOLEAN_OLD=false
+  # binaries:
+  # (none)
 
+  # builtins:
+  # (none)
+
+  # builtins:
+  # (none)
+
+  #+ marker testing +#
   # interesting tidbit:
   # - in "function _parse_parameters":
   # - call "_process_numeric $_RAW_NUMERIC" = both variables can be referenced
   # - call "_process_numeric" = only _RAW_NUMERIC can be referenced
 
-#  _eko_v
-#  _eko_v "                    \$@: \"$@\""
-#  _eko_v "         \$_RAW_NUMERIC: \"$_RAW_NUMERIC\""
-#  _eko_v
+#  _eko_pv "" ""
+#  _eko_pv \$@: \""$@\""
+#  _eko_pv \$_RAW_NUMERIC: \""$_RAW_NUMERIC\""
+#  _eko_pv "" ""
   #- marker testing -#
 
   # NOTE:
@@ -1279,98 +1338,45 @@ function _process_numeric()
   # - we start with this
   _PARAMETER_NUMERIC=$_RAW_NUMERIC
 
-  _eko_v "       \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (raw)"
+  _eko_pv \$_PARAMETER_NUMERIC: \""$_PARAMETER_NUMERIC\" (raw)"
 
-  if $_BOOLEAN_NEW
-  then
-    # - trim all non-numerics from both ends, starting with the left
+  # - trim all non-numerics from both ends, starting with the left
 
-    # - single character from the left
-#    _eko_v "${_PARAMETER_NUMERIC:0:1}"
-    # - what remains
-#    _eko_v "${_PARAMETER_NUMERIC:1}"
+  # - single character from the left
+#  _eko_pv "" ${_PARAMETER_NUMERIC:0:1}
+  # - what remains
+#  _eko_pv "" ${_PARAMETER_NUMERIC:1}
 
-    # - ${parameter:offset:length}
-    while [[ ${_PARAMETER_NUMERIC:0:1} != [0-9] ]]
-    do
-      # - ${parameter:offset}
-      _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:1}
-#
-      _eko_v "<      \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim left)"
-    done
-    _eko_v "       \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim left)"
-  fi
-
-  if $_BOOLEAN_OLD
-  then
-    # - trim all non-numerics from both ends, starting with the left
-
-    _OFFSET=0
-    # - ${#parameter}
-    # - ${parameter:offset:length}
-    while [[ $_OFFSET -lt ${#_PARAMETER_NUMERIC} ]] \
-    && [[ ! ${_PARAMETER_NUMERIC:$_OFFSET:1} =~ [0-9] ]]
-    do
-      # - ((expression))
-      # - id++ = variable post-increment
-      ((_OFFSET++))
-#
-      _eko_v "<                 \$_OFFSET: \"$_OFFSET\" (trim left)"
-    done
+  # - ${parameter:offset:length}
+  while [[ ${_PARAMETER_NUMERIC:0:1} != [0-9] ]]
+  do
     # - ${parameter:offset}
-    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:$_OFFSET}
-    _eko_v "       \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim left)"
-  fi
+    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:1}
+  done
+  _eko_pv \$_PARAMETER_NUMERIC: \""$_PARAMETER_NUMERIC\" (trim left)"
 
-  if $_BOOLEAN_NEW
-  then
-    # - trim all non-numerics from both ends, & then the right
+  # - trim all non-numerics from both ends, & then the right
 
-    # - single character from the right (the space *must* be present)
-#    _eko_v "${_PARAMETER_NUMERIC: -1:1}"
-    # - what remains
-#    _eko_v "${_PARAMETER_NUMERIC:0: -1}" (the space *must* be present)
+  # - single character from the right (the space *must* be present)
+#  _eko_pv "" ${_PARAMETER_NUMERIC: -1:1} # (the space *must* be present)
+  # - what remains
+#  _eko_pv "" ${_PARAMETER_NUMERIC:0: -1} # (the space *must* be present)
 
+  # - ${parameter:offset:length}
+  while [[ ${_PARAMETER_NUMERIC: -1:1} != [0-9] ]]
+  do
     # - ${parameter:offset:length}
-    while [[ ${_PARAMETER_NUMERIC: -1:1} != [0-9] ]]
-    do
-      # - ${parameter:offset:length}
-      _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0: -1}
-#
-      _eko_v ">      \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim right)"
-    done
-    _eko_v "       \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim right)"
-  fi
-
-  if $_BOOLEAN_OLD
-  then
-    # - trim all non-numerics from both ends, & then the right
-
-    # - ${#parameter}
-    _OFFSET=${#_PARAMETER_NUMERIC}
-    # - ${parameter:offset:length}
-    # - $((expression))
-    while [[ $_OFFSET -gt 0 ]] \
-    && [[ ! ${_PARAMETER_NUMERIC:$(( $_OFFSET - 1 )):1} =~ [0-9] ]]
-    do
-      # - ((expression))
-      # - id-- = variable post-decrement
-      ((_OFFSET--))
-#
-      _eko_v ">                 \$_OFFSET: \"$_OFFSET\" (trim right)"
-    done
-    # - ${parameter:offset:length}
-    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0:$_OFFSET}
-    _eko_v "       \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (trim right)"
-  fi
+    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0: -1}
+  done
+  _eko_pv \$_PARAMETER_NUMERIC: \""$_PARAMETER_NUMERIC\" (trim right)"
 
   # - validate what remains
   # - if there are non-numerics *within* $_PARAMETER_NUMERIC, that's a fail
   if [[ $_PARAMETER_NUMERIC =~ ^[0-9]+$ ]]
   then
-    _eko_v "                    status: pass"
+    _eko_pv status: pass
   else
-    _eko_v "                    status: fail"
+    _eko_pv status: fail
     _show_error "invalid parameter \"$_PARAMETER_NUMERIC\" specified"
   fi
 
@@ -1408,10 +1414,10 @@ function _process_numeric()
   # - we finish with this
   # - numerics (mandatory), percent (if present), plus/minus (if present) all
   #   tucked safely away in separate variables for later use
-  _eko_v "       \$_PARAMETER_NUMERIC: \"$_PARAMETER_NUMERIC\" (finished)"
-  _eko_v "       \$_PARAMETER_PERCENT: \"$_PARAMETER_PERCENT\" (finished)"
-  _eko_v "     \$_PARAMETER_PLUSMINUS: \"$_PARAMETER_PLUSMINUS\" (finished)"
-  _eko_v "                   example: \"$_PARAMETER_NUMERIC$_PARAMETER_PERCENT$_PARAMETER_PLUSMINUS\""
+  _eko_pv \$_PARAMETER_NUMERIC: \""$_PARAMETER_NUMERIC\" (finished)"
+  _eko_pv \$_PARAMETER_PERCENT: \""$_PARAMETER_PERCENT\" (finished)"
+  _eko_pv \$_PARAMETER_PLUSMINUS: \""$_PARAMETER_PLUSMINUS\" (finished)"
+  _eko_pv example: \""$_PARAMETER_NUMERIC$_PARAMETER_PERCENT$_PARAMETER_PLUSMINUS\""
 
   _eko_iod "#- _process_numeric -#"
 }
@@ -1425,6 +1431,12 @@ function _show_error()
 
   # variables:
   # @
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
 
   # - output to stderr, not stdout
   # - be explicit for clarity
@@ -1445,19 +1457,25 @@ function _show_help()
   # variables:
   # (none)
 
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+
   echo "Provide 0 or more parameters
 
 Optional parameters:
-  -d, --debug        Display debugging information (function names/entry/exit)
   -g, --get          Display pertinent information for group \"Master\"
   -m, --mute         Mute output for group \"Master\"
   -q, --quiet        Limit what's displayed to error messages & this help text
   -s, --set          (TODO)
   -t, --toggle       Toggle mute state for group \"Master\"
   -u, --unmute       Unmute output for group \"Master\"
+  *[0-9]*[,*[0-9]*]  Desired volume. Details below
+  -d, --debug        Display debugging information (function names/entry/exit)
   -v, --verbose      Display verbose information (variable names/contents)
   -?, -h, --help     Display this help text, useful as it is
-  *[0-9]*[,*[0-9]*]  Desired volume. Details below
 
 The format parsed & used is [channel][,channel][,channel] for as many channels
 there are within group \"Master\". Note the use of commas
@@ -1467,7 +1485,7 @@ Volume details:
   numeric or percentage. The specification is quite flexible. Out of range
   values are silently restricted to the system's minimum & maximum. The
   following examples are all valid: 1% -33 %2+ 45+
-  Numerics must be present. The modifiers \"%\" \"+\" \"-\" are optional & may be
+  Numerics are mandatory. The modifiers \"%\" \"+\" \"-\" are optional & may be
   present in any order.
 
 Note:
@@ -1486,7 +1504,7 @@ function _volume_set()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
 
   # variables:
   # _NEW_VOLUME
@@ -1496,6 +1514,12 @@ function _volume_set()
   # _PLAYBACK_LIMITS_MAXIMUM
   # _PLAYBACK_LIMITS_MINIMUM
 #  # _VOLUME_CURRENT  <  where does this come from? $_PLAYBACK_FRONT_LEFT & friends? yes
+
+  # binaries:
+  # amixer (commented out)
+
+  # builtins:
+  # (none)
 
 #+ marker set +#
 
@@ -1528,8 +1552,8 @@ _VOLUME_CURRENT=$1
   # - numeric with %/+/-: 33%+ (relative)
   # - numeric with %/+/-: 33%- (relative)
 
-  _eko_v " \$_PLAYBACK_LIMITS_MINIMUM: \"$_PLAYBACK_LIMITS_MINIMUM\""
-  _eko_v " \$_PLAYBACK_LIMITS_MAXIMUM: \"$_PLAYBACK_LIMITS_MAXIMUM\""
+  _eko_pv \$_PLAYBACK_LIMITS_MINIMUM: \""$_PLAYBACK_LIMITS_MINIMUM\""
+  _eko_pv \$_PLAYBACK_LIMITS_MAXIMUM: \""$_PLAYBACK_LIMITS_MAXIMUM\""
 
   # test: 1/4 (correct)
   # - raw numeric: 33 (absolute)
@@ -1543,11 +1567,11 @@ _VOLUME_CURRENT=$1
   if [[ -z $_PARAMETER_PERCENT ]] \
   && [[ -z $_PARAMETER_PLUSMINUS ]]
   then
-    _eko_v "               raw numeric: \"$_PARAMETER_NUMERIC\" (absolute)"
+    _eko_pv "raw numeric:" \""$_PARAMETER_NUMERIC\" (absolute)"
 
     _NEW_VOLUME=$_PARAMETER_NUMERIC
 
-    _eko_v "              \$_NEW_VOLUME: \"$_NEW_VOLUME\""
+    _eko_pv \$_NEW_VOLUME: \""$_NEW_VOLUME\""
   fi
 
   # test: 2/4 (correct)
@@ -1611,13 +1635,13 @@ _VOLUME_CURRENT=$1
   if [[ -z $_PARAMETER_PERCENT ]] \
   && [[ -n $_PARAMETER_PLUSMINUS ]]
   then
-    _eko_v "          numeric with +/-: \"$_PARAMETER_NUMERIC$_PARAMETER_PLUSMINUS\" (relative)"
+    _eko_pv "numeric with +/-:" \""$_PARAMETER_NUMERIC$_PARAMETER_PLUSMINUS\" (relative)"
 
     # - $((expression))
     _NEW_VOLUME=$(( $_VOLUME_CURRENT $_PARAMETER_PLUSMINUS $_PARAMETER_NUMERIC ))
 #    _NEW_VOLUME=$(( $1 $_PARAMETER_PLUSMINUS $_PARAMETER_NUMERIC ))
 
-    _eko_v "              \$_NEW_VOLUME: \"$_NEW_VOLUME\""
+    _eko_pv \$_NEW_VOLUME: \""$_NEW_VOLUME\""
   fi
 
   # test: 3/4 (correct)
@@ -1658,14 +1682,14 @@ _VOLUME_CURRENT=$1
   if [[ -n $_PARAMETER_PERCENT ]] \
   && [[ -z $_PARAMETER_PLUSMINUS ]]
   then
-    _eko_v "            numeric with %: \"$_PARAMETER_NUMERIC$_PARAMETER_PERCENT\" (absolute)"
+    _eko_pv "numeric with %:" \""$_PARAMETER_NUMERIC$_PARAMETER_PERCENT\" (absolute)"
 
     # - "+ 50" & "/ 100" is to handle rounding an integer *up* by .5
     # - "+ 5" & "/ 10" doesn't work. rounds an integer *down* (truncates)
     # - $((expression))
     _NEW_VOLUME=$(( ( $_PLAYBACK_LIMITS_MAXIMUM * $_PARAMETER_NUMERIC + 50 ) / 100 ))
 
-    _eko_v "              \$_NEW_VOLUME: \"$_NEW_VOLUME\""
+    _eko_pv \$_NEW_VOLUME: \""$_NEW_VOLUME\""
   fi
 
   # test: 4/4 (correct)
@@ -1728,7 +1752,7 @@ _VOLUME_CURRENT=$1
   if [[ -n $_PARAMETER_PERCENT ]] \
   && [[ -n $_PARAMETER_PLUSMINUS ]]
   then
-    _eko_v "        numeric with %/+/-: \"$_PARAMETER_NUMERIC$_PARAMETER_PERCENT$_PARAMETER_PLUSMINUS\" (relative)"
+    _eko_pv "numeric with %/+/-:" \""$_PARAMETER_NUMERIC$_PARAMETER_PERCENT$_PARAMETER_PLUSMINUS\" (relative)"
 
     # - "+ 50" & "/ 100" is to handle rounding an integer *up* by .5
     # - "+ 5" & "/ 10" doesn't work. rounds an integer *down* (truncates)
@@ -1736,19 +1760,19 @@ _VOLUME_CURRENT=$1
     _NEW_VOLUME=$(( $_VOLUME_CURRENT $_PARAMETER_PLUSMINUS ( $_PLAYBACK_LIMITS_MAXIMUM * $_PARAMETER_NUMERIC + 50 ) / 100 ))
 #    _NEW_VOLUME=$(( $1 $_PARAMETER_PLUSMINUS ( $_PLAYBACK_LIMITS_MAXIMUM * $_PARAMETER_NUMERIC + 50 ) / 100 ))
 
-    _eko_v "              \$_NEW_VOLUME: \"$_NEW_VOLUME\""
+    _eko_pv \$_NEW_VOLUME: \""$_NEW_VOLUME\""
   fi
 
   if [[ $_NEW_VOLUME -lt $_PLAYBACK_LIMITS_MINIMUM ]]
   then
     _NEW_VOLUME=$_PLAYBACK_LIMITS_MINIMUM
-    _eko_v "              \$_NEW_VOLUME: \"$_NEW_VOLUME\" (range limited: minimum)"
+    _eko_pv \$_NEW_VOLUME: \""$_NEW_VOLUME\" (range limited: minimum)"
   fi
 
   if [[ $_NEW_VOLUME -gt $_PLAYBACK_LIMITS_MAXIMUM ]]
   then
     _NEW_VOLUME=$_PLAYBACK_LIMITS_MAXIMUM
-    _eko_v "              \$_NEW_VOLUME: \"$_NEW_VOLUME\" (range limited: maximum)"
+    _eko_pv \$_NEW_VOLUME: \""$_NEW_VOLUME\" (range limited: maximum)"
   fi
 
 #  if [[ $_NEW_VOLUME -ne $1 ]]
@@ -1773,6 +1797,12 @@ _VOLUME_CURRENT=$1
 
 # variables:
 # @
+
+# binaries:
+# (none)
+
+# builtins:
+# (none)
 
 _parse_parameters "$@"
 

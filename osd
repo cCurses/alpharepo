@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# osd v2019.09.19
+# osd v2019.10.11
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -13,6 +13,21 @@
 # TODO:
 # - allow for override of a specific utility (if it's available)?
 
+# 2019-10-11
+# - "function _show_help" reordered the options listed so that "-d, --debug",
+#   "-v, --verbose", & "-?, -h, --help" are the last options displayed
+# - "function _parse_parameters" reordered the options parsed to match what is
+#   displayed in "function _show_help" to simplify maintenance
+# - "function _eko_v" removed
+# - changed the following lines throughout the script:
+#  was: _eko_v "      \$_FOO: \"$_FOO\""
+#   is: _eko_pv \$_FOO: \""$_FOO\""
+# - "function _eko_pv" added for properly formatted verbose output
+# - "# functions:", "# variables:", "# binaries:", & "# builtins:" listings
+#   added/appended to each function & in main
+# ^ "# builtins:" is to keep track of "echo" &/or "printf" usage. technically
+#   speaking, "(none)" is a misnomer as it's only in reference to these 2
+#   builtins
 # 2019-09-19
 # - moved the "kdialog, notify-send, & xmessage unavailable" report from
 #   "function _attempt_osd" to "function _binary_validate_setup" where it
@@ -167,7 +182,7 @@
   # _display_xauthority_acquire
   # _display_xauthority_verify
   # _eko_iod
-  # _eko_v
+  # _eko_pv
   # _show_error
   # _show_help
 # _parse_parameters
@@ -200,7 +215,7 @@ function _attempt_osd()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
 
   # variables:
   # ?
@@ -212,6 +227,12 @@ function _attempt_osd()
   # _HISTORY
   # _OPTION_MESSAGE
   # _OPTION_TIMEOUT
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # (none)
 
   # NOTE:
   # - all 3 of the following OSD utilities ship with stock slackware
@@ -256,21 +277,21 @@ function _attempt_osd()
   # - "-n string" = true if the length of string is non-zero
   if [[ -n $_BINARY_NOTIFYSEND ]]
   then
-    _eko_v "    \$_BINARY_NOTIFYSEND: \"$_BINARY_NOTIFYSEND\""
-    _eko_v "       \$_OPTION_MESSAGE: \"$_OPTION_MESSAGE\""
-    _eko_v "       \$_OPTION_TIMEOUT: \"$_OPTION_TIMEOUT\""
+    _eko_pv \$_BINARY_NOTIFYSEND: \""$_BINARY_NOTIFYSEND\""
+    _eko_pv \$_OPTION_MESSAGE: \""$_OPTION_MESSAGE\""
+    _eko_pv \$_OPTION_TIMEOUT: \""$_OPTION_TIMEOUT\""
 
     # - $((expression))
     $_BINARY_NOTIFYSEND --expire-time=$(( $_OPTION_TIMEOUT * 1000 )) -- "$_OPTION_MESSAGE"
     _EXIT_CODE=$?
 
-    _eko_v "            \$_EXIT_CODE: \"$_EXIT_CODE\""
+    _eko_pv \$_EXIT_CODE: \""$_EXIT_CODE\""
   # - "-n string" = true if the length of string is non-zero
   elif [[ -n $_BINARY_XMESSAGE ]]
   then
-    _eko_v "      \$_BINARY_XMESSAGE: \"$_BINARY_XMESSAGE\""
-    _eko_v "       \$_OPTION_MESSAGE: \"$_OPTION_MESSAGE\""
-    _eko_v "       \$_OPTION_TIMEOUT: \"$_OPTION_TIMEOUT\""
+    _eko_pv \$_BINARY_XMESSAGE: \""$_BINARY_XMESSAGE\""
+    _eko_pv \$_OPTION_MESSAGE: \""$_OPTION_MESSAGE\""
+    _eko_pv \$_OPTION_TIMEOUT: \""$_OPTION_TIMEOUT\""
 
     # NOTE:
     # - the "&" is absolutely required
@@ -280,13 +301,13 @@ function _attempt_osd()
     $_BINARY_XMESSAGE -buttons "" -timeout $_OPTION_TIMEOUT "$_OPTION_MESSAGE" &
     _EXIT_CODE=$?
 
-    _eko_v "            \$_EXIT_CODE: \"$_EXIT_CODE\""
+    _eko_pv \$_EXIT_CODE: \""$_EXIT_CODE\""
   # - "-n string" = true if the length of string is non-zero
   elif [[ -n $_BINARY_KDIALOG ]]
   then
-    _eko_v "       \$_BINARY_KDIALOG: \"$_BINARY_KDIALOG\""
-    _eko_v "       \$_OPTION_MESSAGE: \"$_OPTION_MESSAGE\""
-    _eko_v "       \$_OPTION_TIMEOUT: \"$_OPTION_TIMEOUT\""
+    _eko_pv \$_BINARY_KDIALOG: \""$_BINARY_KDIALOG\""
+    _eko_pv \$_OPTION_MESSAGE: \""$_OPTION_MESSAGE\""
+    _eko_pv \$_OPTION_TIMEOUT: \""$_OPTION_TIMEOUT\""
 
     # NOTE:
     # - something odd is going on with kdialog. inspect further later. it
@@ -305,7 +326,7 @@ function _attempt_osd()
     $_BINARY_KDIALOG --passivepopup "$_OPTION_MESSAGE" $_OPTION_TIMEOUT &
     _EXIT_CODE=$?
 
-    _eko_v "            \$_EXIT_CODE: \"$_EXIT_CODE\""
+    _eko_pv \$_EXIT_CODE: \""$_EXIT_CODE\""
   fi
 
   # - OSD succeeded, prevent multiple OSD popups on this display
@@ -323,7 +344,7 @@ function _binary_validate_setup()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
   # _show_error
 
   # variables:
@@ -341,6 +362,9 @@ function _binary_validate_setup()
   # ps
   # sed
   # xmessage (fallback to kdialog & notify-send)
+
+  # builtins:
+  # echo
 
   # NOTE:
   # - rather than test a given binary's version in hopes of figuring out which
@@ -393,7 +417,7 @@ function _binary_validate_setup()
       unset _BINARY_KDIALOG
     fi
   fi
-  _eko_v "       \$_BINARY_KDIALOG: \"$_BINARY_KDIALOG\""
+  _eko_pv \$_BINARY_KDIALOG: \""$_BINARY_KDIALOG\""
   #- kdialog -#
 
   #+ notify-send +#
@@ -416,7 +440,7 @@ function _binary_validate_setup()
       unset _BINARY_NOTIFYSEND
     fi
   fi
-  _eko_v "    \$_BINARY_NOTIFYSEND: \"$_BINARY_NOTIFYSEND\""
+  _eko_pv \$_BINARY_NOTIFYSEND: \""$_BINARY_NOTIFYSEND\""
   #- notify-send -#
 
   # NOTE:
@@ -537,7 +561,7 @@ function _binary_validate_setup()
   then
     _BINARY_XMESSAGE=$_BINARY_NAME
   fi
-  _eko_v "      \$_BINARY_XMESSAGE: \"$_BINARY_XMESSAGE\""
+  _eko_pv \$_BINARY_XMESSAGE: \""$_BINARY_XMESSAGE\""
   #- xmessage -#
 
   # - "-z string" = true if the length of string is zero
@@ -557,7 +581,7 @@ function _builtin_validate_setup()
 
   # functions:
   # _eko_iod
-  # _eko_v
+  # _eko_pv
   # _show_error
 
   # variables:
@@ -566,7 +590,11 @@ function _builtin_validate_setup()
   # _BUILTIN_OPTION
   # _OPTIONS_READ (read options, not script options)
 
+  # binaries:
+  # (none)
+
   # builtins:
+  # echo
   # read
 
   # NOTE:
@@ -595,7 +623,7 @@ function _builtin_validate_setup()
     if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
     then
       _OPTIONS_READ=$_BUILTIN_OPTION
-      _eko_v "         \$_OPTIONS_READ: \"$_OPTIONS_READ\""
+      _eko_pv \$_OPTIONS_READ: \""$_OPTIONS_READ\""
     else
       _show_error \""$_BUILTIN_NAME\" does not support \"$_BUILTIN_OPTION\""
     fi
@@ -612,7 +640,7 @@ function _display_xauthority_acquire()
   # functions:
   # _display_xauthority_verify
   # _eko_iod
-  # _eko_v
+  # _eko_pv
 
   # variables:
   # DISPLAY
@@ -627,6 +655,10 @@ function _display_xauthority_acquire()
   # binaries:
   # grep
   # ps
+
+  # builtins:
+  # (none)
+  # read
 
   # - this is for the grandchild "function _attempt_osd"
   # - be explicit for clarity
@@ -651,7 +683,7 @@ function _display_xauthority_acquire()
     if [[ -n $_OUTPUT_PS_GREP ]]
     then
       # - show what we found
-      _eko_v "       \$_OUTPUT_PS_GREP: \"$_OUTPUT_PS_GREP\""
+      _eko_pv \$_OUTPUT_PS_GREP: \""$_OUTPUT_PS_GREP\""
 
       # - extracting XAUTHORITY is quite simple
       # - this must be done first
@@ -678,9 +710,9 @@ function _display_xauthority_acquire()
       _USER=${_OUTPUT_PS_GREP/ */} # remove suffix
 
       # - show what we kept
-      _eko_v "                 \$_USER: \"$_USER\""
-      _eko_v "               \$DISPLAY: \"$DISPLAY\""
-      _eko_v "            \$XAUTHORITY: \"$XAUTHORITY\""
+      _eko_pv \$_USER: \""$_USER\""
+      _eko_pv \$DISPLAY: \""$DISPLAY\""
+      _eko_pv \$XAUTHORITY: \""$XAUTHORITY\""
 
       # - as the name implies
       _display_xauthority_verify
@@ -705,7 +737,7 @@ function _display_xauthority_verify()
   # functions:
   # _attempt_osd
   # _eko_iod
-  # _eko_v
+  # _eko_pv
 
   # variables:
   # DISPLAY
@@ -717,28 +749,31 @@ function _display_xauthority_verify()
   # binaries:
   # sed
 
+  # builtins:
+  # (none)
+
   # - very simplistic tests
   # - refer to X(7) section "DISPLAY NAMES" for additional details
   # - "hostname:displaynumber.screennumber" is fully supported here
   if [[ $DISPLAY =~ ^.*:[0-9.]+$ ]]
   then
-    _eko_v "               \$DISPLAY: \"$DISPLAY\" (pass)"
+    _eko_pv \$DISPLAY: \""$DISPLAY\" (pass)"
     export DISPLAY
 
     # - "-r file" = true if file exists & is readable
     if [[ -r $XAUTHORITY ]]
     then
-      _eko_v "            \$XAUTHORITY: \"$XAUTHORITY\" (pass)"
+      _eko_pv \$XAUTHORITY: \""$XAUTHORITY\" (pass)"
       export XAUTHORITY
     else
-      _eko_v "            \$XAUTHORITY: \"$XAUTHORITY\" (fail)"
+      _eko_pv \$XAUTHORITY: \""$XAUTHORITY\" (fail)"
 
       # - but we kept the username. with the username, acquire home directory
       #   so "home directory"/.Xauthority can be tested
       # - why do the following at all? so this script can be run from a
       #   restricted environment where $HOME isn't defined
 
-      _eko_v "                 \$_USER: \"$_USER\""
+      _eko_pv \$_USER: \""$_USER\""
 
       # - be explicit for clarity
       _HOME="$(sed --expression="/^$_USER:.*/!d ; s/.*:.*:.*:.*:.*:\(.*\):.*/\1/g" /etc/passwd)"
@@ -748,7 +783,7 @@ function _display_xauthority_verify()
       # - it's highly unlikely that the user's home directory will contain
       #   special characters, but it *is* technically possible. account for it
 
-      _eko_v "                 \$_HOME: \"$_HOME\""
+      _eko_pv \$_HOME: \""$_HOME\""
 
       # - ultimately, this is what we're looking for
       XAUTHORITY=$_HOME/.Xauthority
@@ -756,15 +791,15 @@ function _display_xauthority_verify()
       # - "-r file" = true if file exists & is readable
       if [[ -r $XAUTHORITY ]]
       then
-        _eko_v "            \$XAUTHORITY: \"$XAUTHORITY\" (pass)"
+        _eko_pv \$XAUTHORITY: \""$XAUTHORITY\" (pass)"
         export XAUTHORITY
       else
-        _eko_v "            \$XAUTHORITY: \"$XAUTHORITY\" (fail)"
+        _eko_pv \$XAUTHORITY: \""$XAUTHORITY\" (fail)"
         unset XAUTHORITY
       fi
     fi
   else
-    _eko_v "               \$DISPLAY: \"$DISPLAY\" (fail)"
+    _eko_pv \$DISPLAY: \""$DISPLAY\" (fail)"
     unset DISPLAY
   fi
 
@@ -775,7 +810,7 @@ function _display_xauthority_verify()
   then
     if [[ " $_HISTORY " =~ " $DISPLAY " ]]
     then
-      _eko_v "                 status: OSD previously succeeded on \"$DISPLAY\" (skipping)"
+      _eko_pv status: "OSD previously succeeded on \"$DISPLAY\" (skipping)"
     else
       _attempt_osd
     fi
@@ -797,8 +832,15 @@ function _eko_iod()
   # FUNCNAME (single dimension indexed array)
   # _BOOLEAN_DEBUG
 
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+  # printf
+
   # NOTE:
-  # - why $(( ${#FUNCNAME[@]} - 3 ))? to account for main, parent, current
+  # - why "$(( ${#FUNCNAME[@]} - 3 ))"? to account for main, parent, current
   # - pay special attention to the "*" in "%*s". it's part of the magic
 
   if $_BOOLEAN_DEBUG
@@ -807,30 +849,49 @@ function _eko_iod()
     # - $((expression))
     # - ${#parameter}
     printf "%*s" $(( ${#FUNCNAME[@]} - 3 ))
-
     echo "$@"
   fi
 
   #- _eko_iod -#
 }
 
-function _eko_v()
+function _eko_pv()
 {
-  #+ _eko_v +#
+  #+ _eko_pv +#
 
   # functions:
   # (none)
 
   # variables:
+  # 1
   # @
   # _BOOLEAN_VERBOSE
 
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+  # printf
+
+  # NOTE:
+  # - why "%24s "? to simplify setting column width in verbose reports. a
+  #   single change here affects the output globally
+  # - unformatted (non-columnized) output is now supported. simply pass "" as
+  #   the first parameter
+
   if $_BOOLEAN_VERBOSE
   then
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $1 ]]
+    then
+      printf "%24s " "$1"
+    fi
+    shift
     echo "$@"
   fi
 
-  #- _eko_v -#
+  #- _eko_pv -#
 }
 
 function _parse_parameters()
@@ -841,7 +902,7 @@ function _parse_parameters()
   # _binary_validate_setup
   # _display_xauthority_acquire
   # _eko_iod
-  # _eko_v
+  # _eko_pv
   # _show_error
   # _show_help
 
@@ -854,6 +915,12 @@ function _parse_parameters()
   # _BOOLEAN_VERBOSE
   # _OPTION_MESSAGE
   # _OPTION_TIMEOUT
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # (none)
 
   # NOTE:
   # - boolean variables are proper toggles
@@ -871,15 +938,6 @@ function _parse_parameters()
   while [[ $# -gt 0 ]]
   do
     case $1 in
-      ( -d \
-      | --debug )
-        if $_BOOLEAN_DEBUG
-        then
-          _BOOLEAN_DEBUG=false
-        else
-          _BOOLEAN_DEBUG=true
-        fi
-      ;;
       ( -m \
       | --message )
         # - ${parameter:offset:length}
@@ -909,6 +967,15 @@ function _parse_parameters()
           _show_error "invalid timeout \"$2\" specified"
         fi
         shift
+      ;;
+      ( -d \
+      | --debug )
+        if $_BOOLEAN_DEBUG
+        then
+          _BOOLEAN_DEBUG=false
+        else
+          _BOOLEAN_DEBUG=true
+        fi
       ;;
       ( -v \
       | --verbose )
@@ -963,13 +1030,13 @@ function _parse_parameters()
   # - ${parameter:=word}
   _OPTION_TIMEOUT=${_OPTION_TIMEOUT:=5}
 
-  _eko_v "       \$_BINARY_KDIALOG: \"$_BINARY_KDIALOG\""
-  _eko_v "    \$_BINARY_NOTIFYSEND: \"$_BINARY_NOTIFYSEND\""
-  _eko_v "      \$_BINARY_XMESSAGE: \"$_BINARY_XMESSAGE\""
-  _eko_v "        \$_BOOLEAN_DEBUG: \"$_BOOLEAN_DEBUG\""
-  _eko_v "      \$_BOOLEAN_VERBOSE: \"$_BOOLEAN_VERBOSE\""
-  _eko_v "       \$_OPTION_MESSAGE: \"$_OPTION_MESSAGE\""
-  _eko_v "       \$_OPTION_TIMEOUT: \"$_OPTION_TIMEOUT\""
+  _eko_pv \$_BINARY_KDIALOG: \""$_BINARY_KDIALOG\""
+  _eko_pv \$_BINARY_NOTIFYSEND: \""$_BINARY_NOTIFYSEND\""
+  _eko_pv \$_BINARY_XMESSAGE: \""$_BINARY_XMESSAGE\""
+  _eko_pv \$_BOOLEAN_DEBUG: \""$_BOOLEAN_DEBUG\""
+  _eko_pv \$_BOOLEAN_VERBOSE: \""$_BOOLEAN_VERBOSE\""
+  _eko_pv \$_OPTION_MESSAGE: \""$_OPTION_MESSAGE\""
+  _eko_pv \$_OPTION_TIMEOUT: \""$_OPTION_TIMEOUT\""
 
   #- parameter settings (in (mostly) proper order of operation) -#
 
@@ -993,6 +1060,12 @@ function _show_error()
   # variables:
   # @
 
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+
   # - output to stderr, not stdout
   # - be explicit for clarity
   echo "Error: $@" 1>&2
@@ -1012,12 +1085,18 @@ function _show_help()
   # variables:
   # (none)
 
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+
   echo "Provide 0 or more parameters
 
 Optional parameters:
-  -d, --debug     Display debugging information (function names/entry/exit)
   -m, --message   Message to be displayed. Use doublequotes if necessary
   -t, --timeout   Timeout in whole seconds. defaults to \"5\"
+  -d, --debug     Display debugging information (function names/entry/exit)
   -v, --verbose   Display verbose information (variable names/contents)
   -?, -h, --help  Display this help text, useful as it is
 
@@ -1040,6 +1119,12 @@ Notes:
 
 # variables:
 # @
+
+# binaries
+# (none)
+
+# builtins
+# (none)
 
 _parse_parameters "$@"
 

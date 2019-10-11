@@ -35,18 +35,50 @@
 #   now)
 
 # 2019-10-10
+# - "function _show_help" reordered the options listed so that "-d, --debug",
+#   "-v, --verbose", & "-?, -h, --help" are the last options displayed
+# - "function _parse_parameters" reordered the options parsed to match what is
+#   displayed in "function _show_help" to simplify maintenance
 # - "# functions:", "# variables:", "# binaries:", & "# builtins:" listings
 #   added/appended to each function & in main
 # ^ "# builtins:" is to keep track of "echo" &/or "printf" usage. technically
 #   speaking, "(none)" is a misnomer as it's only in reference to these 2
 #   builtins
+# - "function _eko_S_en" removed
+# - changed the following lines globally:
+#  was: _eko_S_en "      \$_FOO: \"$_FOO\""
+#   is: _eko_pS_en \$_FOO: \""$_FOO\""
+# ^ there are several in the following form since the left-hand side contains
+#   whitespace
+#  was: _eko_S_en "      Foo Bar:" \""$_FOO\""
+#   is: _eko_pS_en "Foo Bar:" \""$_FOO\""
+# - "function _eko_pS_en" added for properly formatted stdout output (25s)
+# - "function _eko_S" removed
+# - changed the following lines globally:
+#  was: _eko_S "      \$_FOO: \"$_FOO\""
+#   is: _eko_pS \$_FOO: \""$_FOO\""
+# ^ there are several in the following form since the left-hand side contains
+#   whitespace
+#  was: _eko_S "      Foo Bar:" \""$_FOO\""
+#   is: _eko_pS "Foo Bar:" \""$_FOO\""
+# - "function _eko_pS" added for properly formatted stdout output (25s)
+# - "function _eko_v_en" removed
+# - changed the following lines globally:
+#  was: _eko_v_en "      \$_FOO: \"$_FOO\""
+#   is: _eko_pv_en \$_FOO: \""$_FOO\""
+# ^ there are several in the following form since the left-hand side contains
+#   whitespace
+#  was: _eko_v_en "      Foo Bar:" \""$_FOO\""
+#   is: _eko_pv_en "Foo Bar:" \""$_FOO\""
+# - "function _eko_pv_en" added for properly formatted stdout output (25s)
 # - "function _eko_v" removed
 # - changed the following lines globally:
 #  was: _eko_v "      \$_FOO: \"$_FOO\""
 #   is: _eko_pv \$_FOO: \""$_FOO\""
 # ^ there are several in the following form since the left-hand side contains
 #   whitespace
-#   is: _eko_pv "\$_FOO:" \""$_FOO\""
+#  was: _eko_v "      Foo Bar:" \""$_FOO\""
+#   is: _eko_pv "Foo Bar:" \""$_FOO\""
 # - "function _eko_pv" added for properly formatted verbose output
 # 2019-09-23
 # - "function _process_numeric" rewrote how non-numerics are trimmed from raw
@@ -176,13 +208,12 @@
   # _backlight_value_set
   # _backlight_values_get
   # _binary_validate
-  # _eko_S
-  # _eko_S_en
   # _eko_dv
   # _eko_iod
+  # _eko_pS
+  # _eko_pS_en
   # _eko_pv
-  # _eko_v
-  # _eko_v_en
+  # _eko_pv_en
   # _process_numeric
   # _show_error
   # _show_help
@@ -304,11 +335,11 @@ function _backlight_type_test()
 
   # functions:
   # _backlight_values_get
-  # _eko_S
-  # _eko_S_en
   # _eko_iod
+  # _eko_pS
+  # _eko_pS_en
   # _eko_pv
-  # _eko_v_en
+  # _eko_pv_en
 
   # variables:
   # BRIGHTNESS        (read-write)
@@ -335,10 +366,8 @@ function _backlight_type_test()
   # - "-w file" = true if file exists & is writable
   if [[ -w /sys/class/backlight/$_ONE_BACKLIGHT_TYPE/brightness ]]
   then
-    # - change required for "\b" (backspace) in percent progress dump
-    #_eko_v_en "            test progress:"
-    _eko_v_en "            test progress:     "
-    _eko_S_en "Test progress:     "
+    _eko_pv_en "test progress:" "    "
+    _eko_pS_en "Test progress:" "    "
 
     # - preserve state
     _backlight_values_get
@@ -355,13 +384,10 @@ function _backlight_type_test()
       # - status: wontfix
       # - reason: too much work & it's only a formatting issue when debugging
 
-      # - change required for "\b" (backspace) in percent progress dump
-      # - ${parameter}
-      #_eko_v_en " ${_PERCENT_BRIGHTNESS}%"
       _PROGRESS="  ${_PERCENT_BRIGHTNESS}%"
       # - ${parameter:offset}
-      _eko_v_en "\b\b\b\b${_PROGRESS: -4}"
-      _eko_S_en "\b\b\b\b${_PROGRESS: -4}"
+      _eko_pv_en "" "\b\b\b\b${_PROGRESS: -4}"
+      _eko_pS_en "" "\b\b\b\b${_PROGRESS: -4}"
 
       # - "+ 50" & "/ 100" is to handle rounding an integer *up* by .5
       # - "+ 5" & "/ 10" doesn't work. rounds an integer *down* (truncates)
@@ -379,13 +405,13 @@ function _backlight_type_test()
       ((_PERCENT_BRIGHTNESS++))
     done
     _eko_pv "" ""
-    _eko_S ""
+    _eko_pS "" ""
 
     # - restore state
     echo $_BRIGHTNESS_HOLD >/sys/class/backlight/$_ONE_BACKLIGHT_TYPE/brightness
   else
    _eko_pv "test progress:" "none. no permission"
-   _eko_S "Test progress: none. no permission"
+   _eko_pS "Test progress:" "none. no permission"
   fi
 
   _eko_iod "#- _backlight_type_test -#"
@@ -497,9 +523,9 @@ function _backlight_types_display()
   # _backlight_type_test
   # _backlight_value_set
   # _backlight_values_get
-  # _eko_S
-  # _eko_S_en
   # _eko_iod
+  # _eko_pS
+  # _eko_pS_en
   # _eko_pv
 
   # variables:
@@ -616,9 +642,9 @@ function _backlight_types_display()
     _eko_pv \$MAX_BRIGHTNESS: \""$MAX_BRIGHTNESS\""
     _eko_pv \$_PREVIOUS_PERCENT: \""${_PREVIOUS_PERCENT}%\""
     _eko_pv \$_CURRENT_PERCENT: \""${_CURRENT_PERCENT}%\""
-    _eko_S_en "Backlight type: $_ONE_BACKLIGHT_TYPE"
-    _eko_S_en " (settings: $ACTUAL_BRIGHTNESS $BRIGHTNESS $MAX_BRIGHTNESS)"
-    _eko_S " (${_CURRENT_PERCENT}% ${_PREVIOUS_PERCENT}% 100%)"
+    _eko_pS_en "Backlight type:" "$_ONE_BACKLIGHT_TYPE"
+    _eko_pS_en "" " (settings: $ACTUAL_BRIGHTNESS $BRIGHTNESS $MAX_BRIGHTNESS)"
+    _eko_pS "" " (${_CURRENT_PERCENT}% ${_PREVIOUS_PERCENT}% 100%)"
 
     if $_BOOLEAN_TEST
     then
@@ -635,8 +661,8 @@ function _backlight_types_list()
 
   # functions:
   # _backlight_types_discover
-  # _eko_S
   # _eko_iod
+  # _eko_pS
 
   # variables:
   # _ALL_BACKLIGHT_TYPES
@@ -662,7 +688,7 @@ function _backlight_types_list()
     unset _PLURAL
   fi
 
-  _eko_S "Available backlight type$_PLURAL: $_ALL_BACKLIGHT_TYPES"
+  _eko_pS "Available backlight type$_PLURAL:" "$_ALL_BACKLIGHT_TYPES"
 
   _eko_iod "#- _backlight_types_list -#"
 
@@ -957,13 +983,13 @@ function _backlight_value_set()
   if [[ $_NEW_BRIGHTNESS -lt 0 ]]
   then
     _NEW_BRIGHTNESS=0
-    _eko_pv \$_NEW_BRIGHTNESS: \""$_NEW_BRIGHTNESS\" (range limit: minimum)"
+    _eko_pv \$_NEW_BRIGHTNESS: \""$_NEW_BRIGHTNESS\" (range limited: minimum)"
   fi
 
   if [[ $_NEW_BRIGHTNESS -gt $MAX_BRIGHTNESS ]]
   then
     _NEW_BRIGHTNESS=$MAX_BRIGHTNESS
-    _eko_pv \$_NEW_BRIGHTNESS: \""$_NEW_BRIGHTNESS\" (range limit: maximum)"
+    _eko_pv \$_NEW_BRIGHTNESS: \""$_NEW_BRIGHTNESS\" (range limited: maximum)"
   fi
 
   # - "-n string" = true if the length of string is non-zero
@@ -1103,56 +1129,6 @@ function _binary_validate()
   _eko_iod "#- _binary_validate -#"
 }
 
-function _eko_S()
-{
-  #+ _eko_S +#
-
-  # functions:
-  # (none)
-
-  # variables:
-  # @
-  # _BOOLEAN_STDOUT
-
-  # binaries:
-  # (none)
-
-  # builtins:
-  # echo
-
-  if $_BOOLEAN_STDOUT
-  then
-    echo "$@"
-  fi
-
-  #- _eko_S -#
-}
-
-function _eko_S_en()
-{
-  #+ _eko_S_en +#
-
-  # functions:
-  # (none)
-
-  # variables:
-  # @
-  # _BOOLEAN_STDOUT
-
-  # binaries:
-  # (none)
-
-  # builtins:
-  # echo
-
-  if $_BOOLEAN_STDOUT
-  then
-    echo -en "$@"
-  fi
-
-  #- _eko_S_en -#
-}
-
 function _eko_dv()
 {
   #+ _eko_dv +#
@@ -1219,6 +1195,84 @@ function _eko_iod()
   #- _eko_iod -#
 }
 
+function _eko_pS()
+{
+  #+ _eko_pS +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # 1
+  # @
+  # _BOOLEAN_STDOUT
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+  # printf
+
+  # NOTE:
+  # - why "%27s "? to simplify setting column width in stdout reports. a
+  #   single change here affects the output globally
+  # - unformatted (non-columnized) output is now supported. simply pass "" as
+  #   the first parameter
+
+  if $_BOOLEAN_STDOUT
+  then
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $1 ]]
+    then
+      printf "%27s " "$1"
+    fi
+    shift
+    echo "$@"
+  fi
+
+  #- _eko_pS -#
+}
+
+function _eko_pS_en()
+{
+  #+ _eko_pS_en +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # 1
+  # @
+  # _BOOLEAN_STDOUT
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+  # printf
+
+  # NOTE:
+  # - why "%27s "? to simplify setting column width in stdout reports. a
+  #   single change here affects the output globally
+  # - unformatted (non-columnized) output is now supported. simply pass "" as
+  #   the first parameter
+
+  if $_BOOLEAN_STDOUT
+  then
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $1 ]]
+    then
+      printf "%27s " "$1"
+    fi
+    shift
+    echo -en "$@"
+  fi
+
+  #- _eko_pS_en -#
+}
+
 function _eko_pv()
 {
   #+ _eko_pv +#
@@ -1258,14 +1312,15 @@ function _eko_pv()
   #- _eko_pv -#
 }
 
-function _eko_v_en()
+function _eko_pv_en()
 {
-  #+ _eko_v_en +#
+  #+ _eko_pv_en +#
 
   # functions:
   # (none)
 
   # variables:
+  # 1
   # @
   # _BOOLEAN_VERBOSE
 
@@ -1274,13 +1329,26 @@ function _eko_v_en()
 
   # builtins:
   # echo
+  # printf
+
+  # NOTE:
+  # - why "%24s "? to simplify setting column width in verbose reports. a
+  #   single change here affects the output globally
+  # - unformatted (non-columnized) output is now supported. simply pass "" as
+  #   the first parameter
 
   if $_BOOLEAN_VERBOSE
   then
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $1 ]]
+    then
+      printf "%24s " "$1"
+    fi
+    shift
     echo -en "$@"
   fi
 
-  #- _eko_v_en -#
+  #- _eko_pv_en -#
 }
 
 function _parse_parameters()
@@ -1335,7 +1403,7 @@ function _parse_parameters()
   #   true
 
   # - _BOOLEAN_STDOUT
-  # - companion functions: _eko_S/_eko_S_en
+  # - companion functions: _eko_pS/_eko_pS_en
   # - default: true
   # - *not* toggled in while/do/done loop like the others
   # - immediately *after* the while/do/done loop _BOOLEAN_STDOUT is set to
@@ -1380,15 +1448,6 @@ function _parse_parameters()
         fi
         shift
       ;;
-      ( -d \
-      | --debug )
-        if $_BOOLEAN_DEBUG
-        then
-          _BOOLEAN_DEBUG=false
-        else
-          _BOOLEAN_DEBUG=true
-        fi
-      ;;
       ( -l \
       | --list )
         if $_BOOLEAN_LIST
@@ -1416,6 +1475,18 @@ function _parse_parameters()
           _BOOLEAN_TEST=true
         fi
       ;;
+      ( *[0-9]* )
+        _RAW_NUMERIC=$1
+      ;;
+      ( -d \
+      | --debug )
+        if $_BOOLEAN_DEBUG
+        then
+          _BOOLEAN_DEBUG=false
+        else
+          _BOOLEAN_DEBUG=true
+        fi
+      ;;
       ( -v \
       | --verbose )
         if $_BOOLEAN_VERBOSE
@@ -1424,9 +1495,6 @@ function _parse_parameters()
         else
           _BOOLEAN_VERBOSE=true
         fi
-      ;;
-      ( *[0-9]* )
-        _RAW_NUMERIC=$1
       ;;
       ( "-?" \
       | -h \
@@ -1679,21 +1747,21 @@ function _show_help()
 
 Optional parameters:
   -a, --all        Perform specified action on all available backlight types
-  -d, --debug      Display debugging information (function names/entry/exit)
+  -b, --backlight  Select a specific backlight type to use
   -l, --list       Display a list of available backlight types
   -q, --quiet      Limit what's displayed to error messages & this help text
-  -b, --backlight  Select a specific backlight type to use
   -t, --test       Test backlight type by ramping up brightness from 0% to 100%
+  *[0-9]*          Desired brightness. Details below
+  -d, --debug      Display debugging information (function names/entry/exit)
   -v, --verbose    Display verbose information (variable names/contents)
   -?, -h, --help   Display this help text, useful as it is
-  *[0-9]*          Desired brightness. Details below
 
 Brightness details:
   Brightness can be specified as an absolute or relative value, be it a raw
   numeric or percentage. The specification is quite flexible. Out of range
   values are silently restricted to the system's minimum & maximum. The
   following examples are all valid: 1% -33 %2+ 45+
-  Numerics must be present. The modifiers \"%\" \"+\" \"-\" are optional & may be
+  Numerics are mandatory. The modifiers \"%\" \"+\" \"-\" are optional & may be
   present in any order.
 
 Note:

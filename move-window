@@ -11,16 +11,19 @@
 # - move selected window to desired position on desktop
 
 # 2019-10-11
+# - "function _show_help" reordered the options listed so that "-d, --debug",
+#   "-v, --verbose", & "-?, -h, --help" are the last options displayed
+# - "function _parse_parameters" reordered the options parsed to match what is
+#   displayed in "function _show_help" to simplify maintenance
 # - "function _eko_v" removed
 # - changed the following lines throughout the script:
 #  was: _eko_v "      \$_FOO: \"$_FOO\""
 #   is: _eko_pv \$_FOO: \""$_FOO\""
 # ^ there are several in the following form since the left-hand side contains
 #   whitespace
-#   is: _eko_pv "\$_FOO:" \""$_FOO\""
+#  was: _eko_v "      Foo Bar:" \""$_FOO\""
+#   is: _eko_pv "Foo Bar:" \""$_FOO\""
 # - "function _eko_pv" added for properly formatted verbose output
-# - "function _parse_parameters" reordered the options to match what is
-#   displayed in "function _show_help" to simplify maintenance
 # - "# functions:", "# variables:", "# binaries:", & "# builtins:" listings     
 #   added/appended to each function & in main
 # ^ "# builtins:" is to keep track of "echo" &/or "printf" usage. technically
@@ -1876,16 +1879,6 @@ function _parse_parameters()
           _BOOLEAN_DRYRUN=true
         fi
       ;;
-
-      ( -d \
-      | --debug )
-        if $_BOOLEAN_DEBUG
-        then
-          _BOOLEAN_DEBUG=false
-        else
-          _BOOLEAN_DEBUG=true
-        fi
-      ;;
       ( -f \
       | --force )
         if $_BOOLEAN_FORCE
@@ -1925,6 +1918,15 @@ function _parse_parameters()
           _BOOLEAN_RAISE=false
         else
           _BOOLEAN_RAISE=true
+        fi
+      ;;
+      ( -d \
+      | --debug )
+        if $_BOOLEAN_DEBUG
+        then
+          _BOOLEAN_DEBUG=false
+        else
+          _BOOLEAN_DEBUG=true
         fi
       ;;
       ( -v \
@@ -2301,11 +2303,11 @@ Mandatory parameter (Window Coordinates):
 
 Optional parameters:
   -D, --dry-run    Perform a trial run of the specified action
-  -d, --debug      Display debugging information (function names/entry/exit)
   -f, --force      Force windows to be least partially on the desktop
   -id <Window ID>  Window ID (in hexadecimal format)
   -o, --overall    Use overall desktop X,Y for window placement calculations
   -r, --raise      Raise window & give it focus
+  -d, --debug      Display debugging information (function names/entry/exit)
   -v, --verbose    Display verbose information (variable names/contents)
   -?, -h, --help   Display this help text, useful as it is
 

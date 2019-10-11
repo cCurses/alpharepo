@@ -72,7 +72,11 @@ _BOOLEAN_TESTING_01=true # enabled
 #   standalone script snippets for testing so there's no need to retain the
 #   sqlite3 stub in this script
 
-# 2019-10-10
+# 2019-10-11
+# - "function _show_help" reordered the options listed so that "-d, --debug",
+#   "-v, --verbose", & "-?, -h, --help" are (almost) the last options displayed
+# - "function _parse_parameters" reordered the options parsed to match what is
+#   displayed in "function _show_help" to simplify maintenance
 # - "function _parse_parameters" changed the following lines as the tests were
 #   too coarse. separated them out for completeness:
 #  was: # - "-d" & "-l" & "-m/-1/-224/-256/-384/-512" are mutually exclusive. error exit
@@ -101,8 +105,6 @@ _BOOLEAN_TESTING_01=true # enabled
 #   is: then
 #   is:   _show_error \""-d\" & \"-m/-1/-224/-256/-384/-512\" specified without \"-v\""
 #   is: fi
-# - "function _parse_parameters" reordered the options to match what is
-#   displayed in "function _show_help" to simplify maintenance
 # - "function _eko_v" removed
 # - changed the following lines globally:
 #  was: _eko_v "$_FOO"
@@ -126,10 +128,10 @@ _BOOLEAN_TESTING_01=true # enabled
 # - changed the following lines globally:
 #  was: _eko_pv "\$_FOO:" \""$_FOO\""
 #   is: _eko_pv \$_FOO: \""$_FOO\""
-# ^ there are several unchanged ("function _pathname_transform_bruteforce",
-#   "function _pathname_transform_cd_pwd", &
-#   "function _pathname_transform_realpath") since the left-hand side in each
-#   contains whitespace
+# ^ there are several in the following form since the left-hand side contains
+#   whitespace
+#  was: _eko_v "      Foo Bar:" \""$_FOO\""
+#   is: _eko_pv "Foo Bar:" \""$_FOO\""
 # - "function _eko_pv" changed/added the following lines for array support:
 #  was: printf "%30s %s\n" "$1" "$2"
 #   is: printf "%30s " "$1"
@@ -2588,15 +2590,6 @@ function _parse_parameters()
           _BOOLEAN_UNLINK=true
         fi
       ;;
-      ( -d \
-      | --debug )
-        if $_BOOLEAN_DEBUG
-        then
-          _BOOLEAN_DEBUG=false
-        else
-          _BOOLEAN_DEBUG=true
-        fi
-      ;;
       ( -l \
       | --long )
         if $_BOOLEAN_LONG
@@ -2622,15 +2615,6 @@ function _parse_parameters()
           _BOOLEAN_RELATIVE=false
         else
           _BOOLEAN_RELATIVE=true
-        fi
-      ;;
-      ( -v \
-      | --verbose )
-        if $_BOOLEAN_VERBOSE
-        then
-          _BOOLEAN_VERBOSE=false
-        else
-          _BOOLEAN_VERBOSE=true
         fi
       ;;
       ( -x \
@@ -2780,6 +2764,24 @@ function _parse_parameters()
           fi
         fi
         shift
+      ;;
+      ( -d \
+      | --debug )
+        if $_BOOLEAN_DEBUG
+        then
+          _BOOLEAN_DEBUG=false
+        else
+          _BOOLEAN_DEBUG=true
+        fi
+      ;;
+      ( -v \
+      | --verbose )
+        if $_BOOLEAN_VERBOSE
+        then
+          _BOOLEAN_VERBOSE=false
+        else
+          _BOOLEAN_VERBOSE=true
+        fi
       ;;
       ( "-?" \
       | -h \
@@ -4450,11 +4452,9 @@ Optional parameters:
   -N, --non-sparse    Explicitly force non-sparse copies when unlinking files
   -S, --sparse        Explicitly force sparse copies when unlinking files
   -U, --unlink        Unlink previously hardlinked files
-  -d, --debug         Display debugging information (function names/entry/exit)
   -l, --long          Display pathname listings in a format similar to \""ls -in\""
   -n, --nanoseconds   Display nanoseconds in long & verbose reports
   -r, --relative      Display relative instead of absolute pathnames
-  -v, --verbose       Display verbose information (variable names/contents)
   -x, --xdev          Do not descend directories on other filesystems
   -m, --md5sum        Generate an md5sum for each file
   -1, --sha1sum       Generate an sha1sum for each file
@@ -4463,6 +4463,8 @@ Optional parameters:
   -384, --sha384sum   Generate an sha384sum for each file
   -512, --sha512sum   Generate an sha512sum for each file
   -s, --size          Specify the maximum \""head\"" size of each file to *sum
+  -d, --debug         Display debugging information (function names/entry/exit)
+  -v, --verbose       Display verbose information (variable names/contents)
   -?, -h, --help      Display this help text, useful as it is
   -W, -w, --warning   Display big fat warning. don't say I didn't tell you!
 

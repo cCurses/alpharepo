@@ -875,7 +875,7 @@ function _eko_pv()
   # printf
 
   # NOTE:
-  # - why "%24s "? to simplify setting column width in verbose reports. a
+  # - why "%20s "? to simplify setting column width in verbose reports. a
   #   single change here affects the output globally
   # - unformatted (non-columnized) output is now supported. simply pass "" as
   #   the first parameter
@@ -885,7 +885,7 @@ function _eko_pv()
     # - "-n string" = true if the length of string is non-zero
     if [[ -n $1 ]]
     then
-      printf "%24s " "$1"
+      printf "%20s " "$1"
     fi
     shift
     echo "$@"

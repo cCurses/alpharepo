@@ -52,7 +52,7 @@
 #   whitespace
 #  was: _eko_S_en "      Foo Bar:" \""$_FOO\""
 #   is: _eko_pS_en "Foo Bar:" \""$_FOO\""
-# - "function _eko_pS_en" added for properly formatted stdout output (25s)
+# - "function _eko_pS_en" added for properly formatted stdout output
 # - "function _eko_S" removed
 # - changed the following lines globally:
 #  was: _eko_S "      \$_FOO: \"$_FOO\""
@@ -61,7 +61,7 @@
 #   whitespace
 #  was: _eko_S "      Foo Bar:" \""$_FOO\""
 #   is: _eko_pS "Foo Bar:" \""$_FOO\""
-# - "function _eko_pS" added for properly formatted stdout output (25s)
+# - "function _eko_pS" added for properly formatted stdout output
 # - "function _eko_v_en" removed
 # - changed the following lines globally:
 #  was: _eko_v_en "      \$_FOO: \"$_FOO\""
@@ -70,7 +70,7 @@
 #   whitespace
 #  was: _eko_v_en "      Foo Bar:" \""$_FOO\""
 #   is: _eko_pv_en "Foo Bar:" \""$_FOO\""
-# - "function _eko_pv_en" added for properly formatted stdout output (25s)
+# - "function _eko_pv_en" added for properly formatted stdout output
 # - "function _eko_v" removed
 # - changed the following lines globally:
 #  was: _eko_v "      \$_FOO: \"$_FOO\""
@@ -1215,7 +1215,7 @@ function _eko_pS()
   # printf
 
   # NOTE:
-  # - why "%27s "? to simplify setting column width in stdout reports. a
+  # - why "%26s "? to simplify setting column width in stdout reports. a
   #   single change here affects the output globally
   # - unformatted (non-columnized) output is now supported. simply pass "" as
   #   the first parameter
@@ -1225,7 +1225,7 @@ function _eko_pS()
     # - "-n string" = true if the length of string is non-zero
     if [[ -n $1 ]]
     then
-      printf "%27s " "$1"
+      printf "%26s " "$1"
     fi
     shift
     echo "$@"
@@ -1254,7 +1254,7 @@ function _eko_pS_en()
   # printf
 
   # NOTE:
-  # - why "%27s "? to simplify setting column width in stdout reports. a
+  # - why "%26s "? to simplify setting column width in stdout reports. a
   #   single change here affects the output globally
   # - unformatted (non-columnized) output is now supported. simply pass "" as
   #   the first parameter
@@ -1264,7 +1264,7 @@ function _eko_pS_en()
     # - "-n string" = true if the length of string is non-zero
     if [[ -n $1 ]]
     then
-      printf "%27s " "$1"
+      printf "%26s " "$1"
     fi
     shift
     echo -en "$@"

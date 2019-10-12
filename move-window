@@ -15,6 +15,24 @@
 #   "-v, --verbose", & "-?, -h, --help" are the last options displayed
 # - "function _parse_parameters" reordered the options parsed to match what is
 #   displayed in "function _show_help" to simplify maintenance
+# - "function _eko_S_en" removed
+# - changed the following lines globally:
+#  was: _eko_S_en "      \$_FOO: \"$_FOO\""
+#   is: _eko_pS_en \$_FOO: \""$_FOO\""
+# ^ there are several in the following form since the left-hand side contains
+#   whitespace
+#  was: _eko_S_en "      Foo Bar:" \""$_FOO\""
+#   is: _eko_pS_en "Foo Bar:" \""$_FOO\""
+# - "function _eko_pS_en" added for properly formatted stdout output
+# - "function _eko_S" removed
+# - changed the following lines globally:
+#  was: _eko_S "      \$_FOO: \"$_FOO\""
+#   is: _eko_pS \$_FOO: \""$_FOO\""
+# ^ there are several in the following form since the left-hand side contains
+#   whitespace
+#  was: _eko_S "      Foo Bar:" \""$_FOO\""
+#   is: _eko_pS "Foo Bar:" \""$_FOO\""
+# - "function _eko_pS" added for properly formatted stdout output
 # - "function _eko_v" removed
 # - changed the following lines throughout the script:
 #  was: _eko_v "      \$_FOO: \"$_FOO\""
@@ -261,9 +279,9 @@
   # _coordinates_kludge
   # _coordinates_user_specified
   # _coordinates_validate
-  # _eko_S
-  # _eko_S_en
   # _eko_iod
+  # _eko_pS
+  # _eko_pS_en
   # _eko_pv
   # _get_net_active_window_window
   # _get_net_client_list_window
@@ -895,56 +913,6 @@ function _coordinates_validate()
   _eko_iod "#- _coordinates_validate -#"
 }
 
-function _eko_S()
-{
-  #+ _eko_S +#
-
-  # functions:
-  # (none)
-
-  # variables:
-  # @
-  # _BOOLEAN_STDOUT
-
-  # binaries:
-  # (none)
-
-  # builtins:
-  # echo
-
-  if $_BOOLEAN_STDOUT
-  then
-    echo "$@"
-  fi
-
-  #- _eko_S -#
-}
-
-function _eko_S_en()
-{
-  #+ _eko_S_en +#
-
-  # functions:
-  # (none)
-
-  # variables:
-  # @
-  # _BOOLEAN_STDOUT
-
-  # binaries:
-  # (none)
-
-  # builtins:
-  # echo
-
-  if $_BOOLEAN_STDOUT
-  then
-    echo -en "$@"
-  fi
-
-  #- _eko_S_en -#
-}
-
 function _eko_iod()
 {
   #+ _eko_iod +#
@@ -981,6 +949,84 @@ function _eko_iod()
   #- _eko_iod -#
 }
 
+function _eko_pS()
+{
+  #+ _eko_pS +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # 1
+  # @
+  # _BOOLEAN_STDOUT
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+  # printf
+
+  # NOTE:
+  # - why "%26s "? to simplify setting column width in stdout reports. a
+  #   single change here affects the output globally
+  # - unformatted (non-columnized) output is now supported. simply pass "" as
+  #   the first parameter
+
+  if $_BOOLEAN_STDOUT
+  then
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $1 ]]
+    then
+      printf "%26s " "$1"
+    fi
+    shift
+    echo "$@"
+  fi
+
+  #- _eko_pS -#
+}
+
+function _eko_pS_en()
+{
+  #+ _eko_pS_en +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # 1
+  # @
+  # _BOOLEAN_STDOUT
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+  # printf
+
+  # NOTE:
+  # - why "%26s "? to simplify setting column width in stdout reports. a
+  #   single change here affects the output globally
+  # - unformatted (non-columnized) output is now supported. simply pass "" as
+  #   the first parameter
+
+  if $_BOOLEAN_STDOUT
+  then
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $1 ]]
+    then
+      printf "%26s " "$1"
+    fi
+    shift
+    echo -en "$@"
+  fi
+
+  #- _eko_pS_en -#
+}
+
 function _eko_pv()
 {
   #+ _eko_pv +#
@@ -1001,7 +1047,7 @@ function _eko_pv()
   # printf
 
   # NOTE:
-  # - why "%35s "? to simplify setting column width in verbose reports. a
+  # - why "%34s "? to simplify setting column width in verbose reports. a
   #   single change here affects the output globally
   # - unformatted (non-columnized) output is now supported. simply pass "" as
   #   the first parameter
@@ -1011,7 +1057,7 @@ function _eko_pv()
     # - "-n string" = true if the length of string is non-zero
     if [[ -n $1 ]]
     then
-      printf "%35s " "$1"
+      printf "%34s " "$1"
     fi
     shift
     echo "$@"
@@ -1815,7 +1861,7 @@ function _parse_parameters()
   # - _BOOLEAN_STDOUT is special. it's quite simple to set up initially
 
   # - _BOOLEAN_STDOUT
-  # - companion functions: _eko_S/_eko_S_en
+  # - companion functions: _eko_pS/_eko_pS_en
   # - default: true
   # - *not* toggled in while/do/done loop like the others
   # - immediately *after* the while/do/done loop _BOOLEAN_STDOUT is set to
@@ -2325,9 +2371,9 @@ function _window_id_acquire()
   _eko_iod "#+ _window_id_acquire +#"
 
   # functions:
-  # _eko_S
-  # _eko_S_en
   # _eko_iod
+  # _eko_pS
+  # _eko_pS_en
   # _eko_pv
 
   # variables:
@@ -2343,12 +2389,12 @@ function _window_id_acquire()
   # builtins:
   # echo
 
-  _eko_S_en "Select the window to move: "
+  _eko_pS_en "Select the window to move:" ""
 
   # - acquire Window ID via point'n'click
   _OUTPUT_XWININFO_ID=$(xwininfo)
 
-  _eko_S ""
+  _eko_pS "" ""
 
   _OPTION_WINDOW_ID=$(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Window id:/!d ; s/\(.*id: \)\|\( .*\)//g')
 

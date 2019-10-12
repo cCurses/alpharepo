@@ -988,7 +988,7 @@ function _eko_pS()
   # printf
 
   # NOTE:
-  # - why "%25s "? to simplify setting column width in stdout reports. a
+  # - why "%24s "? to simplify setting column width in stdout reports. a
   #   single change here affects the output globally
   # - unformatted (non-columnized) output is now supported. simply pass "" as
   #   the first parameter
@@ -998,7 +998,7 @@ function _eko_pS()
     # - "-n string" = true if the length of string is non-zero
     if [[ -n $1 ]]
     then
-      printf "%25s " "$1"
+      printf "%24s " "$1"
     fi
     shift
     echo "$@"
@@ -1027,7 +1027,7 @@ function _eko_pv()
   # printf
 
   # NOTE:
-  # - why "%27s "? to simplify setting column width in verbose reports. a
+  # - why "%26s "? to simplify setting column width in verbose reports. a
   #   single change here affects the output globally
   # - unformatted (non-columnized) output is now supported. simply pass "" as
   #   the first parameter
@@ -1037,7 +1037,7 @@ function _eko_pv()
     # - "-n string" = true if the length of string is non-zero
     if [[ -n $1 ]]
     then
-      printf "%27s " "$1"
+      printf "%26s " "$1"
     fi
     shift
     echo "$@"

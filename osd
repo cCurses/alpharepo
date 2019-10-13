@@ -331,7 +331,8 @@ function _attempt_osd()
     _eko_pv \$_EXIT_CODE: \""$_EXIT_CODE\""
   fi
 
-  # - OSD succeeded, prevent multiple OSD popups on this display
+  # - OSD succeeded, prevent multiple OSD popups on this display from the
+  #   same user
   if [[ $_EXIT_CODE -eq 0 ]]
   then
     _HISTORY+=" "$DISPLAY

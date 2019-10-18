@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# brightness v2019.10.10
+# brightness v2019.10.13
 
 # Copyright (C) 2017 - 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -22,18 +22,26 @@
 # _NEW_BRIGHTNESS=$(( $BRIGHTNESS $_PARAMETER_PLUSMINUS ( $MAX_BRIGHTNESS * $_PARAMETER_NUMERIC + 50 ) / 100 ))
 
 # TODO:
-# - add more permission checks for all functions that attempt to modify
-#   /sys/class/backlight/*/brightness
-# - "-w" tests need to be replaced with something that actually work. use
-#   "find" as I do in other scripts for *very* thorough testing
-# ^ or not. maybe just add more "-w" tests because right now failures are not
+# - add more "-w" tests to all functions that attempt to modify
+#   /sys/class/backlight/*/brightness because right now failures are not
 #   reported & failures do not abort the script
 
-# IDEA:
-# - since "find" will be (possibly) used anyway for other things, use it for
-#   discovering backlight types (replacing the oddball cd/echo method in use
-#   now)
+# OOPS:
+# - changelog order is unpredictable. some series of entries per date are 
+#   chronologically top-to-bottom while others are bottom-to-top. preferred
+#   order is bottom-to-top. this will gradually be fixed when time permits
 
+# 2019-10-13
+# -  renamed functions globally:
+#  was: _eko_pS
+#  was: _eko_pS_en
+#   is: _eko_ps
+#   is: _eko_ps_en
+# - "functions:/variables:/binaries:/builtins:" listings for each function
+#   updated & verified. also updated the "use & abuse" listings based on this
+#   information
+# - "function _binary_validate" removed
+# - comment cleanup throughout the script
 # 2019-10-10
 # - "function _show_help" reordered the options listed so that "-d, --debug",
 #   "-v, --verbose", & "-?, -h, --help" are the last options displayed
@@ -150,9 +158,11 @@
 #   preferred, no need to test if a binary even *exists*, no need to be
 #   concerned about changed syntax or output from one release to the next
 
-# NOTE: (binary/variable/function indentation)
-# - 2 spaces, hash, binary/variable/function name = in function
-# - 0 spaces, hash, binary/variable/function name = in main
+# NOTE: (builtin/binary/variable/function indentation)
+# - 2 spaces, hash, builtin/binary/variable/function name = in function
+# - 0 spaces, hash, builtin/binary/variable/function name = in main
+# NOTE: (system builtin use & abuse - excluding echo/printf)
+  # (none)
 # NOTE: (system binary use & abuse)
   # sleep
 # NOTE: (system & script variable use & abuse)
@@ -163,6 +173,7 @@
 # - system variables referenced but not modified
   # #
   # 1
+  # 2
   # @
   # FUNCNAME (single dimension indexed array)
 # @
@@ -198,6 +209,7 @@
   # _PROGRESS
   # _RAW_NUMERIC
   # _THIS_BACKLIGHT_TYPE
+# _BLACKLIST
 # _THIS_BACKLIGHT_TYPE
 # NOTE: (script function use & abuse)
 # - script functions are always in the form "_foo"
@@ -207,11 +219,10 @@
   # _backlight_types_list
   # _backlight_value_set
   # _backlight_values_get
-  # _binary_validate
   # _eko_dv
   # _eko_iod
-  # _eko_pS
-  # _eko_pS_en
+  # _eko_ps
+  # _eko_ps_en
   # _eko_pv
   # _eko_pv_en
   # _process_numeric
@@ -238,12 +249,15 @@
 
 #+ setup here +#
 
+# variables:
+# _BLACKLIST
+
 # - as the name suggests. avoid using the following backlight types by default
 # - these can be overridden by passing "-b <backlight type>" to the script
 # - only really necessary for backlight types that misbehave in a big way
 #   (aka: *BOOM* level of misbehave). non-functional types can be safely
 #   ignored here
-#_BLACKLIST="eeepc eeepc-wmi ideapad"
+_BLACKLIST="eeepc eeepc-wmi ideapad"
 
 #- setup here -#
 
@@ -336,8 +350,8 @@ function _backlight_type_test()
   # functions:
   # _backlight_values_get
   # _eko_iod
-  # _eko_pS
-  # _eko_pS_en
+  # _eko_ps
+  # _eko_ps_en
   # _eko_pv
   # _eko_pv_en
 
@@ -366,12 +380,12 @@ function _backlight_type_test()
   # - "-w file" = true if file exists & is writable
   if [[ -w /sys/class/backlight/$_ONE_BACKLIGHT_TYPE/brightness ]]
   then
-    _eko_pv_en "test progress:" "    "
-    _eko_pS_en "Test progress:" "    "
-
     # - preserve state
     _backlight_values_get
     _BRIGHTNESS_HOLD=$BRIGHTNESS
+
+    _eko_ps_en "Test progress:" "    "
+    _eko_pv_en "test progress:" "    "
 
     # - calculate numeric suitable for $BRIGHTNESS from $_PERCENT_BRIGHTNESS
     #   (result is $_DESIRED_BRIGHTNESS)
@@ -386,8 +400,8 @@ function _backlight_type_test()
 
       _PROGRESS="  ${_PERCENT_BRIGHTNESS}%"
       # - ${parameter:offset}
+      _eko_ps_en "" "\b\b\b\b${_PROGRESS: -4}"
       _eko_pv_en "" "\b\b\b\b${_PROGRESS: -4}"
-      _eko_pS_en "" "\b\b\b\b${_PROGRESS: -4}"
 
       # - "+ 50" & "/ 100" is to handle rounding an integer *up* by .5
       # - "+ 5" & "/ 10" doesn't work. rounds an integer *down* (truncates)
@@ -404,14 +418,14 @@ function _backlight_type_test()
       # - id++ = variable post-increment
       ((_PERCENT_BRIGHTNESS++))
     done
+    _eko_ps "" ""
     _eko_pv "" ""
-    _eko_pS "" ""
 
     # - restore state
     echo $_BRIGHTNESS_HOLD >/sys/class/backlight/$_ONE_BACKLIGHT_TYPE/brightness
   else
+   _eko_ps "Test progress:" "none. no permission"
    _eko_pv "test progress:" "none. no permission"
-   _eko_pS "Test progress:" "none. no permission"
   fi
 
   _eko_iod "#- _backlight_type_test -#"
@@ -440,7 +454,7 @@ function _backlight_types_blacklist()
   # builtins:
   # echo
 
-  # no doublequotes on purpose
+  # - no doublequotes on purpose
   for _ONE_BACKLIGHT_TYPE in $_ALL_BACKLIGHT_TYPES
   do
     # - what we get
@@ -524,8 +538,8 @@ function _backlight_types_display()
   # _backlight_value_set
   # _backlight_values_get
   # _eko_iod
-  # _eko_pS
-  # _eko_pS_en
+  # _eko_ps
+  # _eko_ps_en
   # _eko_pv
 
   # variables:
@@ -556,7 +570,7 @@ function _backlight_types_display()
     _ALL_BACKLIGHT_TYPES=${_ALL_BACKLIGHT_TYPES/ */}
   fi
 
-  # no doublequotes on purpose
+  # - no doublequotes on purpose
   for _ONE_BACKLIGHT_TYPE in $_ALL_BACKLIGHT_TYPES
   do
     # - what we get
@@ -636,15 +650,15 @@ function _backlight_types_display()
     _PREVIOUS_PERCENT=$(( ( $BRIGHTNESS * 100 + ( $MAX_BRIGHTNESS / 2 ) ) / $MAX_BRIGHTNESS ))
 
     # - what we set
+    _eko_ps_en "Backlight type:" "$_ONE_BACKLIGHT_TYPE"
+    _eko_ps_en "" " (settings: $ACTUAL_BRIGHTNESS $BRIGHTNESS $MAX_BRIGHTNESS)"
+    _eko_ps "" " (${_CURRENT_PERCENT}% ${_PREVIOUS_PERCENT}% 100%)"
     _eko_pv \$_ONE_BACKLIGHT_TYPE: \""$_ONE_BACKLIGHT_TYPE\" (display)"
     _eko_pv \$ACTUAL_BRIGHTNESS: \""$ACTUAL_BRIGHTNESS\""
     _eko_pv \$BRIGHTNESS: \""$BRIGHTNESS\""
     _eko_pv \$MAX_BRIGHTNESS: \""$MAX_BRIGHTNESS\""
     _eko_pv \$_PREVIOUS_PERCENT: \""${_PREVIOUS_PERCENT}%\""
     _eko_pv \$_CURRENT_PERCENT: \""${_CURRENT_PERCENT}%\""
-    _eko_pS_en "Backlight type:" "$_ONE_BACKLIGHT_TYPE"
-    _eko_pS_en "" " (settings: $ACTUAL_BRIGHTNESS $BRIGHTNESS $MAX_BRIGHTNESS)"
-    _eko_pS "" " (${_CURRENT_PERCENT}% ${_PREVIOUS_PERCENT}% 100%)"
 
     if $_BOOLEAN_TEST
     then
@@ -662,7 +676,7 @@ function _backlight_types_list()
   # functions:
   # _backlight_types_discover
   # _eko_iod
-  # _eko_pS
+  # _eko_ps
 
   # variables:
   # _ALL_BACKLIGHT_TYPES
@@ -688,7 +702,7 @@ function _backlight_types_list()
     unset _PLURAL
   fi
 
-  _eko_pS "Available backlight type$_PLURAL:" "$_ALL_BACKLIGHT_TYPES"
+  _eko_ps "Available backlight type$_PLURAL:" "$_ALL_BACKLIGHT_TYPES"
 
   _eko_iod "#- _backlight_types_list -#"
 
@@ -738,6 +752,7 @@ function _backlight_value_set()
   # variables:
   # BRIGHTNESS        (read-write)
   # MAX_BRIGHTNESS    (read-only)
+  # _ONE_BACKLIGHT_TYPE
   # _NEW_BRIGHTNESS
   # _PARAMETER_NUMERIC
   # _PARAMETER_PERCENT
@@ -747,7 +762,7 @@ function _backlight_value_set()
   # (none)
 
   # builtins:
-  # (none)
+  # echo
 
 #+ marker set +#
 
@@ -1035,100 +1050,6 @@ function _backlight_values_get()
   _eko_iod "#- _backlight_values_get -#"
 }
 
-function _binary_validate()
-{
-  _eko_iod "#+ _binary_validate +#"
-
-  # functions:
-  # _eko_iod
-
-  # variables:
-  # _BINARY_HELP
-  # _BINARY_NAME
-  # _BINARY_OPTION
-
-  # binaries:
-  # find
-
-  # builtins:
-  # echo
-
-  # NOTE:
-  # - rather than test a given binary's version in hopes of figuring out which
-  #   features it supports, test its supported feature set directly. not only
-  #   is this much simpler to do, it's possible to test only those features
-  #   that are explicitly used in the script
-  # - how? get the binary to dump its embedded help text & parse the result
-  # - this can be used as a dual test. no help text = no binary, otherwise
-  #   parse the help text for descriptions of specific features
-
-  # NOTE:
-  # - be explicit, use long form options when available
-
-  #+ find +#
-  # - "find --help". stdout
-#  #   "-gid"
-#  #   "-maxdepth"
-#  #   "-printf"
-#  #   "-readable"
-#  #   "-type"
-#  #   "-uid"
-#  #   "-writable"
-  # - called in "function ???"
-
-  _BINARY_NAME=find
-  _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
-  if [[ $_BINARY_HELP =~ "command not found" ]]
-  then
-    _show_error "required binary \"$_BINARY_NAME\" not found"
-  else
-    _BINARY_OPTION=-gid
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
-
-    _BINARY_OPTION=-maxdepth
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
-
-    _BINARY_OPTION=-printf
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
-
-    _BINARY_OPTION=-readable
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
-
-    _BINARY_OPTION=-type
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
-
-    _BINARY_OPTION=-uid
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
-
-    _BINARY_OPTION=-writable
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
-  fi
-  #- find -#
-
-  _eko_iod "#- _binary_validate -#"
-}
-
 function _eko_dv()
 {
   #+ _eko_dv +#
@@ -1143,9 +1064,6 @@ function _eko_dv()
 
   # binaries:
   # (none)
-
-  # builtins:
-  # echo
 
   # builtins:
   # echo
@@ -1195,9 +1113,9 @@ function _eko_iod()
   #- _eko_iod -#
 }
 
-function _eko_pS()
+function _eko_ps()
 {
-  #+ _eko_pS +#
+  #+ _eko_ps +#
 
   # functions:
   # (none)
@@ -1231,12 +1149,12 @@ function _eko_pS()
     echo "$@"
   fi
 
-  #- _eko_pS -#
+  #- _eko_ps -#
 }
 
-function _eko_pS_en()
+function _eko_ps_en()
 {
-  #+ _eko_pS_en +#
+  #+ _eko_ps_en +#
 
   # functions:
   # (none)
@@ -1270,7 +1188,7 @@ function _eko_pS_en()
     echo -en "$@"
   fi
 
-  #- _eko_pS_en -#
+  #- _eko_ps_en -#
 }
 
 function _eko_pv()
@@ -1358,7 +1276,6 @@ function _parse_parameters()
   # functions:
   # _backlight_type_select
   # _backlight_types_list
-  # _binary_validate
   # _eko_iod
   # _eko_pv
   # _process_numeric
@@ -1398,12 +1315,12 @@ function _parse_parameters()
   # - default: false
   # - toggled in while/do/done loop like the others
   # - option "-q, --quiet"
-  # - immediately *after* the while/do/done loop all _BOOLEAN_* (except
-  #   _BOOLEAN_ALL & _BOOLEAN_TEST) are set to false if $_BOOLEAN_QUIET is
-  #   true
+  # - immediately *after* the while/do/done loop if $_BOOLEAN_QUIET is true,
+  #   sets _BOOLEAN_DEBUG, _BOOLEAN_LIST, _BOOLEAN_STDOUT, & _BOOLEAN_VERBOSE
+  #   to false
 
   # - _BOOLEAN_STDOUT
-  # - companion functions: _eko_pS/_eko_pS_en
+  # - companion functions: _eko_ps/_eko_ps_en
   # - default: true
   # - *not* toggled in while/do/done loop like the others
   # - immediately *after* the while/do/done loop _BOOLEAN_STDOUT is set to
@@ -1515,10 +1432,6 @@ function _parse_parameters()
 
   # - technically in the wrong spot, but it's a chicken or egg scenario
   _eko_iod "#+ _parse_parameters +#"
-
-  # - validate the existence & required options of system binaries
-  # - while we're at it, set up the options for the various binaries if needed
-  _binary_validate
 
   #+ parameter settings (in (mostly) proper order of operation) +#
 
@@ -1637,16 +1550,16 @@ function _process_numeric()
 
   # - trim all non-numerics from both ends, & then the right
 
-  # - single character from the right (the space *must* be present)
+  # - single character from the right
 #  _eko_pv "" ${_PARAMETER_NUMERIC: -1:1} # (the space *must* be present)
   # - what remains
 #  _eko_pv "" ${_PARAMETER_NUMERIC:0: -1} # (the space *must* be present)
 
   # - ${parameter:offset:length}
-  while [[ ${_PARAMETER_NUMERIC: -1:1} != [0-9] ]]
+  while [[ ${_PARAMETER_NUMERIC: -1:1} != [0-9] ]] # (the space *must* be present)
   do
     # - ${parameter:offset:length}
-    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0: -1}
+    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0: -1} # (the space *must* be present)
   done
   _eko_pv \$_PARAMETER_NUMERIC: \""$_PARAMETER_NUMERIC\" (trim right)"
 

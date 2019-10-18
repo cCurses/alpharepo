@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# move-window v2019.10.11
+# move-window v2019.10.16
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -10,6 +10,57 @@
 # concept:
 # - move selected window to desired position on desktop
 
+# TODO:
+# - add a few routines (knowing they're not really necessary) for gathering
+#   additional information
+# ^ get the specific names via "xprop -root"
+#+ marker edit +#
+
+# IDEA:
+# - somehow do a set of multiple calls to wmctrl so "-l, --lower" can be
+#   implemented. do so in such a way that focus is not "stolen". if this
+#   approach works, use it as a replacement for "-r, --raise" as well because
+#   the current method of raising a window steals focus
+# - possibly "-b add,above" or "-b add,below", followed by moving to "-1,-1",
+#   then "-b remove,above" or "-b remove,below"
+# - related: for "<WIN>" possibly use ":ACTIVE:"
+# - discover window's state beforehand so state can be restored afterwards.
+#   inspect the following:
+#   _NET_WM_STATE_ABOVE, ATOM
+#   _NET_WM_STATE_BELOW, ATOM
+# ^ "function _get_net_wm_state_atom" for examples
+
+# FIXME:
+# - Error: "xprop" does not support "-id id"
+# ^ if called from outside X
+# - give it similar treatment as that from osd's handler for xmessage
+# - xwininfo *might* require similar coddling
+# - do the important stuff listed below first, though
+# - or just add simple tests before everything else to see if the script is
+#   being called from within X. complain & quit if not
+# ^ possibly test for $DISPLAY &/or $XAUTHORITY
+
+# OOPS:
+# - changelog order is unpredictable. some series of entries per date are
+#   chronologically top-to-bottom while others are bottom-to-top. preferred
+#   order is bottom-to-top. this will gradually be fixed when time permits
+
+# 2019-10-16
+# -  renamed functions globally:
+#  was: _eko_pS
+#  was: _eko_pS_en
+#   is: _eko_ps
+#   is: _eko_ps_en
+# - "functions:/variables:/binaries:/builtins:" listings for each function
+#   updated & verified. also updated the "use & abuse" listings based on this
+#   information
+# - "function _window_id_acquire" added the following lines:
+#  add: _eko_pv_en "select the window to move:" ""
+#  add: _eko_pv "" ""
+# - "function _eko_pv_en" added
+# - "function _coordinates_validate" removed 2 of the 4 "error exits". rely
+#    solely on the 4 "force to fits"
+# - comment cleanup throughout the script
 # 2019-10-11
 # - "function _show_help" reordered the options listed so that "-d, --debug",
 #   "-v, --verbose", & "-?, -h, --help" are the last options displayed
@@ -171,10 +222,21 @@
 #   preferred, no need to test if a binary even *exists*, no need to be
 #   concerned about changed syntax or output from one release to the next
 
-# NOTE: (binary/variable/function indentation)
-# - 4 spaces, hash, binary/variable/function name = in sub-function
-# - 2 spaces, hash, binary/variable/function name = in function
-# - 0 spaces, hash, binary/variable/function name = in main
+# NOTE: (differences when doublequoting vs not doublequoting)
+# - #1: echo "$_OUTPUT_XPROP_ROOT"
+# - #2: echo "$_OUTPUT_XPROP_ID"
+# - #3: echo $_OUTPUT_XWININFO_ID
+# ^ #1 & #2 above preserve all spacing, linebreaks, & special characters
+# ^ #3 does not preserve spacing, linebreaks, or special characters. outputs
+#   everything as a single line with single spacing
+# - this behaviour is deliberately (ab)used throughout the script
+
+# NOTE: (builtin/binary/variable/function indentation)
+# - 4 spaces, hash, builtin/binary/variable/function name = in sub-function
+# - 2 spaces, hash, builtin/binary/variable/function name = in function
+# - 0 spaces, hash, builtin/binary/variable/function name = in main
+# NOTE: (system builtin use & abuse - excluding echo/printf)
+  # read
 # NOTE: (system binary use & abuse)
   # sed
   # wmctrl
@@ -188,6 +250,7 @@
 # - system variables referenced but not modified
   # #
   # 1
+  # 2
   # @
   # FUNCNAME (single dimension indexed array)
 # @
@@ -204,6 +267,7 @@
     # _NET_WORKAREA_W
     # _NET_WORKAREA_X
     # _NET_WORKAREA_Y
+    # _OPTIONS_READ (read options, not script options)
     # _WORKAREA_BORDER_B
     # _WORKAREA_BORDER_L
     # _WORKAREA_BORDER_R
@@ -222,6 +286,9 @@
   # _BOOLEAN_RAISE
   # _BOOLEAN_STDOUT
   # _BOOLEAN_VERBOSE
+  # _BUILTIN_HELP
+  # _BUILTIN_NAME
+  # _BUILTIN_OPTION
   # _COMMAND
   # _COORDINATE_X
   # _COORDINATE_Y
@@ -274,15 +341,17 @@
     # _eko_iod
     # _eko_pv
   # _binary_validate_setup
+  # _builtin_validate_setup
   # _coordinates_calculate
   # _coordinates_force
   # _coordinates_kludge
   # _coordinates_user_specified
   # _coordinates_validate
   # _eko_iod
-  # _eko_pS
-  # _eko_pS_en
+  # _eko_ps
+  # _eko_ps_en
   # _eko_pv
+  # _eko_pv_en
   # _get_net_active_window_window
   # _get_net_client_list_window
   # _get_net_current_desktop_cardinal
@@ -557,6 +626,10 @@ function _coordinates_calculate()
   # (none)
 
   # NOTE:
+  # - "function _coordinates_calculate" & "function _coordinates_validate"
+  #   share identical calculations for the 4 corners
+
+  # NOTE:
   # - there are 9 pre-defined coordinates (3x3 grid), 1 "do not move"
   #   coordinate (for use with "-r, --raise"), & 1 user-specified coordinate
 
@@ -669,15 +742,17 @@ function _coordinates_force()
       _eko_pv \$_CORNERS: \""$_CORNERS\""
 
       # - don't be fancy. simply place window at X/Y of 0/0
-      # - slight problem with this. some applications (hello TigerVNC) don't
-      #   report (or improperly report) their window decorations
+      # - slight problem with this approach. some applications (hello
+      #   TigerVNC) don't report (or improperly report) their window
+      #   decorations. if window size is is larger than desktop or workspace
+      #   size, the titlebar would be unreachable
       #_COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 0,0,0,-1,-1"
 
       # - on second thought, be slightly fancy
       # - place window (using its raw X/Y dimensions. aka: ignore any
-      #   decorations) with its top/left corner in desktop center (not
-      #   workarea center). this way the titlebar can be grabbed - even
-      #   oddballs like TigerVNC
+      #   decorations) with its top/left corner in overall desktop center (not
+      #   workarea center). this way the titlebar can be grabbed, even
+      #   oddballs like TigerVNC, with minimal calculations
       # - this is a simple rescue operation. all that's needed is to make
       #   unreachable windows reachable. the user can manipulate things later
       # - $((expression))
@@ -714,14 +789,9 @@ function _coordinates_kludge()
   # builtins:
   # (none)
 
-  # NOTE:
-  # - somewhat inefficient setup, but it's simpler to make additions this way
-
-  # - defaults
-  _KLUDGE_X=0
-  _KLUDGE_Y=0
-
   # - the regex must be *outside* the doublequotes
+  # - note the extra trailing doublequote on the rhs. that's from the window's
+  #   titlebar text string itself
   if [[ $_NET_WM_NAME_UTF8_STRING =~ .*" - TigerVNC\""$ ]]
   then
     # - dimensions of left & top decorations
@@ -729,6 +799,10 @@ function _coordinates_kludge()
     #   already in place & quite simple to update
     _KLUDGE_X=$_NET_FRAME_EXTENTS_L
     _KLUDGE_Y=$_NET_FRAME_EXTENTS_T
+  else
+    # - defaults
+    _KLUDGE_X=0
+    _KLUDGE_Y=0
   fi
 
   _eko_pv \$_KLUDGE_X: \""$_KLUDGE_X\""
@@ -803,13 +877,13 @@ function _coordinates_validate()
   # builtins:
   # (none)
 
-  # IDEA:
-  # - disable/remove "error exits" #2 & #4
-  # - rely on "force to fits" #1 & #3
+  # NOTE:
+  # - "function _coordinates_calculate" & "function _coordinates_validate"
+  #   share identical calculations for the 4 corners
 
   #+ error exits +#
 
-  # - (1/4)
+  # - (1/2)
   # - non-numeric X coordinate?
   # - negative included
   if [[ ! $_COORDINATE_X =~ ^-?[0-9]+$ ]]
@@ -817,30 +891,12 @@ function _coordinates_validate()
     _show_error "non-numeric X coordinate \"$_COORDINATE_X\" specified"
   fi
 
-  # - (2/4)
-  # - numeric X coordinate that is not -1?
-  # - negative included
-  if [[ $_COORDINATE_X =~ ^-[0-9]+$ ]] \
-  && [[ $_COORDINATE_X -ne -1 ]]
-  then
-    _show_error "invalid X coordinate \"$_COORDINATE_X\" specified"
-  fi
-
-  # - (3/4)
+  # - (2/2)
   # - non-numeric Y coordinate?
   # - negative included
   if [[ ! $_COORDINATE_Y =~ ^-?[0-9]+$ ]]
   then
     _show_error "non-numeric Y coordinate \"$_COORDINATE_Y\" specified"
-  fi
-
-  # - (4/4)
-  # - numeric Y coordinate that is not -1?
-  # - negative included
-  if [[ $_COORDINATE_Y =~ ^-[0-9]+$ ]] \
-  && [[ $_COORDINATE_Y -ne -1 ]]
-  then
-    _show_error "invalid Y coordinate \"$_COORDINATE_Y\" specified"
   fi
 
   #- error exits -#
@@ -850,7 +906,6 @@ function _coordinates_validate()
   # - (1/4)
   # - force X coordinate to fit within usable or overall desktop X
   # - left (special case: -1)
-  # - technically unnecessary. already caught in the error exit block above
   if [[ $_COORDINATE_X -lt $_WORKAREA_BORDER_L ]] \
   && [[ $_COORDINATE_X -ne -1 ]]
   then
@@ -870,7 +925,6 @@ function _coordinates_validate()
   # - (3/4)
   # - force Y coordinate to fit within usable or overall desktop Y
   # - top (special case: -1)
-  # - technically unnecessary. already caught in the error exit block above
   if [[ $_COORDINATE_Y -lt $_WORKAREA_BORDER_T ]] \
   && [[ $_COORDINATE_Y -ne -1 ]]
   then
@@ -892,14 +946,14 @@ function _coordinates_validate()
   #+ tweaks +#
 
   # - tweak X position if required by _NET_WM_STATE_MAXIMIZED_* restrictions
-  # - simply set field to "-1" if MAXIMIZED
+  # - simply set field to "-1" if maximized
   if $_BOOLEAN_MAXIMIZED_X
   then
     _COORDINATE_X=-1
   fi
 
   # - tweak Y position if required by _NET_WM_STATE_MAXIMIZED_* restrictions
-  # - simply set field to "-1" if MAXIMIZED
+  # - simply set field to "-1" if maximized
   if $_BOOLEAN_MAXIMIZED_Y
   then
     _COORDINATE_Y=-1
@@ -949,9 +1003,9 @@ function _eko_iod()
   #- _eko_iod -#
 }
 
-function _eko_pS()
+function _eko_ps()
 {
-  #+ _eko_pS +#
+  #+ _eko_ps +#
 
   # functions:
   # (none)
@@ -985,12 +1039,12 @@ function _eko_pS()
     echo "$@"
   fi
 
-  #- _eko_pS -#
+  #- _eko_ps -#
 }
 
-function _eko_pS_en()
+function _eko_ps_en()
 {
-  #+ _eko_pS_en +#
+  #+ _eko_ps_en +#
 
   # functions:
   # (none)
@@ -1024,7 +1078,7 @@ function _eko_pS_en()
     echo -en "$@"
   fi
 
-  #- _eko_pS_en -#
+  #- _eko_ps_en -#
 }
 
 function _eko_pv()
@@ -1066,6 +1120,45 @@ function _eko_pv()
   #- _eko_pv -#
 }
 
+function _eko_pv_en()
+{
+  #+ _eko_pv_en +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # 1
+  # @
+  # _BOOLEAN_VERBOSE
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+  # printf
+
+  # NOTE:
+  # - why "%34s "? to simplify setting column width in verbose reports. a
+  #   single change here affects the output globally
+  # - unformatted (non-columnized) output is now supported. simply pass "" as
+  #   the first parameter
+
+  if $_BOOLEAN_VERBOSE
+  then
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $1 ]]
+    then
+      printf "%34s " "$1"
+    fi
+    shift
+    echo -en "$@"
+  fi
+
+  #- _eko_pv_en -#
+}
+
 function _get_net_active_window_window()
 {
   _eko_iod "#+ _get_net_active_window_window +#"
@@ -1086,6 +1179,8 @@ function _get_net_active_window_window()
 
   # NOTE:
   # - do we need this? I don't think so
+  # - possibly in the future, though. as part of an alternate approach to
+  #   implement "-l, --lower" & "-r, --raise"
 
   # IDEA:
   # - or do we? when it comes time to move the window, use this window id if
@@ -1151,8 +1246,11 @@ function _get_net_current_desktop_cardinal()
   # builtins:
   # echo
 
+  # NOTE:
+  # - this is always an integer between 0 and _NET_NUMBER_OF_DESKTOPS - 1
+  # - starts at "0" not "1"
+
   # - _NET_CURRENT_DESKTOP desktop, CARDINAL/32
-  # - This is always an integer between 0 and _NET_NUMBER_OF_DESKTOPS - 1
   # "_NET_CURRENT_DESKTOP(CARDINAL) = "
   # "0"
 
@@ -1175,7 +1273,7 @@ function _get_net_desktop_geometry_cardinal()
   # _NET_DESKTOP_GEOMETRY_H
   # _NET_DESKTOP_GEOMETRY_W
   # _NET_DESKTOP_GEOMETRY_CARDINAL
-  # _OPTIONS_READ
+  # _OPTIONS_READ (read options, not script options)
   # _OUTPUT_XPROP_ROOT
 
   # binaries:
@@ -1235,12 +1333,22 @@ function _get_net_desktop_names_utf8_string()
   # - keep it anyway. it's a good reference
 
   # NOTE:
+  # - "function _get_net_current_desktop_cardinal" must precede this function
+  #   since it acquires _NET_CURRENT_DESKTOP_CARDINAL which is used below
+
+  # NOTE:
   # - unlike cardinal types, utf-8 requires special handling
   # - after quite a bit of experimenting, the following brute force method
   #   appears to work well enough for this particular case. if it's *not*
   #   performing on your system as expected, let me know so I can fix it
   # - method: preserve anything & everything *between* pairs of doublequotes,
   #   including the doublequotes themselves
+
+  # TODO:
+  # - possibly improve the logic so the loop exits when a match is found
+  # ^ currently, it continues scanning $_NET_DESKTOP_NAMES_UTF8_STRING to the
+  #   very end. this is completely harmless, but I'm a perfectionist :)
+  # - conditional "break" if $_NET_DESKTOP_NAME_UTF8_STRING is set?
 
   # - _NET_DESKTOP_NAMES, UTF8_STRING[]
   # "_NET_DESKTOP_NAMES(UTF8_STRING) = "
@@ -1278,10 +1386,10 @@ function _get_net_desktop_names_utf8_string()
   do
 
     # - ${parameter:offset:length}
-    if [[ ${_NET_DESKTOP_NAMES_UTF8_STRING:$_POSITION_CURRENT:1} == '"' ]]
+    if [[ ${_NET_DESKTOP_NAMES_UTF8_STRING:$_POSITION_CURRENT:1} == \" ]]
     then
       # - ${parameter:offset:length}
-      if [[ ${_NET_DESKTOP_NAMES_UTF8_STRING:$_POSITION_CURRENT:3} == '" "' ]]
+      if [[ ${_NET_DESKTOP_NAMES_UTF8_STRING:$_POSITION_CURRENT:3} == \"\ \" ]]
       then
         _POSITION_FINISH=$_POSITION_CURRENT
       else
@@ -1346,6 +1454,10 @@ function _get_net_desktop_viewport_cardinal()
   # NOTE:
   # - do we need this? I don't think so
 
+  # NOTE:
+  # - "function _get_net_current_desktop_cardinal" must precede this function
+  #   since it acquires _NET_CURRENT_DESKTOP_CARDINAL which is used below
+
   # - _NET_DESKTOP_VIEWPORT x, y, CARDINAL[][2]/32
   # "_NET_DESKTOP_VIEWPORT(CARDINAL) = "
   # "0, 0, "
@@ -1374,13 +1486,14 @@ function _get_net_desktop_viewport_cardinal()
     # _NET_CURRENT_DESKTOP_CARDINAL
     # _NET_DESKTOP_VIEWPORT_X
     # _NET_DESKTOP_VIEWPORT_Y
-    # _OPTIONS_READ
+    # _OPTIONS_READ (read options, not script options)
     # _XX0
 
     # binaries:
     # (none)
 
     # builtins:
+    # (none)
     # read
 
     # - there are 2 fields for each desktop
@@ -1419,7 +1532,7 @@ function _get_net_frame_extents_cardinal()
   # _NET_FRAME_EXTENTS_L
   # _NET_FRAME_EXTENTS_R
   # _NET_FRAME_EXTENTS_T
-  # _OPTIONS_READ
+  # _OPTIONS_READ (read options, not script options)
   # _OUTPUT_XPROP_ID
 
   # binaries:
@@ -1474,7 +1587,10 @@ function _get_net_number_of_desktops_cardinal()
   # builtins:
   # echo
 
-  # - _NET_NUMBER_OF_DESKTOPS, CARDINAL/32 (starts at "1" not "0")
+  # NOTE:
+  # - starts at "1" not "0"
+
+  # - _NET_NUMBER_OF_DESKTOPS, CARDINAL/32
   # "_NET_NUMBER_OF_DESKTOPS(CARDINAL) = "
   # "8"
 
@@ -1569,6 +1685,7 @@ function _get_net_wm_state_atom()
   #   _NET_WM_STATE_SKIP_PAGER, ATOM
   #   _NET_WM_STATE_HIDDEN, ATOM
   #   _NET_WM_STATE_FULLSCREEN, ATOM
+  #   _NET_WM_STATE_BELOW, ATOM
   #   _NET_WM_STATE_ABOVE, ATOM
   #   _NET_WM_STATE_BELOW, ATOM
   #   _NET_WM_STATE_DEMANDS_ATTENTION, ATOM
@@ -1577,7 +1694,7 @@ function _get_net_wm_state_atom()
 
   _eko_pv \$_NET_WM_STATE_ATOM: \""$_NET_WM_STATE_ATOM\""
 
-  # - decipher window's state (horizontal & or vertical maximized)
+  # - decipher window's state (horizontal &/or vertical maximized)
   # - doing so here is as good as anywhere else
 
   if [[ " $_NET_WM_STATE_ATOM " =~ " _NET_WM_STATE_MAXIMIZED_HORZ " ]]
@@ -1619,6 +1736,10 @@ function _get_net_workarea_cardinal()
   # builtins:
   # echo
 
+  # NOTE:
+  # - "function _get_net_current_desktop_cardinal" must precede this function
+  #   since it acquires _NET_CURRENT_DESKTOP_CARDINAL which is used below
+
   # - _NET_WORKAREA, x, y, width, height CARDINAL[][4]/32
   # "_NET_WORKAREA(CARDINAL) = "
   # "0, 0, 1852, 1056, "
@@ -1653,7 +1774,7 @@ function _get_net_workarea_cardinal()
     # _NET_WORKAREA_W
     # _NET_WORKAREA_X
     # _NET_WORKAREA_Y
-    # _OPTIONS_READ
+    # _OPTIONS_READ (read options, not script options)
     # _WORKAREA_BORDER_B
     # _WORKAREA_BORDER_L
     # _WORKAREA_BORDER_R
@@ -1705,6 +1826,9 @@ function _get_net_workarea_cardinal()
     _eko_pv \$_WORKAREA_BORDER_T: \""$_WORKAREA_BORDER_T\""
     _eko_pv \$_WORKAREA_BORDER_B: \""$_WORKAREA_BORDER_B\""
 
+    # NOTE:
+    # - keep this information for future reference
+
     # -   left: nothing
     # -  right: dock, xfce4-panel
     # -    top: nothing
@@ -1754,7 +1878,12 @@ function _get_window_undecorated_geometry()
   # _eko_pv
 
   # variables:
-  # _OPTIONS_READ
+  # _NET_FRAME_EXTENTS_B
+  # _NET_FRAME_EXTENTS_L
+  # _NET_FRAME_EXTENTS_R
+  # _NET_FRAME_EXTENTS_T
+  # _OPTIONS_READ (read options, not script options)
+  # _OPTION_WINDOW_ID
   # _OUTPUT_XWININFO_ID
   # _WINDOW_DECORATED_X
   # _WINDOW_DECORATED_Y
@@ -1769,14 +1898,13 @@ function _get_window_undecorated_geometry()
   # echo
   # read
 
+  # NOTE:
+  # - "function _get_net_frame_extents_cardinal" must precede this function
+  #   since it acquires _NET_FRAME_EXTENTS_* which are used below
+
   # - assign default value if unset
   # - ${parameter:=word}
   _OUTPUT_XWININFO_ID=${_OUTPUT_XWININFO_ID:=$(xwininfo -id $_OPTION_WINDOW_ID)}
-
-  # NOTE:
-  # - no doublequotes around $_OUTPUT_XWININFO_ID
-  # - there is no spacing to preserve, so the lack of doublequotes is of
-  #   no consequence
 
   read $_OPTIONS_READ -- \
   _WINDOW_UNDECORATED_X \
@@ -1806,6 +1934,7 @@ function _parse_parameters()
   #+ _parse_parameters +#
 
   # functions:
+  # _builtin_validate_setup
   # _binary_validate_setup
   # _coordinates_calculate
   # _coordinates_force
@@ -1836,6 +1965,7 @@ function _parse_parameters()
   # variables:
   # #
   # 1
+  # 2
   # _BINARY_WMCTRL
   # _BOOLEAN_DEBUG
   # _BOOLEAN_DRYRUN
@@ -1861,7 +1991,7 @@ function _parse_parameters()
   # - _BOOLEAN_STDOUT is special. it's quite simple to set up initially
 
   # - _BOOLEAN_STDOUT
-  # - companion functions: _eko_pS/_eko_pS_en
+  # - companion functions: _eko_ps/_eko_ps_en
   # - default: true
   # - *not* toggled in while/do/done loop like the others
   # - immediately *after* the while/do/done loop _BOOLEAN_STDOUT is set to
@@ -2223,7 +2353,6 @@ function _set_window_position()
 
   # variables:
   # _BINARY_WMCTRL
-  # _BOOLEAN_DRYRUN
   # _BOOLEAN_MAXIMIZED_X (window state. not script option)
   # _BOOLEAN_MAXIMIZED_Y (window state. not script option)
   # _BOOLEAN_RAISE
@@ -2239,6 +2368,7 @@ function _set_window_position()
   # _NET_FRAME_EXTENTS_L
   # _NET_FRAME_EXTENTS_R
   # _NET_FRAME_EXTENTS_T
+  # _NET_WM_NAME_UTF8_STRING
   # _NET_WORKAREA_H
   # _NET_WORKAREA_W
   # _OPTION_WINDOW_ID
@@ -2260,7 +2390,8 @@ function _set_window_position()
   # - first: the command to move the window
   # - "-i -r" order is important
   # - experimented with "-b add,above". something's not going as expected so
-  #   it's not used in $_COMMAND below
+  #   it's not used in $_COMMAND below. instead, do a second call to raise the
+  #   window
   # - $((expression))
   _COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 0,$(( $_COORDINATE_X + $_KLUDGE_X )),$(( $_COORDINATE_Y + $_KLUDGE_Y )),-1,-1"
 
@@ -2372,9 +2503,10 @@ function _window_id_acquire()
 
   # functions:
   # _eko_iod
-  # _eko_pS
-  # _eko_pS_en
+  # _eko_ps
+  # _eko_ps_en
   # _eko_pv
+  # _eko_pv_en
 
   # variables:
   # _OPTION_WINDOW_ID
@@ -2389,12 +2521,14 @@ function _window_id_acquire()
   # builtins:
   # echo
 
-  _eko_pS_en "Select the window to move:" ""
+  _eko_ps_en "Select the window to move:" ""
+  _eko_pv_en "select the window to move:" ""
 
   # - acquire Window ID via point'n'click
   _OUTPUT_XWININFO_ID=$(xwininfo)
 
-  _eko_pS "" ""
+  _eko_ps "" ""
+  _eko_pv "" ""
 
   _OPTION_WINDOW_ID=$(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Window id:/!d ; s/\(.*id: \)\|\( .*\)//g')
 

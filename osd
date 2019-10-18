@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# osd v2019.10.12
+# osd v2019.10.16
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -13,6 +13,19 @@
 # TODO:
 # - allow for override of a specific utility (if it's available)?
 
+# - remove the following at some point:
+#   #disabled# < keep this one (useful for testing)
+
+# OOPS:
+# - changelog order is unpredictable. some series of entries per date are
+#   chronologically top-to-bottom while others are bottom-to-top. preferred
+#   order is bottom-to-top. this will gradually be fixed when time permits
+
+# 2019-10-16
+# - "functions:/variables:/binaries:/builtins:" listings for each function
+#   updated & verified. also updated the "use & abuse" listings based on this
+#   information
+# - comment cleanup throughout the script
 # 2019-10-12
 # - "function _binary_validate_setup" completely rewrote "xmessage" testing
 # 2019-10-11
@@ -126,9 +139,9 @@
 #   concerned about changed syntax or output from one release to the next
 
 # NOTE: (builtin/binary/variable/function indentation)
-# - 2 spaces, hash, binary/variable/function name = in function
-# - 0 spaces, hash, binary/variable/function name = in main
-# NOTE: (system builtin use & abuse)
+# - 2 spaces, hash, builtin/binary/variable/function name = in function
+# - 0 spaces, hash, builtin/binary/variable/function name = in main
+# NOTE: (system builtin use & abuse - excluding echo/printf)
   # read
 # NOTE: (system binary use & abuse)
   # grep
@@ -163,6 +176,9 @@
   # _BINARY_XMESSAGE
   # _BOOLEAN_DEBUG
   # _BOOLEAN_VERBOSE
+  # _BUILTIN_HELP
+  # _BUILTIN_NAME
+  # _BUILTIN_OPTION
   # _EXIT_CODE
   # _HISTORY
   # _HOME
@@ -181,6 +197,7 @@
 # - script functions are always in the form "_foo"
   # _attempt_osd
   # _binary_validate_setup
+  # _builtin_validate_setup
   # _display_xauthority_acquire
   # _display_xauthority_verify
   # _eko_iod
@@ -296,6 +313,7 @@ function _attempt_osd()
     _eko_pv \$_OPTION_TIMEOUT: \""$_OPTION_TIMEOUT\""
 
     # NOTE:
+    # - steals focus
     # - the "&" is absolutely required
     # - no buttons. to close it, use what's available in the titlebar
     # - "--" is not supported
@@ -331,7 +349,7 @@ function _attempt_osd()
     _eko_pv \$_EXIT_CODE: \""$_EXIT_CODE\""
   fi
 
-  # - OSD succeeded, prevent multiple OSD popups on this display from the
+  # - OSD succeeded, prevent multiple OSD popups on this $DISPLAY from the
   #   same user
   if [[ $_EXIT_CODE -eq 0 ]]
   then
@@ -381,13 +399,6 @@ function _binary_validate_setup()
   # NOTE:
   # - be explicit, use long form options when available
 
-  # TODO:
-  # - the logic for kdialog, notify-send, & xmessage needs to be altered. at
-  #   least 1 of them must exist & support its required options
-
-  # IDEA:
-  # - move the nested testing from "function _attempt_osd" to here
-
   #+ grep +#
   # - "grep --help". stdout
   # - called in "function _display_xauthority_acquire"
@@ -407,12 +418,14 @@ function _binary_validate_setup()
   # - _BINARY_KDIALOG is set/unset
 
   _BINARY_NAME=kdialog
+#disabled#
   _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
     unset _BINARY_KDIALOG
   else
     _BINARY_OPTION=--passivepopup
+#disabled#
     if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
     then
       _BINARY_KDIALOG=$_BINARY_NAME
@@ -430,12 +443,14 @@ function _binary_validate_setup()
   # - _BINARY_NOTIFYSEND is set/unset
 
   _BINARY_NAME=notify-send
+#disabled#
   _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
     unset _BINARY_NOTIFYSEND
   else
     _BINARY_OPTION=--expire-time=TIME
+#disabled#
     if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
     then
       _BINARY_NOTIFYSEND=$_BINARY_NAME
@@ -452,33 +467,33 @@ function _binary_validate_setup()
 
 # c.s.c
 # 3.2.7  = procps-3.2.7-i486-2 (slackware 32 ?.?) (c, so who knows?)
-  # - "ps --help". stdout
-  # - "ps --help all". stderr (prefixed with single line error message)
+  # - "ps --help". stdout (full)
+  # - "ps --help all". stderr (full. prefixed with single line error message)
 
 # a.n.m
 # 3.2.8  = procps-3.2.8-i486-3 (slackware 32 14.0)
-  # - "ps --help". stdout
-  # - "ps --help all". stderr (prefixed with single line error message)
+  # - "ps --help". stdout (full)
+  # - "ps --help all". stderr (full. prefixed with single line error message)
 
 # d.n.m
 # 3.2.8  = procps-3.2.8-x86_64-4 (slackware 64 14.1)
-  # - "ps --help". stdout
-  # - "ps --help all". stderr (prefixed with single line error message)
+  # - "ps --help". stdout (full)
+  # - "ps --help all". stderr (full. prefixed with single line error message)
 
 # e.o.n
 # 3.3.11 = procps-ng-3.3.11-x86_64-1 (slackware 64 14.2)
-  # - "ps --help". stdout (basically useless)
-  # - "ps --help all". stdout
+  # - "ps --help". stdout (partial. basically useless)
+  # - "ps --help all". stdout (full)
 
 # *.e.l
 # 3.3.15 = procps-ng-3.3.15-i586-1_slack14.2
-  # - "ps --help". stdout (basically useless)
-  # - "ps --help all". stdout
+  # - "ps --help". stdout (partial. basically useless)
+  # - "ps --help all". stdout (full)
 
 # h.s.o
 # 3.3.15 = procps-ng-3.3.15-x86_64-1_slack14.2
-  # - "ps --help". stdout (basically useless)
-  # - "ps --help all". stdout
+  # - "ps --help". stdout (partial. basically useless)
+  # - "ps --help all". stdout (full)
 
   #+ ps +#
   # - "ps --help all". stdout or stderr depending on version
@@ -533,8 +548,8 @@ then
   # - so much for using it in scripts where X *is* running, but xmessage is
   #   called from outside such an environment (ie: /etc/acpi/acpi_handler.sh)
   # - the alternate method below (compared to kdialog & notify-send) appears
-  #   to work properly
-  #   (keeping both new & old routines for the moment)
+  #   to function properly
+  #   (keeping both new & old routines for the moment - for additional testing)
 
   #+ xmessage +#
   # - "xmessage -help". stdout
@@ -544,6 +559,7 @@ then
   # - _BINARY_XMESSAGE is set/unset
 
   _BINARY_NAME=xmessage
+#disabled#
   _BINARY_HELP=$(echo $($_BINARY_NAME -help 2>&1))
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
@@ -556,10 +572,12 @@ then
       _BINARY_XMESSAGE=$_BINARY_NAME
     else
       _BINARY_OPTION=-buttons
+#disabled#
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _BINARY_XMESSAGE=$_BINARY_NAME
         _BINARY_OPTION=-timeout
+#disabled#
         if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
         then
           _BINARY_XMESSAGE=$_BINARY_NAME
@@ -625,7 +643,6 @@ else
   #- xmessage -#
 
 fi
-
 
   # - "-z string" = true if the length of string is zero
   if [[ -z $_BINARY_KDIALOG ]] \
@@ -733,6 +750,7 @@ function _display_xauthority_acquire()
   #   the environment (think: /etc/acpi/acpi_handler.sh)
   # - this routine will fail in a big way if either $DISPLAY or $XAUTHORITY
   #   contain spaces
+  # ^ if this happens to you, please inform me of the X environment involved  
   while read $_OPTIONS_READ -- \
   _OUTPUT_PS_GREP
   do
@@ -766,7 +784,7 @@ function _display_xauthority_acquire()
       _PREFIX=${_PREFIX/* /}         # remove prefix
       _SUFFIX=${_OUTPUT_PS_GREP/*:/} # remove prefix
       _SUFFIX=${_SUFFIX/ */}         # remove suffix
-      DISPLAY=$_PREFIX:$_SUFFIX      # put it all together. note the embedded ":"
+      DISPLAY=$_PREFIX:$_SUFFIX      # put it all together. note the ":"
 
       # - acquire X's controlling user now. we might need it later
       # - what remains of $_OUTPUT_PS_GREP is more than enough for this
@@ -785,7 +803,7 @@ function _display_xauthority_acquire()
     # - "/X.*" matches "/usr/bin/X" or "/usr/libexec/Xorg" & anything
     #   (including nothing) afterwards, then matches " -auth "
     # - the 2 patterns will *always* be in this order (binary then options)
-    # - DISPLAY & XAUTHORITY can be easily derived from the results
+    # - $DISPLAY & $XAUTHORITY can be easily derived from the results
   done \
   < \
   <(ps ax --format=user,command | grep -- "/[X].* -auth ")
@@ -831,6 +849,7 @@ function _display_xauthority_verify()
     else
       _eko_pv \$XAUTHORITY: \""$XAUTHORITY\" (fail)"
 
+      # NOTE:
       # - but we kept the username. with the username, acquire home directory
       #   so "home directory"/.Xauthority can be tested
       # - why do the following at all? so this script can be run from a
@@ -838,13 +857,13 @@ function _display_xauthority_verify()
 
       _eko_pv \$_USER: \""$_USER\""
 
-      # - be explicit for clarity
-      _HOME="$(sed --expression="/^$_USER:.*/!d ; s/.*:.*:.*:.*:.*:\(.*\):.*/\1/g" /etc/passwd)"
-
       # NOTE:
       # - doublequotes around the commandline enclosed within $() are mandatory
       # - it's highly unlikely that the user's home directory will contain
       #   special characters, but it *is* technically possible. account for it
+
+      # - be explicit for clarity
+      _HOME="$(sed --expression="/^$_USER:.*/!d ; s/.*:.*:.*:.*:.*:\(.*\):.*/\1/g" /etc/passwd)"
 
       _eko_pv \$_HOME: \""$_HOME\""
 
@@ -866,7 +885,7 @@ function _display_xauthority_verify()
     unset DISPLAY
   fi
 
-  # - if we have both, attempt OSD (but only once per $DISPLAY)
+  # - if we have both, attempt OSD (but only once per $DISPLAY per user)
   # - "-n string" = true if the length of string is non-zero
   if [[ -n $DISPLAY ]] \
   && [[ -n $XAUTHORITY ]]
@@ -963,6 +982,7 @@ function _parse_parameters()
 
   # functions:
   # _binary_validate_setup
+  # _builtin_validate_setup
   # _display_xauthority_acquire
   # _eko_iod
   # _eko_pv
@@ -974,6 +994,9 @@ function _parse_parameters()
   # 1
   # 2
   # RANDOM
+  # _BINARY_KDIALOG
+  # _BINARY_NOTIFYSEND
+  # _BINARY_XMESSAGE
   # _BOOLEAN_DEBUG
   # _BOOLEAN_VERBOSE
   # _OPTION_MESSAGE
@@ -1183,10 +1206,10 @@ Notes:
 # variables:
 # @
 
-# binaries
+# binaries:
 # (none)
 
-# builtins
+# builtins:
 # (none)
 
 _parse_parameters "$@"

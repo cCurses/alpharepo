@@ -1687,6 +1687,16 @@ function _get_net_wm_desktop_cardinal()
   # builtins:
   # echo
 
+  # NOTE:
+  # - assumed
+
+  # NOTE:
+  # - starts at "0" not "1"
+
+  # - _NET_WM_DESKTOP, CARDINAL/32
+  # "_NET_WM_DESKTOP(CARDINAL) = "
+  # "0"
+
 #+ marker sed syntax +#
 # old
 #  _NET_WM_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_DESKTOP(CARDINAL) = /!d ; s/.* = //g')

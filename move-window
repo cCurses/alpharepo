@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# move-window v2019.10.16
+# move-window v2019.10.19
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -45,6 +45,28 @@
 #   chronologically top-to-bottom while others are bottom-to-top. preferred
 #   order is bottom-to-top. this will gradually be fixed when time permits
 
+# 2019-10-19
+# - experimenting with different sed syntax formats. output is identical
+#   between the old & new approaches, but the new approach is technically
+#   faster (not that it matters in this script). if nothing else, this is a
+#   good reference
+# - look for #+ marker sed syntax +# / #- marker sed syntax -#
+# - when possible, only the changed sub-expression with a small portion of
+#   context is mentioned here for brevity
+#  was: 's/.*Corners: \(.*\) -geometry.*/\1/g' # 1 change
+#   is: '/.*Corners: \(.*\) -geometry.*/ s//\1/g'
+#  was: /!d ; s/.* # //g') # 1 change
+#   is: /!d ; /.* # / s///g')
+#  was: /!d ; s/.* = //g') # 4 changes
+#   is: /!d ; /.* = / s///g')
+#  was: /!d ; s/\(.* # \|,\)//g') # 1 change
+#   is: /!d ; /\(.* # \|,\)/ s///g')
+#  was: /!d ; s/\(.* = \|,\)//g') # 6 changes
+#   is: /!d ; /\(.* = \|,\)/ s///g')
+#  was: 's/.*Width: \(.*\) Height: \(.*\) Depth:.*/\1 \2/g' # 1 change
+#   is: '/.*Width: \(.*\) Height: \(.*\) Depth:.*/ s//\1 \2/g'
+#  was: /!d ; s/\(.*id: \)\|\( .*\)//g') # 1 change
+#   is: /!d ; /\(.*id: \)\|\( .*\)/ s///g')
 # 2019-10-16
 # -  renamed functions globally:
 #  was: _eko_pS
@@ -731,11 +753,17 @@ function _coordinates_force()
 
     # - remove everything else. why? there's a non-zero chance that the
     #   plus/minus pair could be in the window title (think: web browser)
-    _CORNERS=$(echo $_OUTPUT_XWININFO_ID | sed --expression='s/.*Corners: \(.*\) -geometry.*/\1/g')
+#+ marker sed syntax +#
+# old
+#    _CORNERS=$(echo $_OUTPUT_XWININFO_ID | sed --expression='s/.*Corners: \(.*\) -geometry.*/\1/g')
+# new
+    _CORNERS=$(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Corners: \(.*\) -geometry.*/ s//\1/g')
+#- marker sed syntax -#
 
-    # - go a bit overkill:
-    #   "--" & "+-" are certain
-    #   "++" & "-+" are "because I can"
+    #    top/left:  +-/- +-/-
+    # bottom/left:  +-/- --/+
+    #    top/right: --/+ +-/-
+    # bottom/right: --/+ --/+
     if [[ $_CORNERS =~ .*[-+][-+].* ]]
     then
       _eko_pv \$_OPTION_WINDOW_ID: \""$_OPTION_WINDOW_ID\""
@@ -1190,7 +1218,12 @@ function _get_net_active_window_window()
   # "_NET_ACTIVE_WINDOW(WINDOW): window id # "
   # "0xa0005d"
 
-  _NET_ACTIVE_WINDOW_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_ACTIVE_WINDOW(WINDOW): window id # /!d ; s/.* # //g')
+#+ marker sed syntax +#
+# old
+#  _NET_ACTIVE_WINDOW_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_ACTIVE_WINDOW(WINDOW): window id # /!d ; s/.* # //g')
+# new
+  _NET_ACTIVE_WINDOW_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_ACTIVE_WINDOW(WINDOW): window id # /!d ; /.* # / s///g')
+#- marker sed syntax -#
 
   _eko_pv \$_NET_ACTIVE_WINDOW_WINDOW: \""$_NET_ACTIVE_WINDOW_WINDOW\""
 
@@ -1221,7 +1254,12 @@ function _get_net_client_list_window()
   # etc, etc
   # "0x3600099"
 
-  _NET_CLIENT_LIST_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d ; s/\(.* # \|,\)//g')
+#+ marker sed syntax +#
+# old
+#  _NET_CLIENT_LIST_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d ; s/\(.* # \|,\)//g')
+# new
+  _NET_CLIENT_LIST_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d ; /\(.* # \|,\)/ s///g')
+#- marker sed syntax -#
 
   _eko_pv \$_NET_CLIENT_LIST_WINDOW: \""$_NET_CLIENT_LIST_WINDOW\""
 
@@ -1254,7 +1292,12 @@ function _get_net_current_desktop_cardinal()
   # "_NET_CURRENT_DESKTOP(CARDINAL) = "
   # "0"
 
-  _NET_CURRENT_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CURRENT_DESKTOP(CARDINAL) = /!d ; s/.* = //g')
+#+ marker sed syntax +#
+# old
+#  _NET_CURRENT_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CURRENT_DESKTOP(CARDINAL) = /!d ; s/.* = //g')
+# new
+  _NET_CURRENT_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CURRENT_DESKTOP(CARDINAL) = /!d ; /.* = / s///g')
+#- marker sed syntax -#
 
   _eko_pv \$_NET_CURRENT_DESKTOP_CARDINAL: \""$_NET_CURRENT_DESKTOP_CARDINAL\""
 
@@ -1288,7 +1331,12 @@ function _get_net_desktop_geometry_cardinal()
   # "1920, "
   # "1080"
 
-  _NET_DESKTOP_GEOMETRY_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_GEOMETRY(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
+#+ marker sed syntax +#
+# old
+#  _NET_DESKTOP_GEOMETRY_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_GEOMETRY(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
+# new
+  _NET_DESKTOP_GEOMETRY_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_GEOMETRY(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
+#- marker sed syntax -#
 
   _eko_pv \$_NET_DESKTOP_GEOMETRY_CARDINAL: \""$_NET_DESKTOP_GEOMETRY_CARDINAL\""
 
@@ -1361,7 +1409,12 @@ function _get_net_desktop_names_utf8_string()
   # ""VII", "
   # ""VIII""
 
-  _NET_DESKTOP_NAMES_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_NAMES(UTF8_STRING) = /!d ; s/\(.* = \|,\)//g')
+#+ marker sed syntax +#
+# old
+#  _NET_DESKTOP_NAMES_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_NAMES(UTF8_STRING) = /!d ; s/\(.* = \|,\)//g')
+# new
+  _NET_DESKTOP_NAMES_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_NAMES(UTF8_STRING) = /!d ; /\(.* = \|,\)/ s///g')
+#- marker sed syntax -#
 
   _eko_pv \$_NET_DESKTOP_NAMES_UTF8_STRING: \""$_NET_DESKTOP_NAMES_UTF8_STRING\""
 
@@ -1469,7 +1522,12 @@ function _get_net_desktop_viewport_cardinal()
   # "0, 0, "
   # "0, 0"
 
-  _NET_DESKTOP_VIEWPORT_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_VIEWPORT(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
+#+ marker sed syntax +#
+# old
+#  _NET_DESKTOP_VIEWPORT_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_VIEWPORT(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
+# new
+  _NET_DESKTOP_VIEWPORT_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_VIEWPORT(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
+#- marker sed syntax -#
 
   _eko_pv \$_NET_DESKTOP_VIEWPORT_CARDINAL: \""$_NET_DESKTOP_VIEWPORT_CARDINAL\""
 
@@ -1549,7 +1607,12 @@ function _get_net_frame_extents_cardinal()
   # "22, "
   # "6"
 
-  _NET_FRAME_EXTENTS_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_FRAME_EXTENTS(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
+#+ marker sed syntax +#
+# old
+#  _NET_FRAME_EXTENTS_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_FRAME_EXTENTS(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
+# new
+  _NET_FRAME_EXTENTS_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_FRAME_EXTENTS(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
+#- marker sed syntax -#
 
   _eko_pv \$_NET_FRAME_EXTENTS_CARDINAL: \""$_NET_FRAME_EXTENTS_CARDINAL\""
 
@@ -1594,7 +1657,12 @@ function _get_net_number_of_desktops_cardinal()
   # "_NET_NUMBER_OF_DESKTOPS(CARDINAL) = "
   # "8"
 
-  _NET_NUMBER_OF_DESKTOPS_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_NUMBER_OF_DESKTOPS(CARDINAL) = /!d ; s/.* = //g')
+#+ marker sed syntax +#
+# old
+#  _NET_NUMBER_OF_DESKTOPS_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_NUMBER_OF_DESKTOPS(CARDINAL) = /!d ; s/.* = //g')
+# new
+  _NET_NUMBER_OF_DESKTOPS_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_NUMBER_OF_DESKTOPS(CARDINAL) = /!d ; /.* = / s///g')
+#- marker sed syntax -#
 
   _eko_pv \$_NET_NUMBER_OF_DESKTOPS_CARDINAL: \""$_NET_NUMBER_OF_DESKTOPS_CARDINAL\""
 
@@ -1619,7 +1687,12 @@ function _get_net_wm_desktop_cardinal()
   # builtins:
   # echo
 
-  _NET_WM_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_DESKTOP(CARDINAL) = /!d ; s/.* = //g')
+#+ marker sed syntax +#
+# old
+#  _NET_WM_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_DESKTOP(CARDINAL) = /!d ; s/.* = //g')
+# new
+  _NET_WM_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_DESKTOP(CARDINAL) = /!d ; /.* = / s///g')
+#- marker sed syntax -#
 
   _eko_pv \$_NET_WM_DESKTOP_CARDINAL: \""$_NET_WM_DESKTOP_CARDINAL\""
 
@@ -1647,7 +1720,12 @@ function _get_net_wm_name_utf8_string()
   # NOTE:
   # - we need this for "function _coordinates_kludge"
 
-  _NET_WM_NAME_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_NAME(UTF8_STRING) = /!d ; s/.* = //g')
+#+ marker sed syntax +#
+# old
+#  _NET_WM_NAME_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_NAME(UTF8_STRING) = /!d ; s/.* = //g')
+# new
+  _NET_WM_NAME_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_NAME(UTF8_STRING) = /!d ; /.* = / s///g')
+#- marker sed syntax -#
 
   _eko_pv \$_NET_WM_NAME_UTF8_STRING: \""$_NET_WM_NAME_UTF8_STRING\""
 
@@ -1690,7 +1768,12 @@ function _get_net_wm_state_atom()
   #   _NET_WM_STATE_BELOW, ATOM
   #   _NET_WM_STATE_DEMANDS_ATTENTION, ATOM
 
-  _NET_WM_STATE_ATOM=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_STATE(ATOM) = /!d ; s/\(.* = \|,\)//g')
+#+ marker sed syntax +#
+# old
+#  _NET_WM_STATE_ATOM=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_STATE(ATOM) = /!d ; s/\(.* = \|,\)//g')
+# new
+  _NET_WM_STATE_ATOM=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_STATE(ATOM) = /!d ; /\(.* = \|,\)/ s///g')
+#- marker sed syntax -#
 
   _eko_pv \$_NET_WM_STATE_ATOM: \""$_NET_WM_STATE_ATOM\""
 
@@ -1751,7 +1834,12 @@ function _get_net_workarea_cardinal()
   # "0, 0, 1852, 1056, "
   # "0, 0, 1852, 1056"
 
-  _NET_WORKAREA_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_WORKAREA(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
+#+ marker sed syntax +#
+# old
+#  _NET_WORKAREA_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_WORKAREA(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
+# new
+  _NET_WORKAREA_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_WORKAREA(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
+#- marker sed syntax -#
 
   _eko_pv \$_NET_WORKAREA_CARDINAL: \""$_NET_WORKAREA_CARDINAL\""
 
@@ -1910,7 +1998,14 @@ function _get_window_undecorated_geometry()
   _WINDOW_UNDECORATED_X \
   _WINDOW_UNDECORATED_Y \
   < \
-  <(echo $_OUTPUT_XWININFO_ID | sed --expression='s/.*Width: \(.*\) Height: \(.*\) Depth:.*/\1 \2/g')
+  <(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Width: \(.*\) Height: \(.*\) Depth:.*/ s//\1 \2/g')
+
+#+ marker sed syntax +#
+# old
+#  <(echo $_OUTPUT_XWININFO_ID | sed --expression='s/.*Width: \(.*\) Height: \(.*\) Depth:.*/\1 \2/g')
+# new
+#  <(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Width: \(.*\) Height: \(.*\) Depth:.*/ s//\1 \2/g')
+#- marker sed syntax -#
 
   _eko_pv \$_WINDOW_UNDECORATED_X: \""$_WINDOW_UNDECORATED_X\""
   _eko_pv \$_WINDOW_UNDECORATED_Y: \""$_WINDOW_UNDECORATED_Y\""
@@ -2530,7 +2625,12 @@ function _window_id_acquire()
   _eko_ps "" ""
   _eko_pv "" ""
 
-  _OPTION_WINDOW_ID=$(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Window id:/!d ; s/\(.*id: \)\|\( .*\)//g')
+#+ marker sed syntax +#
+# old
+#  _OPTION_WINDOW_ID=$(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Window id:/!d ; s/\(.*id: \)\|\( .*\)//g')
+# new
+  _OPTION_WINDOW_ID=$(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Window id:/!d ; /\(.*id: \)\|\( .*\)/ s///g')
+#- marker sed syntax -#
 
   _OUTPUT_XPROP_ID=$(xprop -id $_OPTION_WINDOW_ID)
 

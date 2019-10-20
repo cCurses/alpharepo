@@ -210,17 +210,16 @@ _BOOLEAN_TESTING_01=true # enabled
 # ^ it's an internal use (not script option) variable for use in
 #   "function _pathnames_scan" to signify that one of the many *sum routines
 #   should be called
-# - added the following functions:
-#  add: function _pathname_openssl_sha1sum()
-#  add: function _pathname_openssl_sha224sum()
-#  add: function _pathname_openssl_sha256sum()
-#  add: function _pathname_openssl_sha384sum()
-#  add: function _pathname_openssl_sha512sum()
-#  add: function _pathname_sha1sum_sha1sum()
-#  add: function _pathname_sha224sum_sha224sum()
-#  add: function _pathname_sha256sum_sha256sum()
-#  add: function _pathname_sha384sum_sha384sum()
-#  add: function _pathname_sha512sum_sha512sum()
+# - "function _pathname_openssl_sha1sum" added
+# - "function _pathname_openssl_sha224sum" added
+# - "function _pathname_openssl_sha256sum" added
+# - "function _pathname_openssl_sha384sum" added
+# - "function _pathname_openssl_sha512sum" added
+# - "function _pathname_sha1sum_sha1sum" added
+# - "function _pathname_sha224sum_sha224sum" added
+# - "function _pathname_sha256sum_sha256sum" added
+# - "function _pathname_sha384sum_sha384sum" added
+# - "function _pathname_sha512sum_sha512sum" added
 # - "function _show_help" reordered the option/description list to group the
 #   various *sum routines together
 # - "function _show_help" added the following lines:

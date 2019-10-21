@@ -10,12 +10,6 @@
 # concept:
 # - move selected window to desired position on desktop
 
-# TODO:
-# - add a few routines (knowing they're not really necessary) for gathering
-#   additional information
-# ^ get the specific names via "xprop -root"
-#+ marker edit +#
-
 # IDEA:
 # - somehow do a set of multiple calls to wmctrl so "-l, --lower" can be
 #   implemented. do so in such a way that focus is not "stolen". if this
@@ -330,6 +324,7 @@
   # _BOOLEAN_OVERALL
   # _BOOLEAN_RAISE
   # _BOOLEAN_STDOUT
+  # _BOOLEAN_UNUSED
   # _BOOLEAN_VERBOSE
   # _BUILTIN_HELP
   # _BUILTIN_NAME
@@ -1256,6 +1251,7 @@ function _get_net_active_window_window()
   # echo
 
   # NOTE:
+  # - unused?
   # - do we need this? I don't think so
   # - possibly in the future, though. as part of an alternate approach to
   #   implement "-l, --lower" & "-r, --raise"
@@ -1396,9 +1392,9 @@ function _get_net_desktop_geometry_cardinal()
   # _eko_pv
 
   # variables:
+  # _NET_DESKTOP_GEOMETRY_CARDINAL
   # _NET_DESKTOP_GEOMETRY_H
   # _NET_DESKTOP_GEOMETRY_W
-  # _NET_DESKTOP_GEOMETRY_CARDINAL
   # _OPTIONS_READ (read options, not script options)
   # _OUTPUT_XPROP_ROOT
 
@@ -1512,6 +1508,7 @@ function _get_net_desktop_names_utf8_string()
   # echo
 
   # NOTE:
+  # - unused?
   # - do we need this? I don't think so
   # - keep it anyway. it's a good reference
 
@@ -1640,6 +1637,7 @@ function _get_net_desktop_viewport_cardinal()
   # echo
 
   # NOTE:
+  # - unused?
   # - do we need this? I don't think so
 
   # NOTE:
@@ -2472,6 +2470,7 @@ function _parse_parameters()
   # _BOOLEAN_OVERALL
   # _BOOLEAN_RAISE
   # _BOOLEAN_STDOUT
+  # _BOOLEAN_UNUSED
   # _BOOLEAN_VERBOSE
   # _OPTION_WINDOW_COORDINATES
   # _OPTION_WINDOW_ID
@@ -2504,7 +2503,7 @@ function _parse_parameters()
   _BOOLEAN_OVERALL=false # control
   _BOOLEAN_RAISE=false   # action
   _BOOLEAN_STDOUT=true   # display
-  _BOOLEAN_UNUSED=false  # display
+  _BOOLEAN_UNUSED=false  # control
   _BOOLEAN_VERBOSE=false # display
   unset _OPTION_WINDOW_COORDINATES
   unset _OPTION_WINDOW_ID

@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# move-window v2019.10.20
+# move-window v2019.10.22
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -40,6 +40,27 @@
 #   chronologically top-to-bottom while others are bottom-to-top. preferred
 #   order is bottom-to-top. this will gradually be fixed when time permits
 
+# 2019-10-22
+
+# (pending)
+# - clean up today's set of notes when I'm finished with the changes
+
+# (pending)
+# - "function _pass_fail_by_window_type" possibly use a different test string
+#   for matching the root window. not 100% sure what's in use is universal
+
+# (in progress)
+# - "function _pass_fail_by_window_type" gathered copious amounts of
+#   information of each known window type. possibly improve the tests with
+#   this new information
+
+# (done)
+# - "function _pass_fail_by_window_id" when a given window's id fails, call
+#   "function _pass_fail_by_window_type" to get a descriptive error message
+# - "function _pass_fail_by_window_type" improved tests for kdialog's 2
+#   seemingly random modes of creating popups. both modes are now properly
+#   trapped
+# - removed all comments in #+ marker sed syntax +# / #- marker sed syntax -#
 # 2019-10-20
 # - "function _eko_pv" changed the following line:
 #  was: printf "%34s " "$1"
@@ -240,15 +261,18 @@
 #   "_NET_WM_DESKTOP(CARDINAL) = 5"
 #   "_NET_WM_DESKTOP(CARDINAL) = 6"
 #   "_NET_WM_DESKTOP(CARDINAL) = 7"
-# - tint2, wmagnify sticky, xfce4-panel
-#   _NET_WM_DESKTOP(CARDINAL) = 4294967295
-# - wmagnify normal
-#   _NET_WM_DESKTOP(CARDINAL) = 0
+# - gkrellm (not in the dock), kdialog (in its random "top/right of display"
+#   mode), notify-send, tint2, wmagnify (sticky), xfce4-panel
+#   "_NET_WM_DESKTOP(CARDINAL) = 4294967295"
+# - wmagnify (normal), xmessage
+#   "_NET_WM_DESKTOP(CARDINAL) = 0"
+# ^ kdialog (in its random "center of display" mode) has absolutely no mention
+#   of "_NET_WM_DESKTOP(CARDINAL)" in its report
 
 # NOTE:
 # - I would have expected to see "_NET_WM_STATE(ATOM) = _NET_WM_STATE_STICKY"
 #   when I see "_NET_WM_DESKTOP(CARDINAL) = 4294967295", but that isn't the
-#   case in openbox. weird
+#   case in openbox. I'm obviously missing the point about something
 
 # NOTE: (to self) (& others, if you're bored. hi there!)
 # - look for anything with the following tags: EDIT FIXME IDEA NOTE ORDER TODO
@@ -495,7 +519,6 @@ function _binary_validate_setup()
   #+ sed +#
   # - "sed --help". stdout
   #   "--expression=script" (no "=" required) (use "=" for uniformity)
-  #   "--silent"
 
   _BINARY_NAME=sed
   _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
@@ -504,12 +527,6 @@ function _binary_validate_setup()
     _show_error "required binary \"$_BINARY_NAME\" not found"
   else
     _BINARY_OPTION=--expression=script
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
-
-    _BINARY_OPTION=--silent
     if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
     then
       _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
@@ -790,6 +807,12 @@ function _coordinates_force()
   # builtins:
   # echo
 
+  # IDEA:
+  # - maybe get quite a bit fancier & put the window in workarea center while
+  #   taking into account window decorations & kludges (if needed)
+  # - if this approach is taken, do so from *within* the $_CORNERS test to
+  #   keep calculations at a minimum
+
   _get_net_desktop_geometry_cardinal
 
   for _OPTION_WINDOW_ID in $_NET_CLIENT_LIST_WINDOW
@@ -798,12 +821,7 @@ function _coordinates_force()
 
     # - remove everything else. why? there's a non-zero chance that the
     #   plus/minus pair could be in the window title (think: web browser)
-#+ marker sed syntax +#
-# old
-#    _CORNERS=$(echo $_OUTPUT_XWININFO_ID | sed --expression='s/.*Corners: \(.*\) -geometry.*/\1/g')
-# new
     _CORNERS=$(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Corners: \(.*\) -geometry.*/ s//\1/g')
-#- marker sed syntax -#
 
     #    top/left:  +-/- +-/-
     # bottom/left:  +-/- --/+
@@ -1264,12 +1282,7 @@ function _get_net_active_window_window()
   # "_NET_ACTIVE_WINDOW(WINDOW): window id # "
   # "0xa0005d"
 
-#+ marker sed syntax +#
-# old
-#  _NET_ACTIVE_WINDOW_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_ACTIVE_WINDOW(WINDOW): window id # /!d ; s/.* # //g')
-# new
   _NET_ACTIVE_WINDOW_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_ACTIVE_WINDOW(WINDOW): window id # /!d ; /.* # / s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_ACTIVE_WINDOW_WINDOW: \""$_NET_ACTIVE_WINDOW_WINDOW\""
 
@@ -1297,12 +1310,7 @@ function _get_net_client_list_stacking_window()
   # NOTE
   # - unused
 
-#+ marker sed syntax +#
-# old
-#  _NET_CLIENT_LIST_STACKING_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CLIENT_LIST_STACKING(WINDOW): window id # /!d ; s/\(.* # \|,\)//g')
-# new
   _NET_CLIENT_LIST_STACKING_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CLIENT_LIST_STACKING(WINDOW): window id # /!d ; /\(.* # \|,\)/ s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_CLIENT_LIST_STACKING_WINDOW: \""$_NET_CLIENT_LIST_STACKING_WINDOW\" (unused)"
 
@@ -1333,12 +1341,7 @@ function _get_net_client_list_window()
   # etc, etc
   # "0x3600099"
 
-#+ marker sed syntax +#
-# old
-#  _NET_CLIENT_LIST_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d ; s/\(.* # \|,\)//g')
-# new
   _NET_CLIENT_LIST_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d ; /\(.* # \|,\)/ s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_CLIENT_LIST_WINDOW: \""$_NET_CLIENT_LIST_WINDOW\""
 
@@ -1371,12 +1374,7 @@ function _get_net_current_desktop_cardinal()
   # "_NET_CURRENT_DESKTOP(CARDINAL) = "
   # "0"
 
-#+ marker sed syntax +#
-# old
-#  _NET_CURRENT_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CURRENT_DESKTOP(CARDINAL) = /!d ; s/.* = //g')
-# new
   _NET_CURRENT_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CURRENT_DESKTOP(CARDINAL) = /!d ; /.* = / s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_CURRENT_DESKTOP_CARDINAL: \""$_NET_CURRENT_DESKTOP_CARDINAL\""
 
@@ -1410,12 +1408,7 @@ function _get_net_desktop_geometry_cardinal()
   # "1920, "
   # "1080"
 
-#+ marker sed syntax +#
-# old
-#  _NET_DESKTOP_GEOMETRY_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_GEOMETRY(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
-# new
   _NET_DESKTOP_GEOMETRY_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_GEOMETRY(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_DESKTOP_GEOMETRY_CARDINAL: \""$_NET_DESKTOP_GEOMETRY_CARDINAL\""
 
@@ -1458,12 +1451,7 @@ function _get_net_desktop_layout_cardinal()
   # NOTE:
   # - unused
 
-#+ marker sed syntax +#
-# old
-#  _NET_DESKTOP_LAYOUT_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_LAYOUT(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
-# new
   _NET_DESKTOP_LAYOUT_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_LAYOUT(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_DESKTOP_LAYOUT_CARDINAL: \""$_NET_DESKTOP_LAYOUT_CARDINAL\" (unused)"
 
@@ -1541,12 +1529,7 @@ function _get_net_desktop_names_utf8_string()
   # ""VII", "
   # ""VIII""
 
-#+ marker sed syntax +#
-# old
-#  _NET_DESKTOP_NAMES_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_NAMES(UTF8_STRING) = /!d ; s/\(.* = \|,\)//g')
-# new
   _NET_DESKTOP_NAMES_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_NAMES(UTF8_STRING) = /!d ; /\(.* = \|,\)/ s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_DESKTOP_NAMES_UTF8_STRING: \""$_NET_DESKTOP_NAMES_UTF8_STRING\""
 
@@ -1655,12 +1638,7 @@ function _get_net_desktop_viewport_cardinal()
   # "0, 0, "
   # "0, 0"
 
-#+ marker sed syntax +#
-# old
-#  _NET_DESKTOP_VIEWPORT_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_VIEWPORT(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
-# new
   _NET_DESKTOP_VIEWPORT_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_VIEWPORT(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_DESKTOP_VIEWPORT_CARDINAL: \""$_NET_DESKTOP_VIEWPORT_CARDINAL\""
 
@@ -1740,12 +1718,7 @@ function _get_net_frame_extents_cardinal()
   # "22, "
   # "6"
 
-#+ marker sed syntax +#
-# old
-#  _NET_FRAME_EXTENTS_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_FRAME_EXTENTS(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
-# new
   _NET_FRAME_EXTENTS_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_FRAME_EXTENTS(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_FRAME_EXTENTS_CARDINAL: \""$_NET_FRAME_EXTENTS_CARDINAL\""
 
@@ -1790,12 +1763,7 @@ function _get_net_number_of_desktops_cardinal()
   # "_NET_NUMBER_OF_DESKTOPS(CARDINAL) = "
   # "8"
 
-#+ marker sed syntax +#
-# old
-#  _NET_NUMBER_OF_DESKTOPS_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_NUMBER_OF_DESKTOPS(CARDINAL) = /!d ; s/.* = //g')
-# new
   _NET_NUMBER_OF_DESKTOPS_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_NUMBER_OF_DESKTOPS(CARDINAL) = /!d ; /.* = / s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_NUMBER_OF_DESKTOPS_CARDINAL: \""$_NET_NUMBER_OF_DESKTOPS_CARDINAL\""
 
@@ -1823,12 +1791,7 @@ function _get_net_showing_desktop_cardinal()
   # NOTE:
   # - unused
 
-#+ marker sed syntax +#
-# old
-#  _NET_SHOWING_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_SHOWING_DESKTOP(CARDINAL) = /!d ; s/.* = //g')
-# new
   _NET_SHOWING_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_SHOWING_DESKTOP(CARDINAL) = /!d ; /.* = / s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_SHOWING_DESKTOP_CARDINAL: \""$_NET_SHOWING_DESKTOP_CARDINAL\" (unused)"
 
@@ -1856,12 +1819,7 @@ function _get_net_supported_atom()
   # NOTE:
   # - unused
 
-#+ marker sed syntax +#
-# old
-#  _NET_SUPPORTED_ATOM=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_SUPPORTED(ATOM) = /!d ; s/\(.* = \|,\)//g')
-# new
   _NET_SUPPORTED_ATOM=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_SUPPORTED(ATOM) = /!d ; /\(.* = \|,\)/ s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_SUPPORTED_ATOM: \""$_NET_SUPPORTED_ATOM\" (unused)"
 
@@ -1889,12 +1847,7 @@ function _get_net_supporting_wm_check_window()
   # NOTE:
   # - unused
 
-#+ marker sed syntax +#
-# old
-#  _NET_SUPPORTING_WM_CHECK_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_SUPPORTING_WM_CHECK(WINDOW): window id # /!d ; s/.* # //g')
-# new
   _NET_SUPPORTING_WM_CHECK_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_SUPPORTING_WM_CHECK(WINDOW): window id # /!d ; /.* # / s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_SUPPORTING_WM_CHECK_WINDOW: \""$_NET_SUPPORTING_WM_CHECK_WINDOW\" (unused)"
 
@@ -1922,12 +1875,7 @@ function _get_net_wm_allowed_actions_atom()
   # NOTE:
   # - unused
 
-#+ marker sed syntax +#
-# old
-#  _NET_WM_ALLOWED_ACTIONS_ATOM=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_ALLOWED_ACTIONS(ATOM) = /!d ; s/\(.* = \|,\)//g')
-# new
   _NET_WM_ALLOWED_ACTIONS_ATOM=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_ALLOWED_ACTIONS(ATOM) = /!d ; /\(.* = \|,\)/ s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_WM_ALLOWED_ACTIONS_ATOM: \""$_NET_WM_ALLOWED_ACTIONS_ATOM\" (unused)"
 
@@ -1962,12 +1910,7 @@ function _get_net_wm_desktop_cardinal()
   # "_NET_WM_DESKTOP(CARDINAL) = "
   # "0"
 
-#+ marker sed syntax +#
-# old
-#  _NET_WM_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_DESKTOP(CARDINAL) = /!d ; s/.* = //g')
-# new
   _NET_WM_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_DESKTOP(CARDINAL) = /!d ; /.* = / s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_WM_DESKTOP_CARDINAL: \""$_NET_WM_DESKTOP_CARDINAL\""
 
@@ -2001,12 +1944,7 @@ function _get_net_wm_icon_geometry_cardinal()
   # NOTE:
   # - unused
 
-#+ marker sed syntax +#
-# old
-#  _NET_WM_ICON_GEOMETRY_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_ICON_GEOMETRY(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
-# new
   _NET_WM_ICON_GEOMETRY_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_ICON_GEOMETRY(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_WM_ICON_GEOMETRY_CARDINAL: \""$_NET_WM_ICON_GEOMETRY_CARDINAL\" (unused)"
 
@@ -2047,12 +1985,7 @@ function _get_net_wm_name_utf8_string()
   # NOTE:
   # - we need this for "function _coordinates_kludge"
 
-#+ marker sed syntax +#
-# old
-#  _NET_WM_NAME_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_NAME(UTF8_STRING) = /!d ; s/.* = //g')
-# new
   _NET_WM_NAME_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_NAME(UTF8_STRING) = /!d ; /.* = / s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_WM_NAME_UTF8_STRING: \""$_NET_WM_NAME_UTF8_STRING\""
 
@@ -2095,12 +2028,7 @@ function _get_net_wm_state_atom()
   #   _NET_WM_STATE_BELOW, ATOM
   #   _NET_WM_STATE_DEMANDS_ATTENTION, ATOM
 
-#+ marker sed syntax +#
-# old
-#  _NET_WM_STATE_ATOM=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_STATE(ATOM) = /!d ; s/\(.* = \|,\)//g')
-# new
   _NET_WM_STATE_ATOM=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_STATE(ATOM) = /!d ; /\(.* = \|,\)/ s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_WM_STATE_ATOM: \""$_NET_WM_STATE_ATOM\""
 
@@ -2148,12 +2076,7 @@ function _get_net_wm_visible_icon_name_utf8_string()
   # NOTE:
   # - unused
 
-#+ marker sed syntax +#
-# old
-#  _NET_WM_VISIBLE_ICON_NAME_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_VISIBLE_ICON_NAME(UTF8_STRING) = /!d ; s/.* = //g')
-# new
    _NET_WM_VISIBLE_ICON_NAME_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_VISIBLE_ICON_NAME(UTF8_STRING) = /!d ; /.* = / s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_WM_VISIBLE_ICON_NAME_UTF8_STRING: \""$_NET_WM_VISIBLE_ICON_NAME_UTF8_STRING\" (unused)"
 
@@ -2181,12 +2104,7 @@ function _get_net_wm_visible_name_utf8_string()
   # NOTE:
   # - unused
 
-#+ marker sed syntax +#
-# old
-#  _NET_WM_VISIBLE_NAME_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_VISIBLE_NAME(UTF8_STRING) = /!d ; s/.* = //g')
-# new
    _NET_WM_VISIBLE_NAME_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_VISIBLE_NAME(UTF8_STRING) = /!d ; /.* = / s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_WM_VISIBLE_NAME_UTF8_STRING: \""$_NET_WM_VISIBLE_NAME_UTF8_STRING\" (unused)"
 
@@ -2227,12 +2145,7 @@ function _get_net_workarea_cardinal()
   # "0, 0, 1852, 1056, "
   # "0, 0, 1852, 1056"
 
-#+ marker sed syntax +#
-# old
-#  _NET_WORKAREA_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_WORKAREA(CARDINAL) = /!d ; s/\(.* = \|,\)//g')
-# new
   _NET_WORKAREA_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_WORKAREA(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
-#- marker sed syntax -#
 
   _eko_pv \$_NET_WORKAREA_CARDINAL: \""$_NET_WORKAREA_CARDINAL\""
 
@@ -2392,13 +2305,6 @@ function _get_window_undecorated_geometry()
   _WINDOW_UNDECORATED_Y \
   < \
   <(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Width: \(.*\) Height: \(.*\) Depth:.*/ s//\1 \2/g')
-
-#+ marker sed syntax +#
-# old
-#  <(echo $_OUTPUT_XWININFO_ID | sed --expression='s/.*Width: \(.*\) Height: \(.*\) Depth:.*/\1 \2/g')
-# new
-#  <(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Width: \(.*\) Height: \(.*\) Depth:.*/ s//\1 \2/g')
-#- marker sed syntax -#
 
   _eko_pv \$_WINDOW_UNDECORATED_X: \""$_WINDOW_UNDECORATED_X\""
   _eko_pv \$_WINDOW_UNDECORATED_Y: \""$_WINDOW_UNDECORATED_Y\""
@@ -2689,8 +2595,6 @@ function _parse_parameters()
   #- parameter settings (in (mostly) proper order of operation) -#
 
   # - and so it begins
-  # - for a change, I'm going to try doing as much as possible from here to
-  #   the end of this function. buckle up, this could be an interesting read
 
   # - we'll be using this information for a lot of things (several of the
   #   _get_net_* functions). just grab everything once
@@ -2804,6 +2708,7 @@ function _pass_fail_by_window_id()
 
   # functions:
   # _eko_iod
+  # _pass_fail_by_window_type
   # _show_error
 
   # variables:
@@ -2816,9 +2721,16 @@ function _pass_fail_by_window_id()
   # builtins:
   # (none)
 
+  # NOTE:
+  # - "function _pass_fail_by_window_type" already does the heavy lifting in
+  #   terms of identifying the window *type*, so simply call it to fully
+  #   identify said window
+  # - additional benefit of this approach is there's only one code path that
+  #   would require future maintenance
+
   if [[ ! " $_NET_CLIENT_LIST_WINDOW " =~ " $_OPTION_WINDOW_ID " ]]
   then
-    _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" specified"
+    _pass_fail_by_window_type
   fi
 
   _eko_iod "#- _pass_fail_by_window_id -#"
@@ -2843,13 +2755,278 @@ function _pass_fail_by_window_type()
   # builtins:
   # echo
 
+#+
+# test for things that are guaranteed to be unique for each type of "thing"
+# without getting overspecific
+
+  # NOTE:
+  # - information gathered via "xprop | grep ^_NET_ | sort"
+  # - keep this information for later use
+  # ^ "_NET_WM_ALLOWED_ACTIONS(ATOM)" could be of particular interest
+  # - for portability, deliberately limiting tests to *only* _NET_* entries
+  # - mildly annoying. xmessage is indistinguishable from a normal window
+  #   simply because it *is* one
+
+# - the root window (lots & lots of information)
+# "_NET_ACTIVE_WINDOW(WINDOW): window id # 0xa000b3"
+# "_NET_CLIENT_LIST(WINDOW): window id # 0xe00008, 0x1200004, 0xa00009, 0xa0002b, 0xa0004d, 0xa0006f, 0xa00091, 0xa000b3, 0xa000d5, 0xa000f7, 0xa00119, 0xa0018b, 0xa001ad, 0xa001cf, 0xa001f1, 0xa00213, 0xa00235, 0xa00257, 0xa00279, 0xa0029b, 0xa00361, 0xa0038b, 0xa003b5, 0xa00409, 0xa00433, 0xa00477, 0xa00499, 0xa0063e, 0xa00c05, 0xa00c2f, 0xa00d1f, 0xa00f91, 0xa00fb4, 0xa01369, 0xa01393, 0x3400011, 0xa01755, 0xa01787, 0xa017a9, 0xa017cb, 0xa019b1, 0xa019db, 0xa01a25, 0xa01a47, 0x36000de, 0x4000099, 0x360024f, 0x3600316, 0x36004a8, 0xa01b72, 0x36007a2"
+# "_NET_CLIENT_LIST_STACKING(WINDOW): window id # 0xa00009, 0xa01393, 0xa01a47, 0xa001f1, 0xa0029b, 0xa01a25, 0xa00235, 0xa00257, 0xa00213, 0x36004a8, 0xa00499, 0xa017cb, 0xa01b72, 0xa00477, 0xa01369, 0xa00c05, 0xa00c2f, 0xa00d1f, 0xa019b1, 0xa0038b, 0xa019db, 0xa001cf, 0x3600316, 0xa00f91, 0xa01787, 0x36000de, 0x360024f, 0x36007a2, 0xa000f7, 0xa001ad, 0xa00409, 0xa0004d, 0xa0018b, 0xa00279, 0xa00433, 0xa017a9, 0xa0006f, 0xa000d5, 0x4000099, 0x3400011, 0xa0002b, 0xa00fb4, 0xa00119, 0xa01755, 0xa0063e, 0xa00361, 0xa003b5, 0xa00091, 0xa000b3, 0xe00008, 0x1200004"
+# "_NET_CURRENT_DESKTOP(CARDINAL) = 0"
+# "_NET_DESKTOP_GEOMETRY(CARDINAL) = 1920, 1080"
+# "_NET_DESKTOP_LAYOUT(CARDINAL) = 1, 1, 0, 0"
+# "_NET_DESKTOP_NAMES(UTF8_STRING) = "I", "II", "III", "IV", "V", "VI", "VII", "VIII""
+# "_NET_DESKTOP_VIEWPORT(CARDINAL) = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0"
+# "_NET_NUMBER_OF_DESKTOPS(CARDINAL) = 8"
+# "_NET_SHOWING_DESKTOP(CARDINAL) = 0"
+# "_NET_SUPPORTED(ATOM) = _NET_SUPPORTING_WM_CHECK, _NET_WM_FULL_PLACEMENT, _NET_CURRENT_DESKTOP, _NET_NUMBER_OF_DESKTOPS, _NET_DESKTOP_GEOMETRY, _NET_DESKTOP_VIEWPORT, _NET_ACTIVE_WINDOW, _NET_WORKAREA, _NET_CLIENT_LIST, _NET_CLIENT_LIST_STACKING, _NET_DESKTOP_NAMES, _NET_CLOSE_WINDOW, _NET_DESKTOP_LAYOUT, _NET_SHOWING_DESKTOP, _NET_WM_NAME, _NET_WM_VISIBLE_NAME, _NET_WM_ICON_NAME, _NET_WM_VISIBLE_ICON_NAME, _NET_WM_DESKTOP, _NET_WM_STRUT, _NET_WM_STRUT_PARTIAL, _NET_WM_ICON, _NET_WM_ICON_GEOMETRY, _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_DESKTOP, _NET_WM_WINDOW_TYPE_DOCK, _NET_WM_WINDOW_TYPE_TOOLBAR, _NET_WM_WINDOW_TYPE_MENU, _NET_WM_WINDOW_TYPE_UTILITY, _NET_WM_WINDOW_TYPE_SPLASH, _NET_WM_WINDOW_TYPE_DIALOG, _NET_WM_WINDOW_TYPE_NORMAL, _NET_WM_ALLOWED_ACTIONS, _NET_WM_WINDOW_OPACITY, _NET_WM_ACTION_MOVE, _NET_WM_ACTION_RESIZE, _NET_WM_ACTION_MINIMIZE, _NET_WM_ACTION_SHADE, _NET_WM_ACTION_MAXIMIZE_HORZ, _NET_WM_ACTION_MAXIMIZE_VERT, _NET_WM_ACTION_FULLSCREEN, _NET_WM_ACTION_CHANGE_DESKTOP, _NET_WM_ACTION_CLOSE, _NET_WM_ACTION_ABOVE, _NET_WM_ACTION_BELOW, _NET_WM_STATE, _NET_WM_STATE_MODAL, _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_MAXIMIZED_HORZ, _NET_WM_STATE_SHADED, _NET_WM_STATE_SKIP_TASKBAR, _NET_WM_STATE_SKIP_PAGER, _NET_WM_STATE_HIDDEN, _NET_WM_STATE_FULLSCREEN, _NET_WM_STATE_ABOVE, _NET_WM_STATE_BELOW, _NET_WM_STATE_DEMANDS_ATTENTION, _NET_MOVERESIZE_WINDOW, _NET_WM_MOVERESIZE, _NET_WM_USER_TIME, _NET_FRAME_EXTENTS, _NET_REQUEST_FRAME_EXTENTS, _NET_RESTACK_WINDOW, _NET_STARTUP_ID, _NET_WM_SYNC_REQUEST, _NET_WM_SYNC_REQUEST_COUNTER, _NET_WM_PID, _NET_WM_PING, _KDE_WM_CHANGE_STATE, _KDE_NET_WM_FRAME_STRUT, _KDE_NET_WM_WINDOW_TYPE_OVERRIDE, _OB_WM_ACTION_UNDECORATE, _OB_WM_STATE_UNDECORATED, _OPENBOX_PID, _OB_THEME, _OB_CONFIG_FILE, _OB_CONTROL, _OB_VERSION, _OB_APP_ROLE, _OB_APP_TITLE, _OB_APP_NAME, _OB_APP_CLASS, _OB_APP_GROUP_NAME, _OB_APP_GROUP_CLASS, _OB_APP_TYPE"
+# "_NET_SUPPORTING_WM_CHECK(WINDOW): window id # 0x8000bb"
+# "_NET_WM_ICON(CARDINAL) = 	Icon (16 x 16):"
+# "_NET_WORKAREA(CARDINAL) = 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056"
+
+# - firefox (new instance, same one as below . not maximized)
+# - ok, what? "_NET_WM_STATE(ATOM)" is the opposite of what's actually there
+# "_NET_FRAME_EXTENTS(CARDINAL) = 0, 0, 21, 0"
+# "_NET_WM_ALLOWED_ACTIONS(ATOM) = _NET_WM_ACTION_CHANGE_DESKTOP, _NET_WM_ACTION_SHADE, _NET_WM_ACTION_CLOSE, _NET_WM_ACTION_MOVE, _NET_WM_ACTION_MINIMIZE, _NET_WM_ACTION_RESIZE, _NET_WM_ACTION_FULLSCREEN, _NET_WM_ACTION_MAXIMIZE_HORZ, _NET_WM_ACTION_MAXIMIZE_VERT, _NET_WM_ACTION_ABOVE, _NET_WM_ACTION_BELOW, _OB_WM_ACTION_UNDECORATE"
+# "_NET_WM_DESKTOP(CARDINAL) = 0"
+# "_NET_WM_ICON(CARDINAL) = 	Icon (22 x 22):"
+# "_NET_WM_ICON_GEOMETRY(CARDINAL) = 1588, 1056, 117, 24"
+# "_NET_WM_ICON_NAME(UTF8_STRING) = "Mozilla Firefox""
+# "_NET_WM_NAME(UTF8_STRING) = "Mozilla Firefox""
+# "_NET_WM_OPAQUE_REGION(CARDINAL) = "
+# "_NET_WM_PID(CARDINAL) = 26071"
+# "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_MAXIMIZED_HORZ"
+# "_NET_WM_SYNC_REQUEST_COUNTER(CARDINAL) = 56625144, 56625145"
+# "_NET_WM_USER_TIME(CARDINAL) = 2553561896"
+# "_NET_WM_USER_TIME_WINDOW(WINDOW): window id # 0x36007f7"
+# "_NET_WM_VISIBLE_ICON_NAME(UTF8_STRING) = "Mozilla Firefox""
+# "_NET_WM_VISIBLE_NAME(UTF8_STRING) = "Mozilla Firefox""
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NORMAL"
+
+# - firefox (new instance, same one as above. maximized)
+# - ok, what? "_NET_WM_STATE(ATOM)" is the opposite of what's actually there
+# "_NET_FRAME_EXTENTS(CARDINAL) = 1, 1, 22, 6"
+# "_NET_WM_ALLOWED_ACTIONS(ATOM) = _NET_WM_ACTION_CHANGE_DESKTOP, _NET_WM_ACTION_SHADE, _NET_WM_ACTION_CLOSE, _NET_WM_ACTION_MOVE, _NET_WM_ACTION_MINIMIZE, _NET_WM_ACTION_RESIZE, _NET_WM_ACTION_FULLSCREEN, _NET_WM_ACTION_MAXIMIZE_HORZ, _NET_WM_ACTION_MAXIMIZE_VERT, _NET_WM_ACTION_ABOVE, _NET_WM_ACTION_BELOW, _OB_WM_ACTION_UNDECORATE"
+# "_NET_WM_DESKTOP(CARDINAL) = 0"
+# "_NET_WM_ICON(CARDINAL) = 	Icon (22 x 22):"
+# "_NET_WM_ICON_GEOMETRY(CARDINAL) = 1588, 1056, 117, 24"
+# "_NET_WM_ICON_NAME(UTF8_STRING) = "Mozilla Firefox""
+# "_NET_WM_NAME(UTF8_STRING) = "Mozilla Firefox""
+# "_NET_WM_OPAQUE_REGION(CARDINAL) = "
+# "_NET_WM_PID(CARDINAL) = 26071"
+# "_NET_WM_STATE(ATOM) = "
+# "_NET_WM_SYNC_REQUEST_COUNTER(CARDINAL) = 56625144, 56625145"
+# "_NET_WM_USER_TIME(CARDINAL) = 2553561896"
+# "_NET_WM_USER_TIME_WINDOW(WINDOW): window id # 0x36007f7"
+# "_NET_WM_VISIBLE_ICON_NAME(UTF8_STRING) = "Mozilla Firefox""
+# "_NET_WM_VISIBLE_NAME(UTF8_STRING) = "Mozilla Firefox""
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NORMAL"
+
+# - gkrellm (not in the dock)
+# "_NET_FRAME_EXTENTS(CARDINAL) = 0, 0, 0, 0"
+# "_NET_WM_ALLOWED_ACTIONS(ATOM) = _NET_WM_ACTION_CHANGE_DESKTOP, _NET_WM_ACTION_CLOSE, _NET_WM_ACTION_MOVE, _NET_WM_ACTION_MINIMIZE, _NET_WM_ACTION_FULLSCREEN, _NET_WM_ACTION_ABOVE, _NET_WM_ACTION_BELOW, _OB_WM_ACTION_UNDECORATE"
+# "_NET_WM_DESKTOP(CARDINAL) = 4294967295"
+# "_NET_WM_ICON(CARDINAL) = 	Icon (16 x 16):"
+# "_NET_WM_ICON_GEOMETRY(CARDINAL) = 1588, 1056, 117, 24"
+# "_NET_WM_ICON_NAME(UTF8_STRING) = "gkrellm""
+# "_NET_WM_NAME(UTF8_STRING) = "gkrellm""
+# "_NET_WM_PID(CARDINAL) = 16706"
+# "_NET_WM_STATE(ATOM) = _NET_WM_STATE_SKIP_TASKBAR, _NET_WM_STATE_SKIP_PAGER"
+# "_NET_WM_SYNC_REQUEST_COUNTER(CARDINAL) = 88080389"
+# "_NET_WM_USER_TIME_WINDOW(WINDOW): window id # 0x5400004"
+# "_NET_WM_VISIBLE_ICON_NAME(UTF8_STRING) = "gkrellm""
+# "_NET_WM_VISIBLE_NAME(UTF8_STRING) = "gkrellm""
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NORMAL"
+
+# - kdialog (in its random "center of display" mode)
+# "_NET_STARTUP_ID(UTF8_STRING) = "0""
+# "_NET_WM_ICON(CARDINAL) = 	Icon (16 x 16):"
+# "_NET_WM_PID(CARDINAL) = 17149"
+# "_NET_WM_STATE(ATOM) = _NET_WM_STATE_ABOVE, _NET_WM_STATE_STAYS_ON_TOP"
+# "_NET_WM_SYNC_REQUEST_COUNTER(CARDINAL) = 88080407"
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_UTILITY, _KDE_NET_WM_WINDOW_TYPE_OVERRIDE, _NET_WM_WINDOW_TYPE_NORMAL"
+
+# - kdialog (in its random "top/right of display" mode)
+# "_NET_WM_DESKTOP(CARDINAL) = 4294967295"
+# "_NET_WM_ICON_NAME(UTF8_STRING) = "xfce4-notifyd""
+# "_NET_WM_NAME(UTF8_STRING) = "xfce4-notifyd""
+# "_NET_WM_PID(CARDINAL) = 18733"
+# "_NET_WM_STATE(ATOM) = _NET_WM_STATE_ABOVE, _NET_WM_STATE_STICKY, _NET_WM_STATE_SKIP_TASKBAR, _NET_WM_STATE_SKIP_PAGER"
+# "_NET_WM_SYNC_REQUEST_COUNTER(CARDINAL) = 88080645"
+# "_NET_WM_USER_TIME(CARDINAL) = 2565348851"
+# "_NET_WM_USER_TIME_WINDOW(WINDOW): window id # 0x5400104"
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NOTIFICATION"
+
+# - notify-send
+# "_NET_WM_DESKTOP(CARDINAL) = 4294967295"
+# "_NET_WM_ICON_NAME(UTF8_STRING) = "xfce4-notifyd""
+# "_NET_WM_NAME(UTF8_STRING) = "xfce4-notifyd""
+# "_NET_WM_PID(CARDINAL) = 14910"
+# "_NET_WM_STATE(ATOM) = _NET_WM_STATE_ABOVE, _NET_WM_STATE_STICKY, _NET_WM_STATE_SKIP_TASKBAR, _NET_WM_STATE_SKIP_PAGER"
+# "_NET_WM_SYNC_REQUEST_COUNTER(CARDINAL) = 88080425"
+# "_NET_WM_USER_TIME_WINDOW(WINDOW): window id # 0x5400028"
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NOTIFICATION"
+
+# - openbox dock (below is the entire report even without the grep)
+# - clicking on anything in the dock gets this
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_DOCK"
+
+# - quasselclient
+# "_NET_FRAME_EXTENTS(CARDINAL) = 1, 1, 22, 6"
+# "_NET_STARTUP_ID(UTF8_STRING) = "0""
+# "_NET_WM_ALLOWED_ACTIONS(ATOM) = _NET_WM_ACTION_CHANGE_DESKTOP, _NET_WM_ACTION_SHADE, _NET_WM_ACTION_CLOSE, _NET_WM_ACTION_MOVE, _NET_WM_ACTION_MINIMIZE, _NET_WM_ACTION_RESIZE, _NET_WM_ACTION_FULLSCREEN, _NET_WM_ACTION_MAXIMIZE_HORZ, _NET_WM_ACTION_MAXIMIZE_VERT, _NET_WM_ACTION_ABOVE, _NET_WM_ACTION_BELOW, _OB_WM_ACTION_UNDECORATE"
+# "_NET_WM_DESKTOP(CARDINAL) = 0"
+# "_NET_WM_ICON(CARDINAL) = 	Icon (64 x 64):"
+# "_NET_WM_ICON_GEOMETRY(CARDINAL) = 1449, 1056, 126, 24"
+# "_NET_WM_ICON_NAME(UTF8_STRING) = "Quassel IRC - #slackware (OFTC)""
+# "_NET_WM_NAME(UTF8_STRING) = "Quassel IRC - #slackware (OFTC)""
+# "_NET_WM_PID(CARDINAL) = 1769"
+# "_NET_WM_STATE(ATOM) = "
+# "_NET_WM_SYNC_REQUEST_COUNTER(CARDINAL) = 54526060"
+# "_NET_WM_USER_TIME(CARDINAL) = 2553195505"
+# "_NET_WM_VISIBLE_ICON_NAME(UTF8_STRING) = "Quassel IRC - #slackware (OFTC)""
+# "_NET_WM_VISIBLE_NAME(UTF8_STRING) = "Quassel IRC - #slackware (OFTC)""
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NORMAL"
+
+# - rxvt (lots to choose from)
+# "_NET_FRAME_EXTENTS(CARDINAL) = 1, 1, 22, 6"
+# "_NET_WM_ALLOWED_ACTIONS(ATOM) = _NET_WM_ACTION_CHANGE_DESKTOP, _NET_WM_ACTION_SHADE, _NET_WM_ACTION_CLOSE, _NET_WM_ACTION_MOVE, _NET_WM_ACTION_MINIMIZE, _NET_WM_ACTION_RESIZE, _NET_WM_ACTION_FULLSCREEN, _NET_WM_ACTION_MAXIMIZE_HORZ, _NET_WM_ACTION_MAXIMIZE_VERT, _NET_WM_ACTION_ABOVE, _NET_WM_ACTION_BELOW, _OB_WM_ACTION_UNDECORATE"
+# "_NET_WM_DESKTOP(CARDINAL) = 0"
+# "_NET_WM_ICON(CARDINAL) = 	Icon (48 x 48):"
+# "_NET_WM_ICON_GEOMETRY(CARDINAL) = 795, 1056, 127, 24"
+# "_NET_WM_ICON_NAME(UTF8_STRING) = "[erik@beryllium.elements.lan ~/devel/bash/scanfs/testing/stdout]""
+# "_NET_WM_NAME(UTF8_STRING) = "[erik@beryllium.elements.lan ~/devel/bash/scanfs/testing/stdout]""
+# "_NET_WM_PID(CARDINAL) = 1438"
+# "_NET_WM_STATE(ATOM) = "
+# "_NET_WM_VISIBLE_ICON_NAME(UTF8_STRING) = "[erik@beryllium.elements.lan ~/devel/bash/scanfs/testing/stdout]""
+# "_NET_WM_VISIBLE_NAME(UTF8_STRING) = "[erik@beryllium.elements.lan ~/devel/bash/scanfs/testing/stdout]""
+
+# - tint2
+# "_NET_FRAME_EXTENTS(CARDINAL) = 0, 0, 0, 0"
+# "_NET_WM_ALLOWED_ACTIONS(ATOM) = _NET_WM_ACTION_CHANGE_DESKTOP, _NET_WM_ACTION_BELOW"
+# "_NET_WM_DESKTOP(CARDINAL) = 4294967295"
+# "_NET_WM_ICON(CARDINAL) = 	Icon (48 x 48):"
+# "_NET_WM_ICON_NAME(UTF8_STRING) = "tint2""
+# "_NET_WM_NAME(UTF8_STRING) = "tint2""
+# "_NET_WM_PID(CARDINAL) = 1454"
+# "_NET_WM_STATE(ATOM) = _NET_WM_STATE_SKIP_TASKBAR, _NET_WM_STATE_SKIP_PAGER, _NET_WM_STATE_ABOVE"
+# "_NET_WM_STRUT(CARDINAL) = 0, 0, 0, 24"
+# "_NET_WM_STRUT_PARTIAL(CARDINAL) = 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 1919"
+# "_NET_WM_VISIBLE_ICON_NAME(UTF8_STRING) = "tint2""
+# "_NET_WM_VISIBLE_NAME(UTF8_STRING) = "tint2""
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_DOCK"
+
+# - wmagnify (normal)
+# - the only difference between normal & sticky is "_NET_WM_DESKTOP(CARDINAL)"
+# "_NET_FRAME_EXTENTS(CARDINAL) = 1, 1, 22, 6"
+# "_NET_WM_ALLOWED_ACTIONS(ATOM) = _NET_WM_ACTION_CHANGE_DESKTOP, _NET_WM_ACTION_SHADE, _NET_WM_ACTION_CLOSE, _NET_WM_ACTION_MOVE, _NET_WM_ACTION_MINIMIZE, _NET_WM_ACTION_RESIZE, _NET_WM_ACTION_FULLSCREEN, _NET_WM_ACTION_MAXIMIZE_HORZ, _NET_WM_ACTION_MAXIMIZE_VERT, _NET_WM_ACTION_ABOVE, _NET_WM_ACTION_BELOW, _OB_WM_ACTION_UNDECORATE"
+# "_NET_WM_DESKTOP(CARDINAL) = 0"
+# "_NET_WM_ICON(CARDINAL) = 	Icon (48 x 48):"
+# "_NET_WM_ICON_GEOMETRY(CARDINAL) = 1579, 1056, 126, 24"
+# "_NET_WM_NAME(UTF8_STRING) = "Magnify 3x""
+# "_NET_WM_STATE(ATOM) = "
+# "_NET_WM_VISIBLE_ICON_NAME(UTF8_STRING) = "Magnify 3x""
+# "_NET_WM_VISIBLE_NAME(UTF8_STRING) = "Magnify 3x""
+
+# - wmagnify (sticky)
+# - the only difference between normal & sticky is "_NET_WM_DESKTOP(CARDINAL)"
+# "_NET_FRAME_EXTENTS(CARDINAL) = 1, 1, 22, 6"
+# "_NET_WM_ALLOWED_ACTIONS(ATOM) = _NET_WM_ACTION_CHANGE_DESKTOP, _NET_WM_ACTION_SHADE, _NET_WM_ACTION_CLOSE, _NET_WM_ACTION_MOVE, _NET_WM_ACTION_MINIMIZE, _NET_WM_ACTION_RESIZE, _NET_WM_ACTION_FULLSCREEN, _NET_WM_ACTION_MAXIMIZE_HORZ, _NET_WM_ACTION_MAXIMIZE_VERT, _NET_WM_ACTION_ABOVE, _NET_WM_ACTION_BELOW, _OB_WM_ACTION_UNDECORATE"
+# "_NET_WM_DESKTOP(CARDINAL) = 4294967295"
+# "_NET_WM_ICON(CARDINAL) = 	Icon (48 x 48):"
+# "_NET_WM_ICON_GEOMETRY(CARDINAL) = 1555, 1056, 150, 24"
+# "_NET_WM_NAME(UTF8_STRING) = "Magnify 3x""
+# "_NET_WM_STATE(ATOM) = "
+# "_NET_WM_VISIBLE_ICON_NAME(UTF8_STRING) = "Magnify 3x""
+# "_NET_WM_VISIBLE_NAME(UTF8_STRING) = "Magnify 3x""
+
+# - wmnd
+# - can only spawn *in* the dock, so untested
+
+# - xfce4-panel
+# "_NET_FRAME_EXTENTS(CARDINAL) = 0, 0, 0, 0"
+# "_NET_WM_ALLOWED_ACTIONS(ATOM) = _NET_WM_ACTION_CHANGE_DESKTOP, _NET_WM_ACTION_BELOW"
+# "_NET_WM_DESKTOP(CARDINAL) = 4294967295"
+# "_NET_WM_ICON(CARDINAL) = 	Icon (48 x 48):"
+# "_NET_WM_ICON_NAME(UTF8_STRING) = "xfce4-panel""
+# "_NET_WM_NAME(UTF8_STRING) = "xfce4-panel""
+# "_NET_WM_PID(CARDINAL) = 1453"
+# "_NET_WM_STATE(ATOM) = "
+# "_NET_WM_STRUT_PARTIAL(CARDINAL) = 0, 68, 0, 0, 0, 0, 481, 913, 0, 0, 0, 0"
+# "_NET_WM_SYNC_REQUEST_COUNTER(CARDINAL) = 18874374"
+# "_NET_WM_USER_TIME(CARDINAL) = 2525473096"
+# "_NET_WM_USER_TIME_WINDOW(WINDOW): window id # 0x1200005"
+# "_NET_WM_VISIBLE_ICON_NAME(UTF8_STRING) = "xfce4-panel""
+# "_NET_WM_VISIBLE_NAME(UTF8_STRING) = "xfce4-panel""
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_DOCK"
+
+# - xmessage
+# "_NET_FRAME_EXTENTS(CARDINAL) = 1, 1, 22, 6"
+# "_NET_WM_ALLOWED_ACTIONS(ATOM) = _NET_WM_ACTION_CHANGE_DESKTOP, _NET_WM_ACTION_SHADE, _NET_WM_ACTION_CLOSE, _NET_WM_ACTION_MOVE, _NET_WM_ACTION_MINIMIZE, _NET_WM_ACTION_RESIZE, _NET_WM_ACTION_FULLSCREEN, _NET_WM_ACTION_MAXIMIZE_HORZ, _NET_WM_ACTION_MAXIMIZE_VERT, _NET_WM_ACTION_ABOVE, _NET_WM_ACTION_BELOW, _OB_WM_ACTION_UNDECORATE"
+# "_NET_WM_DESKTOP(CARDINAL) = 0"
+# "_NET_WM_ICON(CARDINAL) = 	Icon (48 x 48):"
+# "_NET_WM_ICON_GEOMETRY(CARDINAL) = 1588, 1056, 117, 24"
+# "_NET_WM_STATE(ATOM) = "
+# "_NET_WM_VISIBLE_ICON_NAME(UTF8_STRING) = "xmessage""
+# "_NET_WM_VISIBLE_NAME(UTF8_STRING) = "xmessage""
+#-
+
+##++
+# - the root window
+# nothing from "_NET_WM_WINDOW_TYPE(ATOM)"
+
+# - firefox
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NORMAL"
+
+# - gkrellm (not in the dock)
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NORMAL"
+
+# - kdialog (in its random "center of display" mode)
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_UTILITY, _KDE_NET_WM_WINDOW_TYPE_OVERRIDE, _NET_WM_WINDOW_TYPE_NORMAL"
+
+# - kdialog (in its random "top/right of display" mode)
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NOTIFICATION"
+
+# - notify-send
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NOTIFICATION"
+
+# - openbox dock (& anything/everything in it)
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_DOCK"
+
+# - quasselclient
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NORMAL"
+
+# - rxvt
+# nothing from "_NET_WM_WINDOW_TYPE(ATOM)"
+
+# - tint2
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_DOCK"
+
+# - wmagnify normal & wmagnify sticky
+# nothing from "_NET_WM_WINDOW_TYPE(ATOM)"
+
+# - xfce4-panel
+# "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_DOCK"
+
+# - xmessage
+# nothing from "_NET_WM_WINDOW_TYPE(ATOM)"
+##--
+
+  # TODO:
+  # - be complete: discover the other window types & add error exits for each
+
   # NOTE:
   # - the root window itself
   #   "^_NET_CLIENT_LIST(WINDOW): window id # "
-  # - blackbox/fluxbox/openbox dock, likely others
+  # - blackbox/fluxbox/openbox dock, tint2 panel/taskbar, likely others
   #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DOCK.*"
-  # - notify-send notification popup, likely others
+  # - notify-send popup
   #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_NOTIFICATION.*"
+  # - kdialog popup (in its random "center of display" mode)
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_UTILITY.*"
+  # - kdialog popup (in its random "top/right of display" mode)
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_NOTIFICATION.*"
+  # - xmessage popup
+  # ^ untested here simply because it's a normal window
 
   _OUTPUT_XPROP_ID=$(xprop -id $_OPTION_WINDOW_ID)
 
@@ -2864,7 +3041,11 @@ function _pass_fail_by_window_type()
   # - "-n string" = true if the length of string is non-zero
   elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_NOTIFICATION.*/!d') ]]
   then
-    _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (notification popup) specified"
+    _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (notification) specified"
+  # - "-n string" = true if the length of string is non-zero
+  elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_UTILITY.*/!d') ]]
+  then
+    _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (utility) specified"
   fi
 
   _eko_iod "#- _pass_fail_by_window_type -#"
@@ -3058,12 +3239,7 @@ function _window_id_acquire()
   _eko_ps "" ""
   _eko_pv "" ""
 
-#+ marker sed syntax +#
-# old
-#  _OPTION_WINDOW_ID=$(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Window id:/!d ; s/\(.*id: \)\|\( .*\)//g')
-# new
   _OPTION_WINDOW_ID=$(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Window id:/!d ; /\(.*id: \)\|\( .*\)/ s///g')
-#- marker sed syntax -#
 
   _OUTPUT_XPROP_ID=$(xprop -id $_OPTION_WINDOW_ID)
 

@@ -83,6 +83,11 @@
 # - add functions for anything not tabbed
 # - before adding anything, I need to discover the appropriate sed invocation
 #   for each one
+# ^ 2 finished, 3 remaining
+
+# - indented with tab = script already supports
+# - # = xprop -root
+# - ## = xprop -id 0xF00
 
 # - root window properties (& related messages)
 
@@ -128,28 +133,49 @@
 
 #+
 # _NET_WM_STRUT, left, right, top, bottom, CARDINAL[4]/32
-# _NET_WM_STRUT_PARTIAL, left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x, CARDINAL[12]/32
 # "_NET_WM_STRUT(CARDINAL) = 0, 0, 0, 24"
-# "_NET_WM_STRUT_PARTIAL(CARDINAL) = 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 1919"
+
+# L
+# R
+# T
+# B
 #-
 
 #+
-# _NET_WM_USER_TIME CARDINAL/32
-# _NET_WM_USER_TIME_WINDOW WINDOW/32
-# "_NET_WM_USER_TIME(CARDINAL) = 2553561896"
-# "_NET_WM_USER_TIME_WINDOW(WINDOW): window id # 0x36007f7"
+# _NET_WM_STRUT_PARTIAL, left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x, CARDINAL[12]/32
+# "_NET_WM_STRUT_PARTIAL(CARDINAL) = 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 1919"
 
-function _get_net_active_window_window()
+# L
+# R
+# T
+# B
+
+# LSY
+# LEY
+# RSY
+# REY
+
+# TSX
+# TEX
+# BSX
+# BEX
+#-
+
+#+ marker unused +#
+
+## _NET_WM_USER_TIME_WINDOW WINDOW/32
+## "_NET_WM_USER_TIME_WINDOW(WINDOW): window id # 0x36007f7"
+function _get_net_wm_user_time_window_window()
 {
-  _eko_iod "#+ _get_net_active_window_window +#"
+  _eko_iod "#+ _get_net_wm_user_time_window_window +#"
 
   # functions:
   # _eko_iod
   # _eko_pv
 
   # variables:
-  # _NET_ACTIVE_WINDOW_WINDOW
-  # _OUTPUT_XPROP_ROOT
+  # _NET_WM_USER_TIME_WINDOW_WINDOW
+  # _OUTPUT_XPROP_ID
 
   # binaries:
   # sed
@@ -158,36 +184,63 @@ function _get_net_active_window_window()
   # echo
 
   # NET:
-  # - _NET_ACTIVE_WINDOW, WINDOW/32
+  # - _NET_WM_USER_TIME CARDINAL/32
 
-  # "_NET_ACTIVE_WINDOW(WINDOW): window id # "
-  # "0xa000b3"
+  # "_NET_WM_USER_TIME(CARDINAL) = "
+  # "2553195505"
 
   # NOTE:
-  # - unused?
-  # - do we need this? I don't think so
-  # - possibly in the future, though. as part of an alternate approach to
-  #   implement "-l, --lower" & "-r, --raise"
+  # - unused
 
-  # IDEA:
-  # - or do we? when it comes time to move the window, use this window id if
-  #   none was specified. result: currently focussed window will be processed
+  _NET_WM_USER_TIME_WINDOW_WINDOW=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_USER_TIME_WINDOW(WINDOW): window id # /!d ; /.* # / s///g')
 
-  _NET_ACTIVE_WINDOW_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed 
---expression='/^_NET_ACTIVE_WINDOW(WINDOW): window id # /!d ; /.* # / s///g')
+  _eko_pv \$_NET_WM_USER_TIME_WINDOW_WINDOW: \""$_NET_WM_USER_TIME_WINDOW_WINDOW\" (unused)"
 
-  _eko_pv \$_NET_ACTIVE_WINDOW_WINDOW: \""$_NET_ACTIVE_WINDOW_WINDOW\""
-
-  _eko_iod "#- _get_net_active_window_window -#"
+  _eko_iod "#- _get_net_wm_user_time_window_window -#"
 }
 
+## _NET_WM_USER_TIME CARDINAL/32
+## "_NET_WM_USER_TIME(CARDINAL) = 2553561896"
+function _get_net_wm_user_time_cardinal()
+{
+  _eko_iod "#+ _get_net_wm_user_time_cardinal +#"
 
+  # functions:
+  # _eko_iod
+  # _eko_pv
 
-#-
+  # variables:
+
+  # _NET_WM_USER_TIME_CARDINAL
+  # _OUTPUT_XPROP_ID
+
+  # binaries:
+  # sed
+
+  # builtins:
+  # echo
+
+  # NET:
+  # - _NET_WM_USER_TIME CARDINAL/32
+
+  # "_NET_WM_USER_TIME(CARDINAL) = "
+  # "2553195505"
+
+  # NOTE:
+  # - unused
+
+  _NET_WM_USER_TIME_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_USER_TIME(CARDINAL) = /!d ; /.* = / s///g')
+
+  _eko_pv \$_NET_WM_USER_TIME_CARDINAL: \""$_NET_WM_USER_TIME_CARDINAL\" (unused)"
+
+  _eko_iod "#- _get_net_wm_user_time_cardinal -#"
+}
 
 	## _NET_WM_VISIBLE_ICON_NAME, UTF8_STRING
 	## _NET_WM_VISIBLE_NAME, UTF8_STRING
 	## _NET_WM_WINDOW_TYPE, ATOM[]/32 (several items listed)
+
+#- marker unused -#
 
 # (done)
 # - added comments about _NET_* entities in each function where they're
@@ -3023,6 +3076,8 @@ function _parse_parameters()
       _get_net_wm_icon_geometry_cardinal
       _get_net_wm_visible_icon_name_utf8_string
       _get_net_wm_visible_name_utf8_string
+_get_net_wm_user_time_cardinal
+_get_net_wm_user_time_window_window
     fi
 #- marker unused -#
 
@@ -3501,7 +3556,6 @@ exit 0
 # "_NET_WORKAREA(CARDINAL) = 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056, 0, 0, 1852, 1056"
 
 # - firefox (new instance, same one as below . not maximized)
-# - ok, what? "_NET_WM_STATE(ATOM)" is the opposite of what's actually there
 # "_NET_FRAME_EXTENTS(CARDINAL) = 0, 0, 21, 0"
 # "_NET_WM_ALLOWED_ACTIONS(ATOM) = _NET_WM_ACTION_CHANGE_DESKTOP, _NET_WM_ACTION_SHADE, _NET_WM_ACTION_CLOSE, _NET_WM_ACTION_MOVE, _NET_WM_ACTION_MINIMIZE, _NET_WM_ACTION_RESIZE, _NET_WM_ACTION_FULLSCREEN, _NET_WM_ACTION_MAXIMIZE_HORZ, _NET_WM_ACTION_MAXIMIZE_VERT, _NET_WM_ACTION_ABOVE, _NET_WM_ACTION_BELOW, _OB_WM_ACTION_UNDECORATE"
 # "_NET_WM_DESKTOP(CARDINAL) = 0"
@@ -3511,7 +3565,7 @@ exit 0
 # "_NET_WM_NAME(UTF8_STRING) = "Mozilla Firefox""
 # "_NET_WM_OPAQUE_REGION(CARDINAL) = "
 # "_NET_WM_PID(CARDINAL) = 26071"
-# "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_MAXIMIZED_HORZ"
+# "_NET_WM_STATE(ATOM) = "
 # "_NET_WM_SYNC_REQUEST_COUNTER(CARDINAL) = 56625144, 56625145"
 # "_NET_WM_USER_TIME(CARDINAL) = 2553561896"
 # "_NET_WM_USER_TIME_WINDOW(WINDOW): window id # 0x36007f7"
@@ -3520,7 +3574,6 @@ exit 0
 # "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NORMAL"
 
 # - firefox (new instance, same one as above. maximized)
-# - ok, what? "_NET_WM_STATE(ATOM)" is the opposite of what's actually there
 # "_NET_FRAME_EXTENTS(CARDINAL) = 1, 1, 22, 6"
 # "_NET_WM_ALLOWED_ACTIONS(ATOM) = _NET_WM_ACTION_CHANGE_DESKTOP, _NET_WM_ACTION_SHADE, _NET_WM_ACTION_CLOSE, _NET_WM_ACTION_MOVE, _NET_WM_ACTION_MINIMIZE, _NET_WM_ACTION_RESIZE, _NET_WM_ACTION_FULLSCREEN, _NET_WM_ACTION_MAXIMIZE_HORZ, _NET_WM_ACTION_MAXIMIZE_VERT, _NET_WM_ACTION_ABOVE, _NET_WM_ACTION_BELOW, _OB_WM_ACTION_UNDECORATE"
 # "_NET_WM_DESKTOP(CARDINAL) = 0"
@@ -3530,7 +3583,7 @@ exit 0
 # "_NET_WM_NAME(UTF8_STRING) = "Mozilla Firefox""
 # "_NET_WM_OPAQUE_REGION(CARDINAL) = "
 # "_NET_WM_PID(CARDINAL) = 26071"
-# "_NET_WM_STATE(ATOM) = "
+# "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_MAXIMIZED_HORZ"
 # "_NET_WM_SYNC_REQUEST_COUNTER(CARDINAL) = 56625144, 56625145"
 # "_NET_WM_USER_TIME(CARDINAL) = 2553561896"
 # "_NET_WM_USER_TIME_WINDOW(WINDOW): window id # 0x36007f7"

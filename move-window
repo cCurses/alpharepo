@@ -25,19 +25,18 @@
 # ^ "function _get_net_wm_state_atom" for examples
 # - this will not work. more details later
 
-# FIXME:
-# - Error: "xprop" does not support "-id id"
-# ^ if called from outside X
-# - give it similar treatment as that from osd's handler for xmessage
-# - xwininfo *might* require similar coddling
-# - do the important stuff listed below first, though
-# - or just add simple tests before everything else to see if the script is
-#   being called from within X. complain & quit if not
-# ^ possibly test for $DISPLAY &/or $XAUTHORITY
+# FIXME
+# - something's going on in "function _coordinates_validate". more notes there
+# - #+ marker testing +# / #- marker testing -#
 
 # NOTE:
 # - additional information acquired from:
 #   https://standards.freedesktop.org/wm-spec/wm-spec-latest.html
+
+# TODO:
+# - there are a small number of _NET_* properties mentioned in the freedesktop
+#   specification that lack information suitable for me to come up with syntax
+#   appropriate for calling sed. as such, they're not displayed (for now)
 
 # OOPS:
 # - changelog order is unpredictable. some series of entries per date are
@@ -45,204 +44,22 @@
 #   order is bottom-to-top. this will gradually be fixed when time permits
 
 # 2019-10-24
-
-# (pending)
-# - possibly add routines to dump information about _NET_* entities that are
-#   mentioned in the freedesktop specification not seen in openbox
-# ^ at worst, they'll simply display as "" for such entries (I hope)
-# - look for #+ marker unused +# / #- marker unused -#
-
-# - indented with tab = script already supports
-# - # = xprop -root
-# - ## = xprop -id 0xF00
-
-	# - "function _get_net_active_window_window"
-	# - "function _get_net_client_list_stacking_window"
-	# - "function _get_net_client_list_window"
-	# - "function _get_net_current_desktop_cardinal"
-	# - "function _get_net_desktop_geometry_cardinal"
-	# - "function _get_net_desktop_layout_cardinal"
-	# - "function _get_net_desktop_names_utf8_string"
-	# - "function _get_net_desktop_viewport_cardinal"
-	## - "function _get_net_frame_extents_cardinal"
-	# - "function _get_net_number_of_desktops_cardinal"
-	# - "function _get_net_showing_desktop_cardinal"
-	# - "function _get_net_supported_atom"
-	# - "function _get_net_supporting_wm_check_window"
-	## - "function _get_net_wm_allowed_actions_atom"
-	## - "function _get_net_wm_desktop_cardinal"
-	## - "function _get_net_wm_icon_geometry_cardinal"
-	## - "function _get_net_wm_name_utf8_string"
-	## - "function _get_net_wm_state_atom"
-	## - "function _get_net_wm_visible_icon_name_utf8_string"
-	## - "function _get_net_wm_visible_name_utf8_string"
-	# - "function _get_net_workarea_cardinal"
-
-# - these are defined in the freedesktop specification
-
-# - add functions for anything not tabbed
-# - before adding anything, I need to discover the appropriate sed invocation
-#   for each one
-# ^ 2 finished, 3 remaining
-
-# - indented with tab = script already supports
-# - # = xprop -root
-# - ## = xprop -id 0xF00
-
-# - root window properties (& related messages)
-
-	# _NET_ACTIVE_WINDOW, WINDOW/32
-	# _NET_CLIENT_LIST, WINDOW[]/32
-	# _NET_CLIENT_LIST_STACKING, WINDOW[]/32
-	# _NET_CURRENT_DESKTOP desktop, CARDINAL/32
-	# _NET_DESKTOP_GEOMETRY width, height, CARDINAL[2]/32
-	# _NET_DESKTOP_LAYOUT, orientation, columns, rows, starting_corner CARDINAL[4]/32
-	# _NET_DESKTOP_NAMES, UTF8_STRING[]
-	# _NET_DESKTOP_VIEWPORT x, y, CARDINAL[][2]/32
-	# _NET_NUMBER_OF_DESKTOPS, CARDINAL/32
-	# _NET_SHOWING_DESKTOP desktop, CARDINAL/32
-	# _NET_SUPPORTED, ATOM[]/32
-	# _NET_SUPPORTING_WM_CHECK, WINDOW/32
-# _NET_VIRTUAL_ROOTS, WINDOW[]/32
-	# _NET_WORKAREA, x, y, width, height CARDINAL[][4]/32
-
-# - application window properties
-
-	## _NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32
-	## _NET_WM_ALLOWED_ACTIONS, ATOM[] (several items listed)
-# _NET_WM_BYPASS_COMPOSITOR, CARDINAL/32
-	## _NET_WM_DESKTOP desktop, CARDINAL/32
-# _NET_WM_HANDLED_ICONS
-# _NET_WM_ICON CARDINAL[][2+n]/32 (skip this one)
-	## _NET_WM_ICON_GEOMETRY, x, y, width, height, CARDINAL[4]/32
-
-#+
-# _NET_WM_ICON_NAME, UTF8_STRING
-# "_NET_WM_ICON_NAME(UTF8_STRING) = "Mozilla Firefox""
-#-
-
-	## _NET_WM_NAME, UTF8_STRING
-# _NET_WM_OPAQUE_REGION, x, y, width, height, CARDINAL[][4]/32
-
-#+
-# _NET_WM_PID CARDINAL/32
-# "_NET_WM_PID(CARDINAL) = 1454"
-#-
-
-	## _NET_WM_STATE, ATOM[] (several items listed)
-
-#+
-# _NET_WM_STRUT, left, right, top, bottom, CARDINAL[4]/32
-# "_NET_WM_STRUT(CARDINAL) = 0, 0, 0, 24"
-
-# L
-# R
-# T
-# B
-#-
-
-#+
-# _NET_WM_STRUT_PARTIAL, left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x, CARDINAL[12]/32
-# "_NET_WM_STRUT_PARTIAL(CARDINAL) = 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 1919"
-
-# L
-# R
-# T
-# B
-
-# LSY
-# LEY
-# RSY
-# REY
-
-# TSX
-# TEX
-# BSX
-# BEX
-#-
-
-#+ marker unused +#
-
-## _NET_WM_USER_TIME_WINDOW WINDOW/32
-## "_NET_WM_USER_TIME_WINDOW(WINDOW): window id # 0x36007f7"
-function _get_net_wm_user_time_window_window()
-{
-  _eko_iod "#+ _get_net_wm_user_time_window_window +#"
-
-  # functions:
-  # _eko_iod
-  # _eko_pv
-
-  # variables:
-  # _NET_WM_USER_TIME_WINDOW_WINDOW
-  # _OUTPUT_XPROP_ID
-
-  # binaries:
-  # sed
-
-  # builtins:
-  # echo
-
-  # NET:
-  # - _NET_WM_USER_TIME CARDINAL/32
-
-  # "_NET_WM_USER_TIME(CARDINAL) = "
-  # "2553195505"
-
-  # NOTE:
-  # - unused
-
-  _NET_WM_USER_TIME_WINDOW_WINDOW=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_USER_TIME_WINDOW(WINDOW): window id # /!d ; /.* # / s///g')
-
-  _eko_pv \$_NET_WM_USER_TIME_WINDOW_WINDOW: \""$_NET_WM_USER_TIME_WINDOW_WINDOW\" (unused)"
-
-  _eko_iod "#- _get_net_wm_user_time_window_window -#"
-}
-
-## _NET_WM_USER_TIME CARDINAL/32
-## "_NET_WM_USER_TIME(CARDINAL) = 2553561896"
-function _get_net_wm_user_time_cardinal()
-{
-  _eko_iod "#+ _get_net_wm_user_time_cardinal +#"
-
-  # functions:
-  # _eko_iod
-  # _eko_pv
-
-  # variables:
-
-  # _NET_WM_USER_TIME_CARDINAL
-  # _OUTPUT_XPROP_ID
-
-  # binaries:
-  # sed
-
-  # builtins:
-  # echo
-
-  # NET:
-  # - _NET_WM_USER_TIME CARDINAL/32
-
-  # "_NET_WM_USER_TIME(CARDINAL) = "
-  # "2553195505"
-
-  # NOTE:
-  # - unused
-
-  _NET_WM_USER_TIME_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_USER_TIME(CARDINAL) = /!d ; /.* = / s///g')
-
-  _eko_pv \$_NET_WM_USER_TIME_CARDINAL: \""$_NET_WM_USER_TIME_CARDINAL\" (unused)"
-
-  _eko_iod "#- _get_net_wm_user_time_cardinal -#"
-}
-
-	## _NET_WM_VISIBLE_ICON_NAME, UTF8_STRING
-	## _NET_WM_VISIBLE_NAME, UTF8_STRING
-	## _NET_WM_WINDOW_TYPE, ATOM[]/32 (several items listed)
-
-#- marker unused -#
-
-# (done)
+# - "function _binary_validate_setup" added the following lines to "xprop":
+#  add: if [[ " $_BINARY_HELP " =~ "unable to open display" ]]
+#  add: then
+#  add:   _show_error "unable to determine \$DISPLAY & \$XAUTHORITY"
+#  add: fi
+# - added several routines to gather even more information on almost all known
+#   _NET_* properties that are mentioned in the freedesktop specification but
+#   not seen in openbox. at worst, they'll display as ""
+# - "function _get_net_wm_icon_name_utf8_string" added
+# - "function _get_net_wm_opaque_region_cardinal" added
+# - "function _get_net_wm_pid_cardinal" added
+# - "function _get_net_wm_strut_cardinal" added
+# - "function _get_net_wm_strut_partial_cardinal" added
+# - "function _get_net_wm_sync_request_counter_cardinal" added
+# - "function _get_net_wm_user_time_cardinal" added
+# - "function _get_net_wm_user_time_window_window" added
 # - added comments about _NET_* entities in each function where they're
 #   referenced
 # - "function _pass_fail_by_window_type" added the complete list of known
@@ -347,7 +164,7 @@ function _get_net_wm_user_time_cardinal()
 #  was: _eko_v "      Foo Bar:" \""$_FOO\""
 #   is: _eko_pv "Foo Bar:" \""$_FOO\""
 # - "function _eko_pv" added for properly formatted verbose output
-# - "# functions:", "# variables:", "# binaries:", & "# builtins:" listings     
+# - "# functions:", "# variables:", "# binaries:", & "# builtins:" listings
 #   added/appended to each function & in main
 # ^ "# builtins:" is to keep track of "echo" &/or "printf" usage. technically
 #   speaking, "(none)" is a misnomer as it's only in reference to these 2
@@ -587,8 +404,36 @@ function _get_net_wm_user_time_cardinal()
   # _NET_WM_ICON_GEOMETRY_W
   # _NET_WM_ICON_GEOMETRY_X
   # _NET_WM_ICON_GEOMETRY_Y
+  # _NET_WM_ICON_NAME_UTF8_STRING
   # _NET_WM_NAME_UTF8_STRING
+  # _NET_WM_OPAQUE_REGION_CARDINAL
+  # _NET_WM_OPAQUE_REGION_H
+  # _NET_WM_OPAQUE_REGION_W
+  # _NET_WM_OPAQUE_REGION_X
+  # _NET_WM_OPAQUE_REGION_Y
+  # _NET_WM_PID_CARDINAL
   # _NET_WM_STATE_ATOM
+  # _NET_WM_STRUT_B
+  # _NET_WM_STRUT_CARDINAL
+  # _NET_WM_STRUT_L
+  # _NET_WM_STRUT_PARTIAL_B
+  # _NET_WM_STRUT_PARTIAL_BEX
+  # _NET_WM_STRUT_PARTIAL_BSX
+  # _NET_WM_STRUT_PARTIAL_CARDINAL
+  # _NET_WM_STRUT_PARTIAL_L
+  # _NET_WM_STRUT_PARTIAL_LEY
+  # _NET_WM_STRUT_PARTIAL_LSY
+  # _NET_WM_STRUT_PARTIAL_R
+  # _NET_WM_STRUT_PARTIAL_REY
+  # _NET_WM_STRUT_PARTIAL_RSY
+  # _NET_WM_STRUT_PARTIAL_T
+  # _NET_WM_STRUT_PARTIAL_TEX
+  # _NET_WM_STRUT_PARTIAL_TSX
+  # _NET_WM_STRUT_R
+  # _NET_WM_STRUT_T
+  # _NET_WM_SYNC_REQUEST_COUNTER_CARDINAL
+  # _NET_WM_USER_TIME_CARDINAL
+  # _NET_WM_USER_TIME_WINDOW_WINDOW
   # _NET_WM_VISIBLE_ICON_NAME_UTF8_STRING
   # _NET_WM_VISIBLE_NAME_UTF8_STRING
   # _NET_WORKAREA_CARDINAL
@@ -631,7 +476,7 @@ function _get_net_wm_user_time_cardinal()
   # _eko_pv_en
   # _get_net_active_window_window
   # _get_net_client_list_stacking_window
-  # _get_net_client_list_window 
+  # _get_net_client_list_window
   # _get_net_current_desktop_cardinal
   # _get_net_desktop_geometry_cardinal
   # _get_net_desktop_layout_cardinal
@@ -645,8 +490,16 @@ function _get_net_wm_user_time_cardinal()
   # _get_net_wm_allowed_actions_atom
   # _get_net_wm_desktop_cardinal
   # _get_net_wm_icon_geometry_cardinal
+  # _get_net_wm_icon_name_utf8_string
   # _get_net_wm_name_utf8_string
+  # _get_net_wm_opaque_region_cardinal
+  # _get_net_wm_pid_cardinal
   # _get_net_wm_state_atom
+  # _get_net_wm_strut_cardinal
+  # _get_net_wm_strut_partial_cardinal
+  # _get_net_wm_sync_request_counter_cardinal
+  # _get_net_wm_user_time_cardinal
+  # _get_net_wm_user_time_window_window
   # _get_net_wm_visible_icon_name_utf8_string
   # _get_net_wm_visible_name_utf8_string
   # _get_net_workarea_cardinal
@@ -655,7 +508,6 @@ function _get_net_wm_user_time_cardinal()
   # _pass_fail_by_window_type
   # _set_window_position
   # _show_error
-  # _show_error   
   # _show_help
   # _sub_function
   # _window_id_acquire
@@ -783,6 +635,11 @@ function _binary_validate_setup()
   then
     _show_error "required binary \"$_BINARY_NAME\" not found"
   else
+    if [[ " $_BINARY_HELP " =~ "unable to open display" ]]
+    then
+      _show_error "unable to determine \$DISPLAY & \$XAUTHORITY"
+    fi
+
     _BINARY_OPTION="-id id"
     if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
     then
@@ -1202,6 +1059,19 @@ function _coordinates_validate()
   # - "function _coordinates_calculate" & "function _coordinates_validate"
   #   share identical calculations for the 4 corners
 
+  # FIXME:
+  # - only seen during testing. "function _pass_fail_by_window_type" disabled
+  #   the tests for _NET_WM_WINDOW_TYPE_DOCK
+  # - something is incorrect in the "force to fits" calculation 2/4
+  # ^ it appears to directly involve _WORKAREA_BORDER_R in some way
+  # - this may also be the case in the "force to fits" calculation 4/4
+  # ^ if so, it would likely involve _WORKAREA_BORDER_B in some way
+
+#+ marker testing +#
+#_eko_pv \$_COORDINATE_X: \""$_COORDINATE_X\" (entry)"
+#_eko_pv \$_COORDINATE_Y: \""$_COORDINATE_Y\" (entry)"
+#- marker testing -#
+
   #+ error exits +#
 
   # - (1/2)
@@ -1211,6 +1081,9 @@ function _coordinates_validate()
   then
     _show_error "non-numeric X coordinate \"$_COORDINATE_X\" specified"
   fi
+#+ marker testing +#
+#_eko_pv \$_COORDINATE_X: \""$_COORDINATE_X\" (error exit)"
+#- marker testing -#
 
   # - (2/2)
   # - non-numeric Y coordinate?
@@ -1232,6 +1105,9 @@ function _coordinates_validate()
   then
     _COORDINATE_X=$_WORKAREA_BORDER_L
   fi
+#+ marker testing +#
+#_eko_pv \$_COORDINATE_X: \""$_COORDINATE_X\" (force to fit 1/4)"
+#- marker testing -#
 
   # - (2/4)
   # - force X coordinate to fit within usable or overall desktop X
@@ -1242,6 +1118,9 @@ function _coordinates_validate()
     # - $((expression))
     _COORDINATE_X=$((   $_NET_DESKTOP_GEOMETRY_W                        - $_WINDOW_DECORATED_X - $_WORKAREA_BORDER_R       ))
   fi
+#+ marker testing +#
+#_eko_pv \$_COORDINATE_X: \""$_COORDINATE_X\" (force to fit 2/4)"
+#- marker testing -#
 
   # - (3/4)
   # - force Y coordinate to fit within usable or overall desktop Y
@@ -2305,6 +2184,40 @@ function _get_net_wm_icon_geometry_cardinal()
   _eko_iod "#- _get_net_wm_icon_geometry_cardinal -#"
 }
 
+function _get_net_wm_icon_name_utf8_string()
+{
+  _eko_iod "#+ _get_net_wm_icon_name_utf8_string +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_pv
+
+  # variables:
+  # _NET_WM_ICON_NAME_UTF8_STRING
+  # _OUTPUT_XPROP_ID
+
+  # binaries:
+  # sed
+
+  # builtins:
+  # echo
+
+  # NET:
+  # - _NET_WM_ICON_NAME, UTF8_STRING
+
+  # "_NET_WM_ICON_NAME(UTF8_STRING) = "
+  # ""Mozilla Firefox""
+
+  # NOTE:
+  # - unused
+
+   _NET_WM_ICON_NAME_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_ICON_NAME(UTF8_STRING) = /!d ; /.* = / s///g')
+
+  _eko_pv \$_NET_WM_ICON_NAME_UTF8_STRING: \""$_NET_WM_ICON_NAME_UTF8_STRING\" (unused)"
+
+  _eko_iod "#- _get_net_wm_icon_name_utf8_string -#"
+}
+
 function _get_net_wm_name_utf8_string()
 {
   _eko_iod "#+ _get_net_wm_name_utf8_string +#"
@@ -2337,6 +2250,93 @@ function _get_net_wm_name_utf8_string()
   _eko_pv \$_NET_WM_NAME_UTF8_STRING: \""$_NET_WM_NAME_UTF8_STRING\""
 
   _eko_iod "#- _get_net_wm_name_utf8_string -#"
+}
+
+function _get_net_wm_opaque_region_cardinal()
+{
+  _eko_iod "#+ _get_net_wm_opaque_region_cardinal +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_pv
+
+  # variables:
+  # _NET_WM_OPAQUE_REGION_CARDINAL
+  # _NET_WM_OPAQUE_REGION_H
+  # _NET_WM_OPAQUE_REGION_W
+  # _NET_WM_OPAQUE_REGION_X
+  # _NET_WM_OPAQUE_REGION_Y
+  # _OPTIONS_READ (read options, not script options)
+  # _OUTPUT_XPROP_ID
+
+  # binaries:
+  # sed
+
+  # builtins:
+  # echo
+  # read
+
+  # NET:
+  # - _NET_WM_ICON_GEOMETRY, x, y, width, height, CARDINAL[4]/32
+
+  # "_NET_WM_ICON_GEOMETRY(CARDINAL) = "
+  # "1588, "
+  # "1056, "
+  # "117, "
+  # "24"
+
+  # NOTE:
+  # - unused
+
+  _NET_WM_OPAQUE_REGION_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_OPAQUE_REGION(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
+
+  _eko_pv \$_NET_WM_OPAQUE_REGION_CARDINAL: \""$_NET_WM_OPAQUE_REGION_CARDINAL\" (unused)"
+
+  read $_OPTIONS_READ -- \
+  _NET_WM_OPAQUE_REGION_X \
+  _NET_WM_OPAQUE_REGION_Y \
+  _NET_WM_OPAQUE_REGION_W \
+  _NET_WM_OPAQUE_REGION_H \
+  <<< \
+  $_NET_WM_OPAQUE_REGION_CARDINAL
+
+  _eko_pv \$_NET_WM_OPAQUE_REGION_X: \""$_NET_WM_OPAQUE_REGION_X\""
+  _eko_pv \$_NET_WM_OPAQUE_REGION_Y: \""$_NET_WM_OPAQUE_REGION_Y\""
+  _eko_pv \$_NET_WM_OPAQUE_REGION_W: \""$_NET_WM_OPAQUE_REGION_W\""
+  _eko_pv \$_NET_WM_OPAQUE_REGION_H: \""$_NET_WM_OPAQUE_REGION_H\""
+
+  _eko_iod "#- _get_net_wm_opaque_region_cardinal -#"
+}
+
+function _get_net_wm_pid_cardinal()
+{
+  _eko_iod "#+ _get_net_wm_pid_cardinal +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_pv
+
+  # variables:
+  # _NET_WM_PID_CARDINAL
+  # _OUTPUT_XPROP_ID
+
+  # binaries:
+  # sed
+
+  # builtins:
+  # echo
+
+  # NET:
+  # - _NET_WM_PID, CARDINAL/32
+
+  # "_NET_WM_PID(CARDINAL) = 1454"
+  # "1454"
+
+  _NET_WM_PID_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_PID(CARDINAL) = /!d ; /.* = / s///g')
+
+  _eko_pv \$_NET_WM_PID_CARDINAL: \""$_NET_WM_PID_CARDINAL\" (unused)"
+
+  _eko_iod "#- _get_net_wm_pid_cardinal -#"
 }
 
 function _get_net_wm_state_atom()
@@ -2402,6 +2402,253 @@ function _get_net_wm_state_atom()
   _eko_pv \$_BOOLEAN_MAXIMIZED_Y: \""$_BOOLEAN_MAXIMIZED_Y\""
 
   _eko_iod "#- _get_net_wm_state_atom -#"
+}
+
+function _get_net_wm_strut_cardinal()
+{
+  _eko_iod "#+ _get_net_wm_strut_cardinal +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_pv
+
+  # variables:
+  # _NET_WM_STRUT_B
+  # _NET_WM_STRUT_CARDINAL
+  # _NET_WM_STRUT_L
+  # _NET_WM_STRUT_R
+  # _NET_WM_STRUT_T
+  # _OPTIONS_READ (read options, not script options)
+  # _OUTPUT_XPROP_ID
+
+  # binaries:
+  # sed
+
+  # builtins:
+  # echo
+  # read
+
+  # NET:
+  #  - _NET_WM_STRUT, left, right, top, bottom, CARDINAL[4]/32
+
+  # "_NET_WM_STRUT(CARDINAL) = "
+  # "0, "
+  # "0, "
+  # "0, "
+  # "24"
+
+  # NOTE:
+  # - unused
+
+  _NET_WM_STRUT_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_STRUT(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
+
+  _eko_pv \$_NET_WM_STRUT_CARDINAL: \""$_NET_WM_STRUT_CARDINAL\" (unused)"
+
+  read $_OPTIONS_READ -- \
+  _NET_WM_STRUT_L \
+  _NET_WM_STRUT_R \
+  _NET_WM_STRUT_T \
+  _NET_WM_STRUT_B \
+  <<< \
+  $_NET_WM_STRUT_CARDINAL
+
+  _eko_pv \$_NET_WM_STRUT_L: \""$_NET_WM_STRUT_L\""
+  _eko_pv \$_NET_WM_STRUT_R: \""$_NET_WM_STRUT_R\""
+  _eko_pv \$_NET_WM_STRUT_T: \""$_NET_WM_STRUT_T\""
+  _eko_pv \$_NET_WM_STRUT_B: \""$_NET_WM_STRUT_B\""
+
+  _eko_iod "#- _get_net_wm_strut_cardinal -#"
+}
+
+function _get_net_wm_strut_partial_cardinal()
+{
+  _eko_iod "#+ _get_net_wm_strut_partial_cardinal +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_pv
+
+  # variables:
+  # _NET_WM_STRUT_PARTIAL_B
+  # _NET_WM_STRUT_PARTIAL_BEX
+  # _NET_WM_STRUT_PARTIAL_BSX
+  # _NET_WM_STRUT_PARTIAL_CARDINAL
+  # _NET_WM_STRUT_PARTIAL_L
+  # _NET_WM_STRUT_PARTIAL_LEY
+  # _NET_WM_STRUT_PARTIAL_LSY
+  # _NET_WM_STRUT_PARTIAL_R
+  # _NET_WM_STRUT_PARTIAL_REY
+  # _NET_WM_STRUT_PARTIAL_RSY
+  # _NET_WM_STRUT_PARTIAL_T
+  # _NET_WM_STRUT_PARTIAL_TEX
+  # _NET_WM_STRUT_PARTIAL_TSX
+  # _OPTIONS_READ (read options, not script options)
+  # _OUTPUT_XPROP_ID
+
+  # binaries:
+  # sed
+
+  # builtins:
+  # echo
+  # read
+
+  # NET:
+  #  - _NET_WM_STRUT_PARTIAL, left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x, CARDINAL[12]/32
+
+  # "_NET_WM_STRUT_PARTIAL(CARDINAL) = "
+  # "0, "
+  # "0, "
+  # "0, "
+  # "24, "
+  # "0, "
+  # "0, "
+  # "0, "
+  # "0, "
+  # "0, "
+  # "0, "
+  # "0, "
+  # "1919"
+
+  # NOTE:
+  # - unused
+
+  _NET_WM_STRUT_PARTIAL_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_STRUT_PARTIAL(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
+
+  _eko_pv \$_NET_WM_STRUT_PARTIAL_CARDINAL: \""$_NET_WM_STRUT_PARTIAL_CARDINAL\" (unused)"
+
+  read $_OPTIONS_READ -- \
+  _NET_WM_STRUT_PARTIAL_L \
+  _NET_WM_STRUT_PARTIAL_R \
+  _NET_WM_STRUT_PARTIAL_T \
+  _NET_WM_STRUT_PARTIAL_B \
+  _NET_WM_STRUT_PARTIAL_LSY \
+  _NET_WM_STRUT_PARTIAL_LEY \
+  _NET_WM_STRUT_PARTIAL_RSY \
+  _NET_WM_STRUT_PARTIAL_REY \
+  _NET_WM_STRUT_PARTIAL_TSX \
+  _NET_WM_STRUT_PARTIAL_TEX \
+  _NET_WM_STRUT_PARTIAL_BSX \
+  _NET_WM_STRUT_PARTIAL_BEX \
+  <<< \
+  $_NET_WM_STRUT_PARTIAL_CARDINAL
+
+  _eko_pv \$_NET_WM_STRUT_PARTIAL_L: \""$_NET_WM_STRUT_PARTIAL_L\""
+  _eko_pv \$_NET_WM_STRUT_PARTIAL_R: \""$_NET_WM_STRUT_PARTIAL_R\""
+  _eko_pv \$_NET_WM_STRUT_PARTIAL_T: \""$_NET_WM_STRUT_PARTIAL_T\""
+  _eko_pv \$_NET_WM_STRUT_PARTIAL_B: \""$_NET_WM_STRUT_PARTIAL_B\""
+  _eko_pv \$_NET_WM_STRUT_PARTIAL_LSY: \""$_NET_WM_STRUT_PARTIAL_LSY\""
+  _eko_pv \$_NET_WM_STRUT_PARTIAL_LEY: \""$_NET_WM_STRUT_PARTIAL_LEY\""
+  _eko_pv \$_NET_WM_STRUT_PARTIAL_RSY: \""$_NET_WM_STRUT_PARTIAL_RSY\""
+  _eko_pv \$_NET_WM_STRUT_PARTIAL_REY: \""$_NET_WM_STRUT_PARTIAL_REY\""
+  _eko_pv \$_NET_WM_STRUT_PARTIAL_TSX: \""$_NET_WM_STRUT_PARTIAL_TSX\""
+  _eko_pv \$_NET_WM_STRUT_PARTIAL_TEX: \""$_NET_WM_STRUT_PARTIAL_TEX\""
+  _eko_pv \$_NET_WM_STRUT_PARTIAL_BSX: \""$_NET_WM_STRUT_PARTIAL_BSX\""
+  _eko_pv \$_NET_WM_STRUT_PARTIAL_BEX: \""$_NET_WM_STRUT_PARTIAL_BEX\""
+
+  _eko_iod "#- _get_net_wm_strut_partial_cardinal -#"
+}
+
+function _get_net_wm_sync_request_counter_cardinal()
+{
+  _eko_iod "#+ _get_net_wm_sync_request_counter_cardinal +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_pv
+
+  # variables:
+  # _NET_WM_SYNC_REQUEST_COUNTER_CARDINAL
+  # _OPTIONS_READ (read options, not script options)
+  # _OUTPUT_XPROP_ID
+
+  # binaries:
+  # sed
+
+  # builtins:
+  # echo
+  # read
+
+  # NET:
+  # - _NET_WM_SYNC_REQUEST_COUNTER, ?, ?, CARDINAL[]/32
+
+  # "_NET_WM_SYNC_REQUEST_COUNTER(CARDINAL) = "
+  # "56625144, "
+  # "56625145"
+
+  _NET_WM_SYNC_REQUEST_COUNTER_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_SYNC_REQUEST_COUNTER(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
+
+  _eko_pv \$_NET_WM_SYNC_REQUEST_COUNTER_CARDINAL: \""$_NET_WM_SYNC_REQUEST_COUNTER_CARDINAL\" (unused)"
+
+  _eko_iod "#- _get_net_wm_sync_request_counter_cardinal -#"
+}
+
+function _get_net_wm_user_time_cardinal()
+{
+  _eko_iod "#+ _get_net_wm_user_time_cardinal +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_pv
+
+  # variables:
+
+  # _NET_WM_USER_TIME_CARDINAL
+  # _OUTPUT_XPROP_ID
+
+  # binaries:
+  # sed
+
+  # builtins:
+  # echo
+
+  # NET:
+  # - _NET_WM_USER_TIME CARDINAL/32
+
+  # "_NET_WM_USER_TIME(CARDINAL) = "
+  # "2553195505"
+
+  # NOTE:
+  # - unused
+
+  _NET_WM_USER_TIME_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_USER_TIME(CARDINAL) = /!d ; /.* = / s///g')
+
+  _eko_pv \$_NET_WM_USER_TIME_CARDINAL: \""$_NET_WM_USER_TIME_CARDINAL\" (unused)"
+
+  _eko_iod "#- _get_net_wm_user_time_cardinal -#"
+}
+
+function _get_net_wm_user_time_window_window()
+{
+  _eko_iod "#+ _get_net_wm_user_time_window_window +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_pv
+
+  # variables:
+  # _NET_WM_USER_TIME_WINDOW_WINDOW
+  # _OUTPUT_XPROP_ID
+
+  # binaries:
+  # sed
+
+  # builtins:
+  # echo
+
+  # NET:
+  # - _NET_WM_USER_TIME CARDINAL/32
+
+  # "_NET_WM_USER_TIME(CARDINAL) = "
+  # "2553195505"
+
+  # NOTE:
+  # - unused
+
+  _NET_WM_USER_TIME_WINDOW_WINDOW=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_USER_TIME_WINDOW(WINDOW): window id # /!d ; /.* # / s///g')
+
+  _eko_pv \$_NET_WM_USER_TIME_WINDOW_WINDOW: \""$_NET_WM_USER_TIME_WINDOW_WINDOW\" (unused)"
+
+  _eko_iod "#- _get_net_wm_user_time_window_window -#"
 }
 
 function _get_net_wm_visible_icon_name_utf8_string()
@@ -2729,7 +2976,7 @@ function _parse_parameters()
   # _eko_pv
   # _get_net_active_window_window
   # _get_net_client_list_stacking_window
-  # _get_net_client_list_window 
+  # _get_net_client_list_window
   # _get_net_current_desktop_cardinal
   # _get_net_desktop_geometry_cardinal
   # _get_net_desktop_layout_cardinal
@@ -2743,8 +2990,16 @@ function _parse_parameters()
   # _get_net_wm_allowed_actions_atom
   # _get_net_wm_desktop_cardinal
   # _get_net_wm_icon_geometry_cardinal
+  # _get_net_wm_icon_name_utf8_string
   # _get_net_wm_name_utf8_string
+  # _get_net_wm_opaque_region_cardinal
+  # _get_net_wm_pid_cardinal
   # _get_net_wm_state_atom
+  # _get_net_wm_strut_cardinal
+  # _get_net_wm_strut_partial_cardinal
+  # _get_net_wm_sync_request_counter_cardinal
+  # _get_net_wm_user_time_cardinal
+  # _get_net_wm_user_time_window_window
   # _get_net_wm_visible_icon_name_utf8_string
   # _get_net_wm_visible_name_utf8_string
   # _get_net_workarea_cardinal
@@ -2752,7 +3007,7 @@ function _parse_parameters()
   # _pass_fail_by_window_id
   # _pass_fail_by_window_type
   # _set_window_position
-  # _show_error   
+  # _show_error
   # _show_help
   # _window_id_acquire
 
@@ -3059,8 +3314,7 @@ function _parse_parameters()
     # - succeeds: _get_net_frame_extents_cardinal
     _get_window_undecorated_geometry
 
-#+ marker unused +#
-    # - put all currently unused stuff here. simpler to find & deal with
+    # - put all currently unused functions here. simpler to find & deal with
     # - why specifically here? to succeed all the "live" _get_net_* functions
     if $_BOOLEAN_UNUSED
     then
@@ -3071,15 +3325,20 @@ function _parse_parameters()
       _get_net_supported_atom
       _get_net_supporting_wm_check_window
 
-      # - from "xprop -id 0x4000099"
+      # - from "xprop -id 0xDEADF00D"
       _get_net_wm_allowed_actions_atom
       _get_net_wm_icon_geometry_cardinal
+      _get_net_wm_icon_name_utf8_string
+      _get_net_wm_opaque_region_cardinal
+      _get_net_wm_pid_cardinal
+      _get_net_wm_strut_cardinal
+      _get_net_wm_strut_partial_cardinal
+      _get_net_wm_sync_request_counter_cardinal
+      _get_net_wm_user_time_cardinal
+      _get_net_wm_user_time_window_window
       _get_net_wm_visible_icon_name_utf8_string
       _get_net_wm_visible_name_utf8_string
-_get_net_wm_user_time_cardinal
-_get_net_wm_user_time_window_window
     fi
-#- marker unused -#
 
     # - succeeds: _get_net_wm_name_utf8_string
     # - succeeds: _get_net_workarea_cardinal
@@ -3293,7 +3552,6 @@ function _pass_fail_by_window_type()
   else
     _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (does not exist) specified"
   fi
-#-
 
   _eko_iod "#- _pass_fail_by_window_type -#"
 }
@@ -3780,3 +4038,99 @@ exit 0
 # - xmessage
 # nothing from "_NET_WM_WINDOW_TYPE(ATOM)"
 ##--
+
+###+++
+
+# - indented with tab = script supports
+# - # = xprop -root
+# - ## = xprop -id 0xDEADF00D
+
+# - root window properties (& related messages)
+
+	# - "function _get_net_active_window_window"
+	# - "function _get_net_client_list_stacking_window" (unused)
+	# - "function _get_net_client_list_window"
+	# - "function _get_net_current_desktop_cardinal"
+	# - "function _get_net_desktop_geometry_cardinal"
+	# - "function _get_net_desktop_layout_cardinal" (unused)
+	# - "function _get_net_desktop_names_utf8_string"
+	# - "function _get_net_desktop_viewport_cardinal"
+	# - "function _get_net_number_of_desktops_cardinal"
+	# - "function _get_net_showing_desktop_cardinal" (unused)
+	# - "function _get_net_supported_atom" (unused)
+	# - "function _get_net_supporting_wm_check_window" (unused)
+	# - "function _get_net_workarea_cardinal"
+
+# - application window properties
+
+	## - "function _get_net_frame_extents_cardinal"
+	## - "function _get_net_wm_allowed_actions_atom" (unused)
+	## - "function _get_net_wm_desktop_cardinal"
+	## - "function _get_net_wm_icon_geometry_cardinal" (unused)
+	## - "function _get_net_wm_icon_name_utf8_string" (unused)
+	## - "function _get_net_wm_name_utf8_string"
+	## - "function _get_net_wm_opaque_region_cardinal" (unused)
+	## - "function _get_net_wm_pid_cardinal" (unused)
+	## - "function _get_net_wm_state_atom"
+	## - "function _get_net_wm_strut_cardinal" (unused)
+	## - "function _get_net_wm_strut_partial_cardinal" (unused)
+	## - "function _get_net_wm_sync_request_counter_cardinal" (unused)
+	## - "function _get_net_wm_user_time_cardinal" (unused)
+	## - "function _get_net_wm_user_time_window_window" (unused)
+	## - "function _get_net_wm_visible_icon_name_utf8_string" (unused)
+	## - "function _get_net_wm_visible_name_utf8_string" (unused)
+
+# ^ update this listing with
+# grep "^function _get_net_" /usr/local/bin/move-window | sort | lesss
+
+# - these are defined in the freedesktop specification
+
+# - add functions for anything not tabbed
+# - before adding anything, I need to discover the appropriate sed invocation
+#   for each one
+
+# - indented with tab = script supports
+# - # = xprop -root
+# - ## = xprop -id 0xDEADF00D
+
+# - root window properties (& related messages)
+
+	# _NET_ACTIVE_WINDOW, WINDOW/32
+	# _NET_CLIENT_LIST, WINDOW[]/32
+	# _NET_CLIENT_LIST_STACKING, WINDOW[]/32
+	# _NET_CURRENT_DESKTOP desktop, CARDINAL/32
+	# _NET_DESKTOP_GEOMETRY width, height, CARDINAL[2]/32
+	# _NET_DESKTOP_LAYOUT, orientation, columns, rows, starting_corner CARDINAL[4]/32
+	# _NET_DESKTOP_NAMES, UTF8_STRING[]
+	# _NET_DESKTOP_VIEWPORT x, y, CARDINAL[][2]/32
+	# _NET_NUMBER_OF_DESKTOPS, CARDINAL/32
+	# _NET_SHOWING_DESKTOP desktop, CARDINAL/32
+	# _NET_SUPPORTED, ATOM[]/32
+	# _NET_SUPPORTING_WM_CHECK, WINDOW/32
+# _NET_VIRTUAL_ROOTS, WINDOW[]/32
+	# _NET_WORKAREA, x, y, width, height CARDINAL[][4]/32
+
+# - application window properties
+
+	## _NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32
+	## _NET_WM_ALLOWED_ACTIONS, ATOM[] (several items listed)
+# _NET_WM_BYPASS_COMPOSITOR, CARDINAL/32
+	## _NET_WM_DESKTOP desktop, CARDINAL/32
+# _NET_WM_HANDLED_ICONS
+# _NET_WM_ICON CARDINAL[][2+n]/32 (skip this one)
+	## _NET_WM_ICON_GEOMETRY, x, y, width, height, CARDINAL[4]/32
+	## _NET_WM_ICON_NAME, UTF8_STRING
+	## _NET_WM_NAME, UTF8_STRING
+	## _NET_WM_OPAQUE_REGION, x, y, width, height, CARDINAL[][4]/32
+	## _NET_WM_PID CARDINAL/32
+	## _NET_WM_STATE, ATOM[] (several items listed)
+	## _NET_WM_STRUT, left, right, top, bottom, CARDINAL[4]/32
+	## _NET_WM_STRUT_PARTIAL, left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x, CARDINAL[12]/32
+	## _NET_WM_SYNC_REQUEST_COUNTER, ?, ?, CARDINAL[]/32
+	## _NET_WM_USER_TIME_WINDOW WINDOW/32
+	## _NET_WM_USER_TIME CARDINAL/32
+	## _NET_WM_VISIBLE_ICON_NAME, UTF8_STRING
+	## _NET_WM_VISIBLE_NAME, UTF8_STRING
+	## _NET_WM_WINDOW_TYPE, ATOM[]/32 (several items listed. 'tis special)
+
+###---

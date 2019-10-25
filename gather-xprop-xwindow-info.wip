@@ -90,12 +90,12 @@ function _binary_validate()
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
     _show_error "required binary \"$_BINARY_NAME\" not found"
-  else
-    _BINARY_OPTION=--expression=script
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
+  fi
+
+  _BINARY_OPTION=--expression=script
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
   fi
   #- sed -#
 
@@ -110,23 +110,23 @@ function _binary_validate()
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
     _show_error "required binary \"$_BINARY_NAME\" not found"
-  else
-    if [[ " $_BINARY_HELP " =~ "unable to open display" ]]
-    then
-      _show_error "unable to determine \$DISPLAY &/or \$XAUTHORITY"
-    fi
+  fi
 
-    _BINARY_OPTION=-id
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
+  if [[ " $_BINARY_HELP " =~ "unable to open display" ]]
+  then
+    _show_error "unable to determine \$DISPLAY &/or \$XAUTHORITY"
+  fi
 
-    _BINARY_OPTION=-root
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
+  _BINARY_OPTION=-id
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+  fi
+
+  _BINARY_OPTION=-root
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
   fi
   #- xprop -#
 
@@ -140,12 +140,12 @@ function _binary_validate()
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
     _show_error "required binary \"$_BINARY_NAME\" not found"
-  else
-    _BINARY_OPTION=-id
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
+  fi
+
+  _BINARY_OPTION=-id
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
   fi
   #- xwininfo -#
 

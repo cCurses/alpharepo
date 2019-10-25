@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# scanfs v2019.10.17
+# scanfs v2019.10.25
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -77,6 +77,12 @@ _BOOLEAN_TESTING_01=true # enabled
 #   chronologically top-to-bottom while others are bottom-to-top. preferred
 #   order is bottom-to-top. this will gradually be fixed when time permits
 
+# 2019-10-25
+# - "function _binary_validate_setup" converted "cp", "find", "head", "id",
+#   "ln", "openssl", "mv", "rm", "sort", & "touch" testing from nested to
+#   sequential
+# - "function _builtin_validate_setup" converted "cd", "pwd", "read" testing
+#   from nested to sequential
 # 2019-10-17
 # - "functions:/variables:/binaries:/builtins:" listings for each function
 #   updated & verified. also updated the "use & abuse" listings based on this
@@ -1210,54 +1216,54 @@ function _binary_validate_setup()
     if [[ $_BINARY_HELP =~ "command not found" ]]
     then
       _show_error "required binary \"$_BINARY_NAME\" not found"
-    else
-      _BINARY_OPTION=--force
-      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _OPTIONS_CP=$_BINARY_OPTION
-      else
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
-
-      _BINARY_OPTION=--no-dereference
-      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _OPTIONS_CP+=" "$_BINARY_OPTION
-      else
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
-
-      _BINARY_OPTION=--preserve=all
-      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _OPTIONS_CP+=" "$_BINARY_OPTION
-      else
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
-
-      if $_BOOLEAN_SPARSE
-      then
-        _BINARY_OPTION=--sparse=always
-        if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-        then
-          _OPTIONS_CP+=" "$_BINARY_OPTION
-        else
-          _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-        fi
-      fi # $_BOOLEAN_SPARSE
-
-      if $_BOOLEAN_NONSPARSE
-      then
-        _BINARY_OPTION=--sparse=never
-        if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-        then
-          _OPTIONS_CP+=" "$_BINARY_OPTION
-        else
-          _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-        fi
-      fi # $_BOOLEAN_NONSPARSE
-      _eko_pv \$_OPTIONS_CP: \""$_OPTIONS_CP\""
     fi
+
+    _BINARY_OPTION=--force
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _OPTIONS_CP=$_BINARY_OPTION
+    else
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+
+    _BINARY_OPTION=--no-dereference
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _OPTIONS_CP+=" "$_BINARY_OPTION
+    else
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+
+    _BINARY_OPTION=--preserve=all
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _OPTIONS_CP+=" "$_BINARY_OPTION
+    else
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+
+    if $_BOOLEAN_SPARSE
+    then
+      _BINARY_OPTION=--sparse=always
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _OPTIONS_CP+=" "$_BINARY_OPTION
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi # $_BOOLEAN_SPARSE
+
+    if $_BOOLEAN_NONSPARSE
+    then
+      _BINARY_OPTION=--sparse=never
+      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+      then
+        _OPTIONS_CP+=" "$_BINARY_OPTION
+      else
+        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+      fi
+    fi # $_BOOLEAN_NONSPARSE
+    _eko_pv \$_OPTIONS_CP: \""$_OPTIONS_CP\""
     #- cp -#
   fi # $_BOOLEAN_UNLINK
 
@@ -1284,79 +1290,79 @@ function _binary_validate_setup()
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
     _show_error "required binary \"$_BINARY_NAME\" not found"
-  else
-    if $_BOOLEAN_HARDLINK \
-    || $_BOOLEAN_UNLINK
-    then
-      _BINARY_OPTION=-gid
-      if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
-    fi # $_BOOLEAN_HARDLINK $_BOOLEAN_UNLINK
-
-    if $_BOOLEAN_UNLINK
-    then
-      _BINARY_OPTION=-links
-      if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
-    fi # $_BOOLEAN_UNLINK
-
-    _BINARY_OPTION=-maxdepth
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
-
-    _BINARY_OPTION=-printf
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
-
-    _BINARY_OPTION=-readable
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
-
-    _BINARY_OPTION=-type
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
-
-    if $_BOOLEAN_HARDLINK \
-    || $_BOOLEAN_UNLINK
-    then
-      _BINARY_OPTION=-uid
-      if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
-    fi # $_BOOLEAN_HARDLINK $_BOOLEAN_UNLINK
-
-    if $_BOOLEAN_HARDLINK \
-    || $_BOOLEAN_UNLINK
-    then
-      _BINARY_OPTION=-writable
-      if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
-    fi # $_BOOLEAN_HARDLINK $_BOOLEAN_UNLINK
-
-    if $_BOOLEAN_XDEV
-    then
-      _BINARY_OPTION=-xdev
-      if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
-    fi # $_BOOLEAN_XDEV
   fi
+
+  if $_BOOLEAN_HARDLINK \
+  || $_BOOLEAN_UNLINK
+  then
+    _BINARY_OPTION=-gid
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+  fi # $_BOOLEAN_HARDLINK $_BOOLEAN_UNLINK
+
+  if $_BOOLEAN_UNLINK
+  then
+    _BINARY_OPTION=-links
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+  fi # $_BOOLEAN_UNLINK
+
+  _BINARY_OPTION=-maxdepth
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+  fi
+
+  _BINARY_OPTION=-printf
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+  fi
+
+  _BINARY_OPTION=-readable
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+  fi
+
+  _BINARY_OPTION=-type
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+  fi
+
+  if $_BOOLEAN_HARDLINK \
+  || $_BOOLEAN_UNLINK
+  then
+    _BINARY_OPTION=-uid
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+  fi # $_BOOLEAN_HARDLINK $_BOOLEAN_UNLINK
+
+  if $_BOOLEAN_HARDLINK \
+  || $_BOOLEAN_UNLINK
+  then
+    _BINARY_OPTION=-writable
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+  fi # $_BOOLEAN_HARDLINK $_BOOLEAN_UNLINK
+
+  if $_BOOLEAN_XDEV
+  then
+    _BINARY_OPTION=-xdev
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+  fi # $_BOOLEAN_XDEV
   #- find -#
 
   # - "-n string" = true if the length of string is non-zero
@@ -1387,12 +1393,12 @@ function _binary_validate_setup()
     if [[ $_BINARY_HELP =~ "command not found" ]]
     then
       _show_error "required binary \"$_BINARY_NAME\" not found"
-    else
-      _BINARY_OPTION=--bytes
-      if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
+    fi
+
+    _BINARY_OPTION=--bytes
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
     fi
     #- head -#
   fi # $_BOOLEAN_SUM $_OPTION_SUM_SIZE
@@ -1415,26 +1421,26 @@ function _binary_validate_setup()
     if [[ $_BINARY_HELP =~ "command not found" ]]
     then
       _show_error "required binary \"$_BINARY_NAME\" not found"
-    else
-      _BINARY_OPTION=--group
-      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        # - no doublequotes on the binary or its option. aka: NO CAPES!
-        _MY_GID=$($_BINARY_NAME $_BINARY_OPTION)
-        _eko_pv \$_MY_GID: \""$_MY_GID\""
-      else
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
+    fi
 
-      _BINARY_OPTION=--user
-      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        # - no doublequotes on the binary or its option. aka: NO CAPES!
-        _MY_UID=$($_BINARY_NAME $_BINARY_OPTION)
-        _eko_pv \$_MY_UID: \""$_MY_UID\""
-      else
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
+    _BINARY_OPTION=--group
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      # - no doublequotes on the binary or its option. aka: NO CAPES!
+      _MY_GID=$($_BINARY_NAME $_BINARY_OPTION)
+      _eko_pv \$_MY_GID: \""$_MY_GID\""
+    else
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+
+    _BINARY_OPTION=--user
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      # - no doublequotes on the binary or its option. aka: NO CAPES!
+      _MY_UID=$($_BINARY_NAME $_BINARY_OPTION)
+      _eko_pv \$_MY_UID: \""$_MY_UID\""
+    else
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
     fi
     #- id -#
   fi # $_BOOLEAN_HARDLINK $_BOOLEAN_UNLINK
@@ -1453,15 +1459,15 @@ function _binary_validate_setup()
     if [[ $_BINARY_HELP =~ "command not found" ]]
     then
       _show_error "required binary \"$_BINARY_NAME\" not found"
+    fi
+
+    _BINARY_OPTION=--force
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _OPTIONS_LN=$_BINARY_OPTION
+      _eko_pv \$_OPTIONS_LN: \""$_OPTIONS_LN\""
     else
-      _BINARY_OPTION=--force
-      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _OPTIONS_LN=$_BINARY_OPTION
-        _eko_pv \$_OPTIONS_LN: \""$_OPTIONS_LN\""
-      else
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
     fi
     #- ln -#
   fi # $_BOOLEAN_HARDLINK
@@ -1478,7 +1484,6 @@ function _binary_validate_setup()
     # - _FUNCTION_SUM is set to _pathname_md5sum_md5sum (1/2)
 
     _BINARY_NAME=md5sum
-#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
@@ -1537,20 +1542,19 @@ function _binary_validate_setup()
     # - _FUNCTION_SUM is set to _pathname_openssl_md5sum (2/2)
 
     _BINARY_NAME=openssl
-#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1))
     if [[ $_BINARY_HELP =~ "command not found" ]]
     then
       _show_error "required binaries \"md5sum\" or \"$_BINARY_NAME\" not found"
+    fi
+
+    _BINARY_OPTION=-md5
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _FUNCTION_SUM=_pathname_openssl_md5sum
+      _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
     else
-      _BINARY_OPTION=-md5
-      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _FUNCTION_SUM=_pathname_openssl_md5sum
-        _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
-      else
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
     fi
     #- openssl (fallback to md5sum) -#
   fi # $_BOOLEAN_MD5SUM $_FUNCTION_SUM
@@ -1567,7 +1571,6 @@ function _binary_validate_setup()
     # - _FUNCTION_SUM is set to _pathname_sha1sum_sha1sum (1/2)
 
     _BINARY_NAME=sha1sum
-#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
@@ -1626,20 +1629,19 @@ function _binary_validate_setup()
     # - _FUNCTION_SUM is set to _pathname_openssl_sha1sum (2/2)
 
     _BINARY_NAME=openssl
-#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1))
     if [[ $_BINARY_HELP =~ "command not found" ]]
     then
       _show_error "required binaries \"sha1sum\" or \"$_BINARY_NAME\" not found"
+    fi
+
+    _BINARY_OPTION=-sha1
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _FUNCTION_SUM=_pathname_openssl_sha1sum
+      _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
     else
-      _BINARY_OPTION=-sha1
-      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _FUNCTION_SUM=_pathname_openssl_sha1sum
-        _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
-      else
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
     fi
     #- openssl (fallback to sha1sum) -#
   fi # $_BOOLEAN_SHA1SUM $_FUNCTION_SUM
@@ -1656,7 +1658,6 @@ function _binary_validate_setup()
     # - _FUNCTION_SUM is set to _pathname_sha224sum_sha224sum (1/2)
 
     _BINARY_NAME=sha224sum
-#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
@@ -1715,20 +1716,19 @@ function _binary_validate_setup()
     # - _FUNCTION_SUM is set to _pathname_openssl_sha224sum (2/2)
 
     _BINARY_NAME=openssl
-#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1))
     if [[ $_BINARY_HELP =~ "command not found" ]]
     then
       _show_error "required binaries \"sha224sum\" or \"$_BINARY_NAME\" not found"
+    fi
+
+    _BINARY_OPTION=-sha224
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _FUNCTION_SUM=_pathname_openssl_sha224sum
+      _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
     else
-      _BINARY_OPTION=-sha224
-      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _FUNCTION_SUM=_pathname_openssl_sha224sum
-        _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
-      else
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
     fi
     #- openssl (fallback to sha224sum) -#
   fi # $_BOOLEAN_SHA224SUM $_FUNCTION_SUM
@@ -1745,7 +1745,6 @@ function _binary_validate_setup()
     # - _FUNCTION_SUM is set to _pathname_sha256sum_sha256sum (1/2)
 
     _BINARY_NAME=sha256sum
-#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
@@ -1804,20 +1803,19 @@ function _binary_validate_setup()
     # - _FUNCTION_SUM is set to _pathname_openssl_sha256sum (2/2)
 
     _BINARY_NAME=openssl
-#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1))
     if [[ $_BINARY_HELP =~ "command not found" ]]
     then
       _show_error "required binaries \"sha256sum\" or \"$_BINARY_NAME\" not found"
+    fi
+
+    _BINARY_OPTION=-sha256
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _FUNCTION_SUM=_pathname_openssl_sha256sum
+      _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
     else
-      _BINARY_OPTION=-sha256
-      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _FUNCTION_SUM=_pathname_openssl_sha256sum
-        _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
-      else
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
     fi
     #- openssl (fallback to sha256sum) -#
   fi # $_BOOLEAN_SHA256SUM $_FUNCTION_SUM
@@ -1834,7 +1832,6 @@ function _binary_validate_setup()
     # - _FUNCTION_SUM is set to _pathname_sha384sum_sha384sum (1/2)
 
     _BINARY_NAME=sha384sum
-#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
@@ -1893,20 +1890,19 @@ function _binary_validate_setup()
     # - _FUNCTION_SUM is set to _pathname_openssl_sha384sum (2/2)
 
     _BINARY_NAME=openssl
-#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1))
     if [[ $_BINARY_HELP =~ "command not found" ]]
     then
       _show_error "required binaries \"sha384sum\" or \"$_BINARY_NAME\" not found"
+    fi
+
+    _BINARY_OPTION=-sha384
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _FUNCTION_SUM=_pathname_openssl_sha384sum
+      _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
     else
-      _BINARY_OPTION=-sha384
-      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _FUNCTION_SUM=_pathname_openssl_sha384sum
-        _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
-      else
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
     fi
     #- openssl (fallback to sha384sum) -#
   fi # $_BOOLEAN_SHA384SUM $_FUNCTION_SUM
@@ -1923,7 +1919,6 @@ function _binary_validate_setup()
     # - _FUNCTION_SUM is set to _pathname_sha512sum_sha512sum (1/2)
 
     _BINARY_NAME=sha512sum
-#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
     if [[ ! $_BINARY_HELP =~ "command not found" ]]
     then
@@ -1982,20 +1977,19 @@ function _binary_validate_setup()
     # - _FUNCTION_SUM is set to _pathname_openssl_sha512sum (2/2)
 
     _BINARY_NAME=openssl
-#disabled#
     _BINARY_HELP=$(echo $($_BINARY_NAME dgst --help 2>&1))
     if [[ $_BINARY_HELP =~ "command not found" ]]
     then
       _show_error "required binaries \"sha512sum\" or \"$_BINARY_NAME\" not found"
+    fi
+
+    _BINARY_OPTION=-sha512
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _FUNCTION_SUM=_pathname_openssl_sha512sum
+      _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
     else
-      _BINARY_OPTION=-sha512
-      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _FUNCTION_SUM=_pathname_openssl_sha512sum
-        _eko_pv \$_FUNCTION_SUM: \""$_FUNCTION_SUM\""
-      else
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
     fi
     #- openssl (fallback to sha512sum) -#
   fi # $_BOOLEAN_SHA512SUM $_FUNCTION_SUM
@@ -2014,15 +2008,15 @@ function _binary_validate_setup()
     if [[ $_BINARY_HELP =~ "command not found" ]]
     then
       _show_error "required binary \"$_BINARY_NAME\" not found"
+    fi
+
+    _BINARY_OPTION=--force
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _OPTIONS_MV=$_BINARY_OPTION
+      _eko_pv \$_OPTIONS_MV: \""$_OPTIONS_MV\""
     else
-      _BINARY_OPTION=--force
-      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _OPTIONS_MV=$_BINARY_OPTION
-        _eko_pv \$_OPTIONS_MV: \""$_OPTIONS_MV\""
-      else
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
     fi
     #- mv -#
   fi # $_BOOLEAN_UNLINK
@@ -2126,15 +2120,15 @@ function _binary_validate_setup()
     if [[ $_BINARY_HELP =~ "command not found" ]]
     then
       _show_error "required binary \"$_BINARY_NAME\" not found"
+    fi
+
+    _BINARY_OPTION=--force
+    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _OPTIONS_RM=$_BINARY_OPTION
+      _eko_pv \$_OPTIONS_RM: \""$_OPTIONS_RM\""
     else
-      _BINARY_OPTION=--force
-      if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _OPTIONS_RM=$_BINARY_OPTION
-        _eko_pv \$_OPTIONS_RM: \""$_OPTIONS_RM\""
-      else
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
     fi
     #- rm -#
   fi # $_BOOLEAN_HARDLINK $_BOOLEAN_UNLINK
@@ -2150,12 +2144,12 @@ function _binary_validate_setup()
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
     _show_error "required binary \"$_BINARY_NAME\" not found"
-  else
-    _BINARY_OPTION=--key
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
+  fi
+
+  _BINARY_OPTION=--key
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
   fi
   #- sort -#
 
@@ -2180,12 +2174,12 @@ function _binary_validate_setup()
     if [[ $_BINARY_HELP =~ "command not found" ]]
     then
       _show_error "required binary \"$_BINARY_NAME\" not found"
-    else
-      _BINARY_OPTION=--date
-      if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-      then
-        _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-      fi
+    fi
+
+    _BINARY_OPTION=--date
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
     fi
     #- touch -#
   fi # $_BOOLEAN_HARDLINK $_BOOLEAN_UNLINK
@@ -2256,13 +2250,13 @@ function _builtin_validate_setup()
   if [[ $_BUILTIN_HELP =~ "no help topics match" ]]
   then
     _show_error "required builtin \"$_BUILTIN_NAME\" not supported"
-  else
-    _BUILTIN_OPTION=-P
-    if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
-    then
-      _OPTIONS_CD=$_BUILTIN_OPTION
-      _eko_pv \$_OPTIONS_CD: \""$_OPTIONS_CD\""
-    fi
+  fi
+
+  _BUILTIN_OPTION=-P
+  if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
+  then
+    _OPTIONS_CD=$_BUILTIN_OPTION
+    _eko_pv \$_OPTIONS_CD: \""$_OPTIONS_CD\""
   fi
   #- cd -#
 
@@ -2280,13 +2274,13 @@ function _builtin_validate_setup()
   if [[ $_BUILTIN_HELP =~ "no help topics match" ]]
   then
     _show_error "required builtin \"$_BUILTIN_NAME\" not supported"
-  else
-    _BUILTIN_OPTION=-P
-    if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
-    then
-      _OPTIONS_PWD=$_BUILTIN_OPTION
-      _eko_pv \$_OPTIONS_PWD: \""$_OPTIONS_PWD\""
-    fi
+  fi
+
+  _BUILTIN_OPTION=-P
+  if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
+  then
+    _OPTIONS_PWD=$_BUILTIN_OPTION
+    _eko_pv \$_OPTIONS_PWD: \""$_OPTIONS_PWD\""
   fi
   #- pwd -#
 
@@ -2310,15 +2304,15 @@ function _builtin_validate_setup()
   if [[ $_BUILTIN_HELP =~ "no help topics match" ]]
   then
     _show_error "required builtin \"$_BUILTIN_NAME\" not supported"
+  fi
+
+  _BUILTIN_OPTION=-r
+  if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
+  then
+    _OPTIONS_READ=$_BUILTIN_OPTION
+    _eko_pv \$_OPTIONS_READ: \""$_OPTIONS_READ\""
   else
-    _BUILTIN_OPTION=-r
-    if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
-    then
-      _OPTIONS_READ=$_BUILTIN_OPTION
-      _eko_pv \$_OPTIONS_READ: \""$_OPTIONS_READ\""
-    else
-      _show_error \""$_BUILTIN_NAME\" does not support \"$_BUILTIN_OPTION\""
-    fi
+    _show_error \""$_BUILTIN_NAME\" does not support \"$_BUILTIN_OPTION\""
   fi
   #- read -#
 

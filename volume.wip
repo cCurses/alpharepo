@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# volume v2019.10.18
+# volume v2019.10.25
 
 # Copyright (C) 2005 - 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -42,6 +42,11 @@
 #   chronologically top-to-bottom while others are bottom-to-top. preferred
 #   order is bottom-to-top. this will gradually be fixed when time permits
 
+# 2019-10-25
+# - "function _binary_validate_setup" converted "amixer" testing from nested
+#   to sequential
+# - "function _builtin_validate_setup" converted "read" testing from nested to
+#   sequential
 # 2019-10-18
 # -  renamed function globally:
 #  was: _eko_pS
@@ -844,32 +849,32 @@ function _binary_validate_setup()
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
     _show_error "required binary \"$_BINARY_NAME\" not found"
+  fi
+
+  _BINARY_OPTION=--quiet
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+  fi
+
+  _BINARY_OPTION=sget
+  if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _AMIXER_SGET_MASTER=$($_BINARY_NAME $_BINARY_OPTION Master 2>/dev/null)
+
+    # - "-z string" = true if the length of string is zero
+    if [[ -z $_AMIXER_SGET_MASTER ]]
+    then
+      _show_error "command \"$_BINARY_NAME $_BINARY_OPTION Master\" returned no results"
+    fi
   else
-    _BINARY_OPTION=--quiet
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+  fi
 
-    _BINARY_OPTION=sget
-    if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _AMIXER_SGET_MASTER=$($_BINARY_NAME $_BINARY_OPTION Master 2>/dev/null)
-
-      # - "-z string" = true if the length of string is zero
-      if [[ -z $_AMIXER_SGET_MASTER ]]
-      then
-        _show_error "command \"$_BINARY_NAME $_BINARY_OPTION Master\" returned no results"
-      fi
-    else
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
-
-    _BINARY_OPTION=sset
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
+  _BINARY_OPTION=sset
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
   fi
   #- amixer -#
 
@@ -919,15 +924,15 @@ function _builtin_validate_setup()
   if [[ $_BUILTIN_HELP =~ "no help topics match" ]]
   then
     _show_error "required builtin \"$_BUILTIN_NAME\" not supported"
+  fi
+
+  _BUILTIN_OPTION=-r
+  if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
+  then
+    _OPTIONS_READ=$_BUILTIN_OPTION
+    _eko_pv \$_OPTIONS_READ: \""$_OPTIONS_READ\""
   else
-    _BUILTIN_OPTION=-r
-    if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
-    then
-      _OPTIONS_READ=$_BUILTIN_OPTION
-      _eko_pv \$_OPTIONS_READ: \""$_OPTIONS_READ\""
-    else
-      _show_error \""$_BUILTIN_NAME\" does not support \"$_BUILTIN_OPTION\""
-    fi
+    _show_error \""$_BUILTIN_NAME\" does not support \"$_BUILTIN_OPTION\""
   fi
   #- read -#
 

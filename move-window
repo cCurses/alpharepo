@@ -44,6 +44,10 @@
 #   order is bottom-to-top. this will gradually be fixed when time permits
 
 # 2019-10-25
+# - "function _binary_validate_setup" converted "sed", "xprop", & "xwininfo"
+#   testing from nested to sequential
+# - "function _builtin_validate_setup" converted "read" testing from nested to
+#   sequential
 # - "function _binary_validate_setup" changed the following lines (xprop):
 #  was: #   "-id id" (no long form)
 #   is: #   "-id id" (test only for "-id") (no long form)
@@ -584,12 +588,12 @@ function _binary_validate_setup()
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
     _show_error "required binary \"$_BINARY_NAME\" not found"
-  else
-    _BINARY_OPTION=--expression=script
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
+  fi
+
+  _BINARY_OPTION=--expression=script
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
   fi
   #- sed -#
 
@@ -613,6 +617,9 @@ function _binary_validate_setup()
   else
     _BINARY_WMCTRL=$_BINARY_NAME
 
+    # NOTE:
+    # - these tests must remain nested since they depend on the existence of
+    #   wmctrl
     _BINARY_OPTION=-i
     if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
     then
@@ -631,6 +638,7 @@ function _binary_validate_setup()
       _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
     fi
   fi
+
   _eko_pv \$_BINARY_WMCTRL: \""$_BINARY_WMCTRL\""
   #- wmctrl -#
 
@@ -645,23 +653,23 @@ function _binary_validate_setup()
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
     _show_error "required binary \"$_BINARY_NAME\" not found"
-  else
-    if [[ " $_BINARY_HELP " =~ "unable to open display" ]]
-    then
-      _show_error "unable to determine \$DISPLAY &/or \$XAUTHORITY"
-    fi
+  fi
 
-    _BINARY_OPTION=-id
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
+  if [[ " $_BINARY_HELP " =~ "unable to open display" ]]
+  then
+    _show_error "unable to determine \$DISPLAY &/or \$XAUTHORITY"
+  fi
 
-    _BINARY_OPTION=-root
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
+  _BINARY_OPTION=-id
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+  fi
+
+  _BINARY_OPTION=-root
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
   fi
   #- xprop -#
 
@@ -675,12 +683,12 @@ function _binary_validate_setup()
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
     _show_error "required binary \"$_BINARY_NAME\" not found"
-  else
-    _BINARY_OPTION=-id
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
+  fi
+
+  _BINARY_OPTION=-id
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
   fi
   #- xwininfo -#
 
@@ -730,15 +738,15 @@ function _builtin_validate_setup()
   if [[ $_BUILTIN_HELP =~ "no help topics match" ]]
   then
     _show_error "required builtin \"$_BUILTIN_NAME\" not supported"
+  fi
+
+  _BUILTIN_OPTION=-r
+  if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
+  then
+    _OPTIONS_READ=$_BUILTIN_OPTION
+    _eko_pv \$_OPTIONS_READ: \""$_OPTIONS_READ\""
   else
-    _BUILTIN_OPTION=-r
-    if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
-    then
-      _OPTIONS_READ=$_BUILTIN_OPTION
-      _eko_pv \$_OPTIONS_READ: \""$_OPTIONS_READ\""
-    else
-      _show_error \""$_BUILTIN_NAME\" does not support \"$_BUILTIN_OPTION\""
-    fi
+    _show_error \""$_BUILTIN_NAME\" does not support \"$_BUILTIN_OPTION\""
   fi
   #- read -#
 

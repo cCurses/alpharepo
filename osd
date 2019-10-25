@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# osd v2019.10.16
+# osd v2019.10.25
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -13,14 +13,16 @@
 # TODO:
 # - allow for override of a specific utility (if it's available)?
 
-# - remove the following at some point:
-#   #disabled# < keep this one (useful for testing)
-
 # OOPS:
 # - changelog order is unpredictable. some series of entries per date are
 #   chronologically top-to-bottom while others are bottom-to-top. preferred
 #   order is bottom-to-top. this will gradually be fixed when time permits
 
+# 2019-10-25
+# - "function _binary_validate_setup" converted "ps", & "sed" testing from
+#    nested to sequential
+# - "function _builtin_validate_setup" converted "read" testing from nested to
+#   sequential
 # 2019-10-16
 # - "functions:/variables:/binaries:/builtins:" listings for each function
 #   updated & verified. also updated the "use & abuse" listings based on this
@@ -418,14 +420,12 @@ function _binary_validate_setup()
   # - _BINARY_KDIALOG is set/unset
 
   _BINARY_NAME=kdialog
-#disabled#
   _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
     unset _BINARY_KDIALOG
   else
     _BINARY_OPTION=--passivepopup
-#disabled#
     if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
     then
       _BINARY_KDIALOG=$_BINARY_NAME
@@ -443,14 +443,12 @@ function _binary_validate_setup()
   # - _BINARY_NOTIFYSEND is set/unset
 
   _BINARY_NAME=notify-send
-#disabled#
   _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
     unset _BINARY_NOTIFYSEND
   else
     _BINARY_OPTION=--expire-time=TIME
-#disabled#
     if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
     then
       _BINARY_NOTIFYSEND=$_BINARY_NAME
@@ -506,12 +504,12 @@ function _binary_validate_setup()
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
     _show_error "required binary \"$_BINARY_NAME\" not found"
-  else
-    _BINARY_OPTION=--format
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
+  fi
+
+  _BINARY_OPTION=--format
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
   fi
   #- ps -#
 
@@ -526,12 +524,12 @@ function _binary_validate_setup()
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
     _show_error "required binary \"$_BINARY_NAME\" not found"
-  else
-    _BINARY_OPTION=--expression=script
-    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
-    then
-      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
-    fi
+  fi
+
+  _BINARY_OPTION=--expression=script
+  if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+  then
+    _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
   fi
   #- sed -#
 
@@ -559,7 +557,6 @@ then
   # - _BINARY_XMESSAGE is set/unset
 
   _BINARY_NAME=xmessage
-#disabled#
   _BINARY_HELP=$(echo $($_BINARY_NAME -help 2>&1))
   if [[ $_BINARY_HELP =~ "command not found" ]]
   then
@@ -572,12 +569,10 @@ then
       _BINARY_XMESSAGE=$_BINARY_NAME
     else
       _BINARY_OPTION=-buttons
-#disabled#
       if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
       then
         _BINARY_XMESSAGE=$_BINARY_NAME
         _BINARY_OPTION=-timeout
-#disabled#
         if [[ " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
         then
           _BINARY_XMESSAGE=$_BINARY_NAME
@@ -698,15 +693,15 @@ function _builtin_validate_setup()
   if [[ $_BUILTIN_HELP =~ "no help topics match" ]]
   then
     _show_error "required builtin \"$_BUILTIN_NAME\" not supported"
+  fi
+
+  _BUILTIN_OPTION=-r
+  if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
+  then
+    _OPTIONS_READ=$_BUILTIN_OPTION
+    _eko_pv \$_OPTIONS_READ: \""$_OPTIONS_READ\""
   else
-    _BUILTIN_OPTION=-r
-    if [[ " $_BUILTIN_HELP " =~ " $_BUILTIN_OPTION " ]]
-    then
-      _OPTIONS_READ=$_BUILTIN_OPTION
-      _eko_pv \$_OPTIONS_READ: \""$_OPTIONS_READ\""
-    else
-      _show_error \""$_BUILTIN_NAME\" does not support \"$_BUILTIN_OPTION\""
-    fi
+    _show_error \""$_BUILTIN_NAME\" does not support \"$_BUILTIN_OPTION\""
   fi
   #- read -#
 

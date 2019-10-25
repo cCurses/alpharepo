@@ -1,0 +1,488 @@
+#!/bin/bash
+#+ marker sof +#
+
+# gather-xprop-xwindow-info v2019.10.25
+
+# Copyright (C) 2019
+# Erik Jan Tromp <alphageek@slackware.com>
+# Licensed under the GPL v2
+
+# concept:
+# - as the name suggests: gather xprop & xwininfo info on all known windows
+# ^ root window & every window identified by its Window ID
+# - possibly output to a distinct file using various environment variables
+
+# NOTE:
+# - additional information acquired from:
+#   https://standards.freedesktop.org/wm-spec/wm-spec-latest.html
+
+# 2019-10-25
+
+# (pending)
+# - obfuscate potentially sensitive information from the gathered information
+# - I just have to figure out *how*
+# - do too little & it's basically a wasted effort
+# - do too much & the script is rendered pointless
+# ^ for now, all I can suggest is to run this script in a clean environment
+
+# - coding begins almost from scratch. copy-pasted pertinent routines from
+#   "move-window". the following functions were retained with little or no
+#   modification:
+#   "function _binary_validate"
+#   "function _eko_iod"
+#   "function _eko_pv"
+#   "function _get_net_client_list_window"
+#   "function _parse_parameters"
+#   "function _show_error"
+#   "function _show_help"
+
+#+ setup here +#
+
+# (none)
+
+#- setup here -#
+
+#+ function definitions here +#
+
+# ORDER:
+# - before calling _parse_parameters, but otherwise alphabetical
+
+function _binary_validate()
+{
+  _eko_iod "#+ _binary_validate +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_pv
+  # _show_error
+
+  # variables:
+  # _BINARY_HELP
+  # _BINARY_NAME
+  # _BINARY_OPTION
+
+  # binaries:
+  # sed
+  # xprop
+  # xwininfo
+
+  # builtins:
+  # echo
+
+  # NOTE:
+  # - rather than test a given binary's version in hopes of figuring out which
+  #   features it supports, test its supported feature set directly. not only
+  #   is this much simpler to do, it's possible to test only those features
+  #   that are explicitly used in the script
+  # - how? get the binary to dump its embedded help text & parse the result
+  # - this can be used as a dual test. no help text = no binary, otherwise
+  #   parse the help text for descriptions of specific features
+
+  # NOTE:
+  # - be explicit, use long form options when available
+
+  #+ sed +#
+  # - "sed --help". stdout
+  #   "--expression=script" (no "=" required) (use "=" for uniformity)
+
+  _BINARY_NAME=sed
+  _BINARY_HELP=$(echo $($_BINARY_NAME --help 2>&1))
+  if [[ $_BINARY_HELP =~ "command not found" ]]
+  then
+    _show_error "required binary \"$_BINARY_NAME\" not found"
+  else
+    _BINARY_OPTION=--expression=script
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+  fi
+  #- sed -#
+
+  #+ xprop +#
+  # - "xprop -help". stderr
+  # - "xprop -help 2>&1". stdout
+  #   "-id id" (test only for "-id") (no long form)
+  #   "-root" (no long form. no other options)
+
+  _BINARY_NAME=xprop
+  _BINARY_HELP=$(echo $($_BINARY_NAME -help 2>&1))
+  if [[ $_BINARY_HELP =~ "command not found" ]]
+  then
+    _show_error "required binary \"$_BINARY_NAME\" not found"
+  else
+    if [[ " $_BINARY_HELP " =~ "unable to open display" ]]
+    then
+      _show_error "unable to determine \$DISPLAY &/or \$XAUTHORITY"
+    fi
+
+    _BINARY_OPTION=-id
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+
+    _BINARY_OPTION=-root
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+  fi
+  #- xprop -#
+
+  #+ xwininfo +#
+  # - "xwininfo -help". stderr
+  # - "xwininfo -help 2>&1 ". stdout
+  #   "-id windowid" (test only for "-id") (no long form)
+
+  _BINARY_NAME=xwininfo
+  _BINARY_HELP=$(echo $($_BINARY_NAME -help 2>&1))
+  if [[ $_BINARY_HELP =~ "command not found" ]]
+  then
+    _show_error "required binary \"$_BINARY_NAME\" not found"
+  else
+    _BINARY_OPTION=-id
+    if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
+    then
+      _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
+    fi
+  fi
+  #- xwininfo -#
+
+  _eko_iod "#- _binary_validate -#"
+}
+
+function _eko_iod()
+{
+  #+ _eko_iod +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # #
+  # @
+  # FUNCNAME (single dimension indexed array)
+  # _BOOLEAN_DEBUG
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+  # printf
+
+  # NOTE:
+  # - why "$(( ${#FUNCNAME[@]} - 3 ))"? to account for main, parent, current
+  # - pay special attention to the "*" in "%*s". it's part of the magic
+
+  if $_BOOLEAN_DEBUG
+  then
+    # - fast & fancy indenting/"outdenting"
+    # - $((expression))
+    # - ${#parameter}
+    printf "%*s" $(( ${#FUNCNAME[@]} - 3 ))
+    echo "$@"
+  fi
+
+  #- _eko_iod -#
+}
+
+function _eko_pv()
+{
+  #+ _eko_pv +#
+
+  # functions:
+  # (none)
+
+  # variables:
+  # 1
+  # @
+  # _BOOLEAN_VERBOSE
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+  # printf
+
+  # NOTE:
+  # - why "%23s "? to simplify setting column width in verbose reports. a
+  #   single change here affects the output globally
+  # - unformatted (non-columnized) output is now supported. simply pass "" as
+  #   the first parameter
+
+  if $_BOOLEAN_VERBOSE
+  then
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $1 ]]
+    then
+      printf "%23s " "$1"
+    fi
+    shift
+    echo "$@"
+  fi
+
+  #- _eko_pv -#
+}
+
+function _get_net_client_list_window()
+{
+  _eko_iod "#+ _get_net_client_list_window +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_pv
+
+  # variables:
+  # _NET_CLIENT_LIST_WINDOW
+  # _OUTPUT_XPROP_ROOT
+
+  # binaries:
+  # sed
+
+  # builtins:
+  # echo
+
+  # NET:
+  # - _NET_CLIENT_LIST, WINDOW[]/32
+
+  # "_NET_CLIENT_LIST(WINDOW): window id # "
+  # "0xe00008, "
+  # etc, etc
+  # "0x36007a2"
+
+  _NET_CLIENT_LIST_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d ; /\(.* # \|,\)/ s///g')
+
+  _eko_pv \$_NET_CLIENT_LIST_WINDOW: \""$_NET_CLIENT_LIST_WINDOW\""
+
+  _eko_iod "#- _get_net_client_list_window -#"
+}
+
+function _parse_parameters()
+{
+  #+ _parse_parameters +#
+
+  # functions:
+  # _binary_validate
+  # _eko_iod
+  # _eko_pv
+  # _get_net_client_list_window
+  # _show_error
+  # _show_help
+
+  # variables:
+  # #
+  # 1
+  # _BOOLEAN_DEBUG
+  # _BOOLEAN_GATHER
+  # _BOOLEAN_VERBOSE
+  # _NET_CLIENT_LIST_WINDOW
+  # _OPTION_WINDOW_ID
+  # _OUTPUT_XPROP_ID
+  # _OUTPUT_XPROP_ROOT
+  # _OUTPUT_XWININFO_ID
+  # _OUTPUT_XWININFO_ROOT
+
+  # binaries:
+  # xprop
+  # xwininfo
+
+  # builtins:
+  # (none)
+
+  # NOTE:
+  # - boolean variables are proper toggles
+
+  #+ parameter defaults +#
+
+  _BOOLEAN_DEBUG=true   # display
+  _BOOLEAN_GATHER=false # action
+  _BOOLEAN_VERBOSE=true # display
+
+  #- parameter defaults -#
+
+  while [[ $# -gt 0 ]]
+  do
+    case $1 in
+      ( -g \
+      | --gather )
+        if $_BOOLEAN_GATHER
+        then
+          _BOOLEAN_GATHER=false
+        else
+          _BOOLEAN_GATHER=true
+        fi
+      ;;
+      ( "-?" \
+      | -h \
+      | --help ) # -? must be "-?" or it matches "-<any single character>"
+        _show_help
+      ;;
+      ( -* )
+        _show_error "invalid option \"$1\" specified"
+      ;;
+      ( * )
+        _show_error "invalid parameter \"$1\" specified"
+      ;;
+    esac
+    shift
+  done
+
+  #- _parse_parameters -#
+
+  # - technically in the wrong spot, but it's a chicken or egg scenario
+  _eko_iod "#+ _parse_parameters +#"
+
+  # - show help
+  if ! $_BOOLEAN_GATHER
+  then
+    _show_help
+  fi
+
+  # - validate the existence & required options of system binaries
+  _binary_validate
+
+  #+ parameter settings (in (mostly) proper order of operation) +#
+
+  _eko_pv \$_BOOLEAN_DEBUG: \""$_BOOLEAN_DEBUG\""
+  _eko_pv \$_BOOLEAN_GATHER: \""$_BOOLEAN_GATHER\""
+  _eko_pv \$_BOOLEAN_VERBOSE: \""$_BOOLEAN_VERBOSE\""
+
+  #- parameter settings (in (mostly) proper order of operation) -#
+
+  # - and so it begins
+
+# - acquire "-root" via xwininfo & xprop (specifically in that order)
+# - acquire _NET_CLIENT_LIST_WINDOW & loop through each entity (same ordering)
+
+  _eko_pv "" ""
+
+  _OUTPUT_XWININFO_ROOT=$(xwininfo -root)
+#  _eko_pv \$_OUTPUT_XWININFO_ROOT: \""$_OUTPUT_XWININFO_ROOT\""
+  _eko_pv \$_OUTPUT_XWININFO_ROOT: ""
+  _eko_pv "" \""$_OUTPUT_XWININFO_ROOT\""
+
+  _eko_pv "" ""
+
+  _OUTPUT_XPROP_ROOT=$(xprop -root)
+#  _eko_pv \$_OUTPUT_XPROP_ROOT: \""$_OUTPUT_XPROP_ROOT\""
+  _eko_pv \$_OUTPUT_XPROP_ROOT: ""
+  _eko_pv "" \""$_OUTPUT_XPROP_ROOT\""
+
+  _eko_pv "" ""
+
+  # - get full list of Window IDs
+  # - this must follow the setting of $_OUTPUT_XPROP_ROOT directly above
+  _get_net_client_list_window
+
+  for _OPTION_WINDOW_ID in $_NET_CLIENT_LIST_WINDOW
+  do
+    _eko_pv "" ""
+    _eko_pv \$_OPTION_WINDOW_ID: \""$_OPTION_WINDOW_ID\""
+    _OUTPUT_XWININFO_ID=$(xwininfo -id $_OPTION_WINDOW_ID)
+#    _eko_pv \$_OUTPUT_XWININFO_ID: \""$_OUTPUT_XWININFO_ID\""
+    _eko_pv \$_OUTPUT_XWININFO_ID: ""
+    _eko_pv "" \""$_OUTPUT_XWININFO_ID\""
+  done
+
+  for _OPTION_WINDOW_ID in $_NET_CLIENT_LIST_WINDOW
+  do
+    _eko_pv "" ""
+    _eko_pv \$_OPTION_WINDOW_ID: \""$_OPTION_WINDOW_ID\""
+    _OUTPUT_XPROP_ID=$(xprop -id $_OPTION_WINDOW_ID)
+#    _eko_pv \$_OUTPUT_XPROP_ID: \""$_OUTPUT_XPROP_ID\""
+    _eko_pv \$_OUTPUT_XPROP_ID: ""
+    _eko_pv "" \""$_OUTPUT_XPROP_ID\""
+  done
+
+  # - and so it ends (so far)
+
+  _eko_iod "#- _parse_parameters -#"
+}
+
+function _show_error()
+{
+  _eko_iod "#+ _show_error +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # @
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+
+  # - output to stderr, not stdout
+  # - be explicit for clarity
+  echo "Error: $@" 1>&2
+
+  _eko_iod "#- _show_error -#"
+
+  exit 1
+}
+
+function _show_help()
+{
+  _eko_iod "#+ _show_help +#"
+
+  # functions:
+  # _eko_iod
+
+  # variables:
+  # (none)
+
+  # binaries:
+  # (none)
+
+  # builtins:
+  # echo
+
+  echo "
+Provide 1 parameter
+
+Mandatory parameter:
+
+  -g, --gather    Gather all information available via \""xwininfo\"" & \""xprop\""
+
+Optional parameter:
+
+  -?, -h, --help  Display this help text, useful as it is
+
+Note:
+  Information gathered *may* contain sensitive information, so run this script
+  in a clean environment
+"
+
+  _eko_iod "#- _show_help -#"
+
+  exit 0
+}
+
+#- function definitions here -#
+
+#+ start here +#
+
+# functions:
+# _parse_parameters
+
+# variables:
+# @
+
+# binaries:
+# (none)
+
+# builtins:
+# (none)
+
+_parse_parameters "$@"
+
+#- start here -#
+
+#- marker eof -#
+exit 0

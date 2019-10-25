@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# move-window v2019.10.24
+# move-window v2019.10.25
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -43,11 +43,22 @@
 #   chronologically top-to-bottom while others are bottom-to-top. preferred
 #   order is bottom-to-top. this will gradually be fixed when time permits
 
+# 2019-10-25
+# - "function _binary_validate_setup" changed the following lines (xprop):
+#  was: #   "-id id" (no long form)
+#   is: #   "-id id" (test only for "-id") (no long form)
+#  was: _BINARY_OPTION="-id id"
+#   is: _BINARY_OPTION=-id
+# - "function _binary_validate_setup" changed the following lines (xwininfo):
+#  was: #   "-id windowid" (no long form)
+#   is: #   "-id windowid" (test only for "-id") (no long form)
+#  was: _BINARY_OPTION="-id windowid"
+#   is: _BINARY_OPTION=-id
 # 2019-10-24
 # - "function _binary_validate_setup" added the following lines to "xprop":
 #  add: if [[ " $_BINARY_HELP " =~ "unable to open display" ]]
 #  add: then
-#  add:   _show_error "unable to determine \$DISPLAY & \$XAUTHORITY"
+#  add:   _show_error "unable to determine \$DISPLAY &/or \$XAUTHORITY"
 #  add: fi
 # - added several routines to gather even more information on almost all known
 #   _NET_* properties that are mentioned in the freedesktop specification but
@@ -626,7 +637,7 @@ function _binary_validate_setup()
   #+ xprop +#
   # - "xprop -help". stderr
   # - "xprop -help 2>&1". stdout
-  #   "-id id" (no long form)
+  #   "-id id" (test only for "-id") (no long form)
   #   "-root" (no long form. no other options)
 
   _BINARY_NAME=xprop
@@ -637,10 +648,10 @@ function _binary_validate_setup()
   else
     if [[ " $_BINARY_HELP " =~ "unable to open display" ]]
     then
-      _show_error "unable to determine \$DISPLAY & \$XAUTHORITY"
+      _show_error "unable to determine \$DISPLAY &/or \$XAUTHORITY"
     fi
 
-    _BINARY_OPTION="-id id"
+    _BINARY_OPTION=-id
     if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
     then
       _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""
@@ -657,7 +668,7 @@ function _binary_validate_setup()
   #+ xwininfo +#
   # - "xwininfo -help". stderr
   # - "xwininfo -help 2>&1 ". stdout
-  #   "-id windowid" (no long form)
+  #   "-id windowid" (test only for "-id") (no long form)
 
   _BINARY_NAME=xwininfo
   _BINARY_HELP=$(echo $($_BINARY_NAME -help 2>&1))
@@ -665,7 +676,7 @@ function _binary_validate_setup()
   then
     _show_error "required binary \"$_BINARY_NAME\" not found"
   else
-    _BINARY_OPTION="-id windowid"
+    _BINARY_OPTION=-id
     if [[ ! " $_BINARY_HELP " =~ " $_BINARY_OPTION " ]]
     then
       _show_error \""$_BINARY_NAME\" does not support \"$_BINARY_OPTION\""

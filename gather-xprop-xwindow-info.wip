@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# gather-xprop-xwindow-info v2019.10.25
+# gather-xprop-xwindow-info v2019.10.27
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -16,11 +16,13 @@
 # - additional information acquired from:
 #   https://standards.freedesktop.org/wm-spec/wm-spec-latest.html
 
+# 2019-10-27
+# - different approach. gather everything, display only what's of interest
+# - #'d out all non-essentials. leaving them in place "just in case"
 # 2019-10-25
-
 # (pending)
 # - obfuscate potentially sensitive information from the gathered information
-# - I just have to figure out *how*
+# - I just have to figure out *how* (done as of 2019-10-27)
 # - do too little & it's basically a wasted effort
 # - do too much & the script is rendered pointless
 # ^ for now, all I can suggest is to run this script in a clean environment
@@ -29,7 +31,7 @@
 #   "move-window". the following functions were retained with little or no
 #   modification:
 #   "function _binary_validate"
-#   "function _eko_iod"
+##   "function _eko_iod"
 #   "function _eko_pv"
 #   "function _get_net_client_list_window"
 #   "function _parse_parameters"
@@ -49,10 +51,10 @@
 
 function _binary_validate()
 {
-  _eko_iod "#+ _binary_validate +#"
+#  _eko_iod "#+ _binary_validate +#"
 
   # functions:
-  # _eko_iod
+#  # _eko_iod
   # _eko_pv
   # _show_error
 
@@ -149,7 +151,7 @@ function _binary_validate()
   fi
   #- xwininfo -#
 
-  _eko_iod "#- _binary_validate -#"
+#  _eko_iod "#- _binary_validate -#"
 }
 
 function _eko_iod()
@@ -229,10 +231,10 @@ function _eko_pv()
 
 function _get_net_client_list_window()
 {
-  _eko_iod "#+ _get_net_client_list_window +#"
+#  _eko_iod "#+ _get_net_client_list_window +#"
 
   # functions:
-  # _eko_iod
+#  # _eko_iod
   # _eko_pv
 
   # variables:
@@ -255,9 +257,9 @@ function _get_net_client_list_window()
 
   _NET_CLIENT_LIST_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d ; /\(.* # \|,\)/ s///g')
 
-  _eko_pv \$_NET_CLIENT_LIST_WINDOW: \""$_NET_CLIENT_LIST_WINDOW\""
+#  _eko_pv \$_NET_CLIENT_LIST_WINDOW: \""$_NET_CLIENT_LIST_WINDOW\""
 
-  _eko_iod "#- _get_net_client_list_window -#"
+#  _eko_iod "#- _get_net_client_list_window -#"
 }
 
 function _parse_parameters()
@@ -266,7 +268,7 @@ function _parse_parameters()
 
   # functions:
   # _binary_validate
-  # _eko_iod
+#  # _eko_iod
   # _eko_pv
   # _get_net_client_list_window
   # _show_error
@@ -280,6 +282,7 @@ function _parse_parameters()
   # _BOOLEAN_VERBOSE
   # _NET_CLIENT_LIST_WINDOW
   # _OPTION_WINDOW_ID
+  # _OUTPUT_SORTED
   # _OUTPUT_XPROP_ID
   # _OUTPUT_XPROP_ROOT
   # _OUTPUT_XWININFO_ID
@@ -333,7 +336,7 @@ function _parse_parameters()
   #- _parse_parameters -#
 
   # - technically in the wrong spot, but it's a chicken or egg scenario
-  _eko_iod "#+ _parse_parameters +#"
+#  _eko_iod "#+ _parse_parameters +#"
 
   # - show help
   if ! $_BOOLEAN_GATHER
@@ -346,16 +349,20 @@ function _parse_parameters()
 
   #+ parameter settings (in (mostly) proper order of operation) +#
 
-  _eko_pv \$_BOOLEAN_DEBUG: \""$_BOOLEAN_DEBUG\""
-  _eko_pv \$_BOOLEAN_GATHER: \""$_BOOLEAN_GATHER\""
-  _eko_pv \$_BOOLEAN_VERBOSE: \""$_BOOLEAN_VERBOSE\""
+#  _eko_pv \$_BOOLEAN_DEBUG: \""$_BOOLEAN_DEBUG\""
+#  _eko_pv \$_BOOLEAN_GATHER: \""$_BOOLEAN_GATHER\""
+#  _eko_pv \$_BOOLEAN_VERBOSE: \""$_BOOLEAN_VERBOSE\""
 
   #- parameter settings (in (mostly) proper order of operation) -#
 
   # - and so it begins
 
-# - acquire "-root" via xwininfo & xprop (specifically in that order)
-# - acquire _NET_CLIENT_LIST_WINDOW & loop through each entity (same ordering)
+# - too much info returned. potentially sensitive stuff included. nope
+if [[ 0 == 1 ]]
+then
+
+  # - acquire "-root" via xwininfo & xprop (specifically in that order)
+  # - acquire _NET_CLIENT_LIST_WINDOW & loop through each entity (same ordering)
 
   _eko_pv "" ""
 
@@ -397,17 +404,82 @@ function _parse_parameters()
     _eko_pv "" \""$_OUTPUT_XPROP_ID\""
   done
 
+fi
+
+# - display only what's required
+if [[ 1 == 1 ]]
+then
+
+# NOTE:
+# - I'm only interested in the formatting of the following (for now):
+#   _NET_VIRTUAL_ROOTS
+#   _NET_WM_BYPASS_COMPOSITOR
+#   _NET_WM_HANDLED_ICONS
+
+  # - acquire "xprop -root"
+  # - acquire _NET_CLIENT_LIST_WINDOW & loop through each entity
+  # - deliberately using "echo" instead of "_eko_pv" below so the output can
+  #   be fed to "grep" with no trouble
+
+  _OUTPUT_XPROP_ROOT=$(xprop -root)
+
+  echo "#+ xprop -root +#"
+  _OUTPUT_SORTED=$(echo "$_OUTPUT_XPROP_ROOT" \
+  | egrep \
+^_NET_VIRTUAL_ROOTS)
+
+  # - we only need a single example of each match
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_OUTPUT_SORTED ]]
+  then
+    _OUTPUT_SORTED=$(echo "$_OUTPUT_SORTED" | sort -u)
+    echo "$_OUTPUT_SORTED"
+  fi
+  echo "#- xprop -root -#"
+
+# - test pattern for above. it works
+#^"(_NET_ACTIVE_WINDOW|_NET_CURRENT_DESKTOP)")
+
+  # - get full list of Window IDs
+  # - this must follow the setting of $_OUTPUT_XPROP_ROOT directly above
+  _get_net_client_list_window
+
+  echo "#+ xprop -id 0xDEADF00D +#"
+  _OUTPUT_SORTED=$(for _OPTION_WINDOW_ID in $_NET_CLIENT_LIST_WINDOW
+  do
+    echo "$_OPTION_WINDOW_ID"
+
+    _OUTPUT_XPROP_ID=$(xprop -id $_OPTION_WINDOW_ID)
+    echo "$_OUTPUT_XPROP_ID"
+  done \
+  | egrep \
+^"(_NET_WM_BYPASS_COMPOSITOR|_NET_WM_HANDLED_ICONS)")
+
+  # - we only need a single example of each match
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_OUTPUT_SORTED ]]
+  then
+    _OUTPUT_SORTED=$(echo "$_OUTPUT_SORTED" | sort -u)
+    echo "$_OUTPUT_SORTED"
+  fi
+  echo "#- xprop -id 0xDEADF00D -#"
+
+fi
+
+# - test pattern for above. it works
+#^"(_NET_WM_NAME|_NET_WM_PID)")
+
   # - and so it ends (so far)
 
-  _eko_iod "#- _parse_parameters -#"
+#  _eko_iod "#- _parse_parameters -#"
 }
 
 function _show_error()
 {
-  _eko_iod "#+ _show_error +#"
+#  _eko_iod "#+ _show_error +#"
 
   # functions:
-  # _eko_iod
+#  # _eko_iod
 
   # variables:
   # @
@@ -422,17 +494,17 @@ function _show_error()
   # - be explicit for clarity
   echo "Error: $@" 1>&2
 
-  _eko_iod "#- _show_error -#"
+#  _eko_iod "#- _show_error -#"
 
   exit 1
 }
 
 function _show_help()
 {
-  _eko_iod "#+ _show_help +#"
+#  _eko_iod "#+ _show_help +#"
 
   # functions:
-  # _eko_iod
+#  # _eko_iod
 
   # variables:
   # (none)
@@ -448,7 +520,8 @@ Provide 1 parameter
 
 Mandatory parameter:
 
-  -g, --gather    Gather all information available via \""xwininfo\"" & \""xprop\""
+  -g, --gather    Gather & display only specific information via \""xwininfo\""
+                    & \""xprop\""
 
 Optional parameter:
 
@@ -456,10 +529,11 @@ Optional parameter:
 
 Note:
   Information gathered *may* contain sensitive information, so run this script
-  in a clean environment
+  in a clean environment. Update for 2019-10-27: Only specific information is
+  displayed, so there should be no concern about sensitive information
 "
 
-  _eko_iod "#- _show_help -#"
+#  _eko_iod "#- _show_help -#"
 
   exit 0
 }
@@ -486,3 +560,126 @@ _parse_parameters "$@"
 
 #- marker eof -#
 exit 0
+
+# - indented with tab = script supports
+# - # = xprop -root
+# - ## = xprop -id 0xDEADF00D
+
+# - root window properties (& related messages)
+
+	# _NET_ACTIVE_WINDOW, WINDOW/32
+	# _NET_CLIENT_LIST, WINDOW[]/32
+	# _NET_CLIENT_LIST_STACKING, WINDOW[]/32
+	# _NET_CURRENT_DESKTOP desktop, CARDINAL/32
+	# _NET_DESKTOP_GEOMETRY width, height, CARDINAL[2]/32
+	# _NET_DESKTOP_LAYOUT, orientation, columns, rows, starting_corner CARDINAL[4]/32
+	#define _NET_WM_ORIENTATION_HORZ 0
+	#define _NET_WM_ORIENTATION_VERT 1
+	#define _NET_WM_TOPLEFT     0
+	#define _NET_WM_TOPRIGHT    1
+	#define _NET_WM_BOTTOMRIGHT 2
+	#define _NET_WM_BOTTOMLEFT  3
+	# _NET_DESKTOP_NAMES, UTF8_STRING[]
+	# _NET_DESKTOP_VIEWPORT x, y, CARDINAL[][2]/32
+	# _NET_NUMBER_OF_DESKTOPS, CARDINAL/32
+	# _NET_SHOWING_DESKTOP desktop, CARDINAL/32
+	# _NET_SUPPORTED, ATOM[]/32
+	# _NET_SUPPORTING_WM_CHECK, WINDOW/32
+# _NET_VIRTUAL_ROOTS, WINDOW[]/32
+	# _NET_WORKAREA, x, y, width, height CARDINAL[][4]/32
+
+# - other root window messages
+
+# _NET_CLOSE_WINDOW
+# _NET_MOVERESIZE_WINDOW
+# _NET_REQUEST_FRAME_EXTENTS
+# _NET_RESTACK_WINDOW
+
+# _NET_WM_MOVERESIZE
+#define _NET_WM_MOVERESIZE_SIZE_TOPLEFT      0
+#define _NET_WM_MOVERESIZE_SIZE_TOP          1
+#define _NET_WM_MOVERESIZE_SIZE_TOPRIGHT     2
+#define _NET_WM_MOVERESIZE_SIZE_RIGHT        3
+#define _NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT  4
+#define _NET_WM_MOVERESIZE_SIZE_BOTTOM       5
+#define _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT   6
+#define _NET_WM_MOVERESIZE_SIZE_LEFT         7
+#define _NET_WM_MOVERESIZE_MOVE              8   /* movement only */
+#define _NET_WM_MOVERESIZE_SIZE_KEYBOARD     9   /* size via keyboard */
+#define _NET_WM_MOVERESIZE_MOVE_KEYBOARD    10   /* move via keyboard */
+#define _NET_WM_MOVERESIZE_CANCEL           11   /* cancel operation */
+
+# - application window properties
+
+	## _NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32
+	## _NET_WM_ALLOWED_ACTIONS, ATOM[] (12 possibilities)
+	## _NET_WM_ACTION_ABOVE, ATOM
+	## _NET_WM_ACTION_BELOW, ATOM
+	## _NET_WM_ACTION_CHANGE_DESKTOP, ATOM
+	## _NET_WM_ACTION_CLOSE, ATOM
+	## _NET_WM_ACTION_FULLSCREEN, ATOM
+	## _NET_WM_ACTION_MAXIMIZE_HORZ, ATOM
+	## _NET_WM_ACTION_MAXIMIZE_VERT, ATOM
+	## _NET_WM_ACTION_MINIMIZE, ATOM
+	## _NET_WM_ACTION_MOVE, ATOM
+	## _NET_WM_ACTION_RESIZE, ATOM
+	## _NET_WM_ACTION_SHADE, ATOM
+	## _NET_WM_ACTION_STICK, ATOM
+## _NET_WM_BYPASS_COMPOSITOR, CARDINAL/32
+	## _NET_WM_DESKTOP desktop, CARDINAL/32
+## _NET_WM_HANDLED_ICONS
+	## _NET_WM_ICON_GEOMETRY, x, y, width, height, CARDINAL[4]/32
+	## _NET_WM_ICON_NAME, UTF8_STRING
+	## _NET_WM_NAME, UTF8_STRING
+	## _NET_WM_OPAQUE_REGION, x, y, width, height, CARDINAL[][4]/32
+	## _NET_WM_PID CARDINAL/32
+	## _NET_WM_STATE, ATOM[] (13 possibilities)
+	## _NET_WM_STATE_ABOVE, ATOM
+	## _NET_WM_STATE_BELOW, ATOM
+	## _NET_WM_STATE_DEMANDS_ATTENTION, ATOM
+	## _NET_WM_STATE_FOCUSED, ATOM
+	## _NET_WM_STATE_FULLSCREEN, ATOM
+	## _NET_WM_STATE_HIDDEN, ATOM
+	## _NET_WM_STATE_MAXIMIZED_HORZ, ATOM
+	## _NET_WM_STATE_MAXIMIZED_VERT, ATOM
+	## _NET_WM_STATE_MODAL, ATOM
+	## _NET_WM_STATE_SHADED, ATOM
+	## _NET_WM_STATE_SKIP_PAGER, ATOM
+	## _NET_WM_STATE_SKIP_TASKBAR, ATOM
+	## _NET_WM_STATE_STICKY, ATOM
+	## _NET_WM_STRUT, left, right, top, bottom, CARDINAL[4]/32
+	## _NET_WM_STRUT_PARTIAL, left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x,CARDINAL[12]/32
+        ## _NET_WM_SYNC_REQUEST_COUNTER, ?, ?, CARDINAL[]/32 (not in the spec)
+	## _NET_WM_USER_TIME CARDINAL/32
+	## _NET_WM_USER_TIME_WINDOW WINDOW/32
+	## _NET_WM_VISIBLE_ICON_NAME, UTF8_STRING
+	## _NET_WM_VISIBLE_NAME, UTF8_STRING
+	## _NET_WM_WINDOW_TYPE, ATOM[]/32 (14 possibilities)
+	## _NET_WM_WINDOW_TYPE_COMBO, ATOM
+	## _NET_WM_WINDOW_TYPE_DESKTOP, ATOM
+	## _NET_WM_WINDOW_TYPE_DIALOG, ATOM
+	## _NET_WM_WINDOW_TYPE_DND, ATOM
+	## _NET_WM_WINDOW_TYPE_DOCK, ATOM
+	## _NET_WM_WINDOW_TYPE_DROPDOWN_MENU, ATOM
+	## _NET_WM_WINDOW_TYPE_MENU, ATOM
+	## _NET_WM_WINDOW_TYPE_NORMAL, ATOM
+	## _NET_WM_WINDOW_TYPE_NOTIFICATION, ATOM
+	## _NET_WM_WINDOW_TYPE_POPUP_MENU, ATOM
+	## _NET_WM_WINDOW_TYPE_SPLASH, ATOM
+	## _NET_WM_WINDOW_TYPE_TOOLBAR, ATOM
+	## _NET_WM_WINDOW_TYPE_TOOLTIP, ATOM
+	## _NET_WM_WINDOW_TYPE_UTILITY, ATOM
+
+## _NET_WM_ICON CARDINAL[][2+n]/32 (deliberately skipping this one)
+
+# - window manager protocols (WM_PROTOCOLS)
+
+# _NET_WM_PING
+# _NET_WM_SYNC_REQUEST
+# _NET_WM_FULLSCREEN_MONITORS
+
+# - other properties
+
+# _NET_WM_FULL_PLACEMENT
+
+# - there's more in the spec, but let's concentrate on these first

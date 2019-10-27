@@ -4120,6 +4120,12 @@ exit 0
 	# _NET_CURRENT_DESKTOP desktop, CARDINAL/32
 	# _NET_DESKTOP_GEOMETRY width, height, CARDINAL[2]/32
 	# _NET_DESKTOP_LAYOUT, orientation, columns, rows, starting_corner CARDINAL[4]/32
+        #define _NET_WM_ORIENTATION_HORZ 0
+        #define _NET_WM_ORIENTATION_VERT 1
+        #define _NET_WM_TOPLEFT     0
+        #define _NET_WM_TOPRIGHT    1
+        #define _NET_WM_BOTTOMRIGHT 2
+        #define _NET_WM_BOTTOMLEFT  3
 	# _NET_DESKTOP_NAMES, UTF8_STRING[]
 	# _NET_DESKTOP_VIEWPORT x, y, CARDINAL[][2]/32
 	# _NET_NUMBER_OF_DESKTOPS, CARDINAL/32
@@ -4129,10 +4135,43 @@ exit 0
 # _NET_VIRTUAL_ROOTS, WINDOW[]/32
 	# _NET_WORKAREA, x, y, width, height CARDINAL[][4]/32
 
+# - other root window messages
+
+# _NET_CLOSE_WINDOW
+# _NET_MOVERESIZE_WINDOW
+# _NET_REQUEST_FRAME_EXTENTS
+# _NET_RESTACK_WINDOW
+
+# _NET_WM_MOVERESIZE
+#define _NET_WM_MOVERESIZE_SIZE_TOPLEFT      0
+#define _NET_WM_MOVERESIZE_SIZE_TOP          1
+#define _NET_WM_MOVERESIZE_SIZE_TOPRIGHT     2
+#define _NET_WM_MOVERESIZE_SIZE_RIGHT        3
+#define _NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT  4
+#define _NET_WM_MOVERESIZE_SIZE_BOTTOM       5
+#define _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT   6
+#define _NET_WM_MOVERESIZE_SIZE_LEFT         7
+#define _NET_WM_MOVERESIZE_MOVE              8   /* movement only */
+#define _NET_WM_MOVERESIZE_SIZE_KEYBOARD     9   /* size via keyboard */
+#define _NET_WM_MOVERESIZE_MOVE_KEYBOARD    10   /* move via keyboard */
+#define _NET_WM_MOVERESIZE_CANCEL           11   /* cancel operation */
+
 # - application window properties
 
 	## _NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32
-	## _NET_WM_ALLOWED_ACTIONS, ATOM[] (several items listed)
+	## _NET_WM_ALLOWED_ACTIONS, ATOM[] (12 possibilities)
+        ## _NET_WM_ACTION_ABOVE, ATOM
+        ## _NET_WM_ACTION_BELOW, ATOM
+        ## _NET_WM_ACTION_CHANGE_DESKTOP, ATOM
+        ## _NET_WM_ACTION_CLOSE, ATOM
+        ## _NET_WM_ACTION_FULLSCREEN, ATOM
+        ## _NET_WM_ACTION_MAXIMIZE_HORZ, ATOM
+        ## _NET_WM_ACTION_MAXIMIZE_VERT, ATOM
+        ## _NET_WM_ACTION_MINIMIZE, ATOM
+        ## _NET_WM_ACTION_MOVE, ATOM
+        ## _NET_WM_ACTION_RESIZE, ATOM
+        ## _NET_WM_ACTION_SHADE, ATOM
+        ## _NET_WM_ACTION_STICK, ATOM
 # _NET_WM_BYPASS_COMPOSITOR, CARDINAL/32
 	## _NET_WM_DESKTOP desktop, CARDINAL/32
 # _NET_WM_HANDLED_ICONS
@@ -4141,15 +4180,42 @@ exit 0
 	## _NET_WM_NAME, UTF8_STRING
 	## _NET_WM_OPAQUE_REGION, x, y, width, height, CARDINAL[][4]/32
 	## _NET_WM_PID CARDINAL/32
-	## _NET_WM_STATE, ATOM[] (several items listed)
+	## _NET_WM_STATE, ATOM[] (13 possibilities)
+        ## _NET_WM_STATE_ABOVE, ATOM
+        ## _NET_WM_STATE_BELOW, ATOM
+        ## _NET_WM_STATE_DEMANDS_ATTENTION, ATOM
+        ## _NET_WM_STATE_FOCUSED, ATOM
+        ## _NET_WM_STATE_FULLSCREEN, ATOM
+        ## _NET_WM_STATE_HIDDEN, ATOM
+        ## _NET_WM_STATE_MAXIMIZED_HORZ, ATOM
+        ## _NET_WM_STATE_MAXIMIZED_VERT, ATOM
+        ## _NET_WM_STATE_MODAL, ATOM
+        ## _NET_WM_STATE_SHADED, ATOM
+        ## _NET_WM_STATE_SKIP_PAGER, ATOM
+        ## _NET_WM_STATE_SKIP_TASKBAR, ATOM
+        ## _NET_WM_STATE_STICKY, ATOM
 	## _NET_WM_STRUT, left, right, top, bottom, CARDINAL[4]/32
 	## _NET_WM_STRUT_PARTIAL, left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x, CARDINAL[12]/32
 	## _NET_WM_SYNC_REQUEST_COUNTER, ?, ?, CARDINAL[]/32
-	## _NET_WM_USER_TIME_WINDOW WINDOW/32
 	## _NET_WM_USER_TIME CARDINAL/32
+	## _NET_WM_USER_TIME_WINDOW WINDOW/32
 	## _NET_WM_VISIBLE_ICON_NAME, UTF8_STRING
 	## _NET_WM_VISIBLE_NAME, UTF8_STRING
-	## _NET_WM_WINDOW_TYPE, ATOM[]/32 (several items listed. 'tis special)
+	## _NET_WM_WINDOW_TYPE, ATOM[]/32 (14 possibilities)
+        ## _NET_WM_WINDOW_TYPE_COMBO, ATOM
+        ## _NET_WM_WINDOW_TYPE_DESKTOP, ATOM
+        ## _NET_WM_WINDOW_TYPE_DIALOG, ATOM
+        ## _NET_WM_WINDOW_TYPE_DND, ATOM
+        ## _NET_WM_WINDOW_TYPE_DOCK, ATOM
+        ## _NET_WM_WINDOW_TYPE_DROPDOWN_MENU, ATOM
+        ## _NET_WM_WINDOW_TYPE_MENU, ATOM
+        ## _NET_WM_WINDOW_TYPE_NORMAL, ATOM
+        ## _NET_WM_WINDOW_TYPE_NOTIFICATION, ATOM
+        ## _NET_WM_WINDOW_TYPE_POPUP_MENU, ATOM
+        ## _NET_WM_WINDOW_TYPE_SPLASH, ATOM
+        ## _NET_WM_WINDOW_TYPE_TOOLBAR, ATOM
+        ## _NET_WM_WINDOW_TYPE_TOOLTIP, ATOM
+        ## _NET_WM_WINDOW_TYPE_UTILITY, ATOM
 
 # _NET_WM_ICON CARDINAL[][2+n]/32 (deliberately skipping this one)
 

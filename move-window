@@ -4067,37 +4067,37 @@ exit 0
 # - root window properties (& related messages)
 
 	# - "function _get_net_active_window_window"
-	# - "function _get_net_client_list_stacking_window" (unused)
+	# - "function _get_net_client_list_stacking_window"       (unused)
 	# - "function _get_net_client_list_window"
 	# - "function _get_net_current_desktop_cardinal"
 	# - "function _get_net_desktop_geometry_cardinal"
-	# - "function _get_net_desktop_layout_cardinal" (unused)
+	# - "function _get_net_desktop_layout_cardinal"           (unused)
 	# - "function _get_net_desktop_names_utf8_string"
 	# - "function _get_net_desktop_viewport_cardinal"
 	# - "function _get_net_number_of_desktops_cardinal"
-	# - "function _get_net_showing_desktop_cardinal" (unused)
-	# - "function _get_net_supported_atom" (unused)
-	# - "function _get_net_supporting_wm_check_window" (unused)
+	# - "function _get_net_showing_desktop_cardinal"          (unused)
+	# - "function _get_net_supported_atom"                    (unused)
+	# - "function _get_net_supporting_wm_check_window"        (unused)
 	# - "function _get_net_workarea_cardinal"
 
 # - application window properties
 
 	## - "function _get_net_frame_extents_cardinal"
-	## - "function _get_net_wm_allowed_actions_atom" (unused)
+	## - "function _get_net_wm_allowed_actions_atom"          (unused)
 	## - "function _get_net_wm_desktop_cardinal"
-	## - "function _get_net_wm_icon_geometry_cardinal" (unused)
-	## - "function _get_net_wm_icon_name_utf8_string" (unused)
+	## - "function _get_net_wm_icon_geometry_cardinal"        (unused)
+	## - "function _get_net_wm_icon_name_utf8_string"         (unused)
 	## - "function _get_net_wm_name_utf8_string"
-	## - "function _get_net_wm_opaque_region_cardinal" (unused)
-	## - "function _get_net_wm_pid_cardinal" (unused)
+	## - "function _get_net_wm_opaque_region_cardinal"        (unused)
+	## - "function _get_net_wm_pid_cardinal"                  (unused)
 	## - "function _get_net_wm_state_atom"
-	## - "function _get_net_wm_strut_cardinal" (unused)
-	## - "function _get_net_wm_strut_partial_cardinal" (unused)
+	## - "function _get_net_wm_strut_cardinal"                (unused)
+	## - "function _get_net_wm_strut_partial_cardinal"        (unused)
 	## - "function _get_net_wm_sync_request_counter_cardinal" (unused)
-	## - "function _get_net_wm_user_time_cardinal" (unused)
-	## - "function _get_net_wm_user_time_window_window" (unused)
+	## - "function _get_net_wm_user_time_cardinal"            (unused)
+	## - "function _get_net_wm_user_time_window_window"       (unused)
 	## - "function _get_net_wm_visible_icon_name_utf8_string" (unused)
-	## - "function _get_net_wm_visible_name_utf8_string" (unused)
+	## - "function _get_net_wm_visible_name_utf8_string"      (unused)
 
 # ^ update this listing with
 # grep "^function _get_net_" /usr/local/bin/move-window | sort | lesss
@@ -4136,7 +4136,6 @@ exit 0
 # _NET_WM_BYPASS_COMPOSITOR, CARDINAL/32
 	## _NET_WM_DESKTOP desktop, CARDINAL/32
 # _NET_WM_HANDLED_ICONS
-# _NET_WM_ICON CARDINAL[][2+n]/32 (skip this one)
 	## _NET_WM_ICON_GEOMETRY, x, y, width, height, CARDINAL[4]/32
 	## _NET_WM_ICON_NAME, UTF8_STRING
 	## _NET_WM_NAME, UTF8_STRING
@@ -4151,5 +4150,7 @@ exit 0
 	## _NET_WM_VISIBLE_ICON_NAME, UTF8_STRING
 	## _NET_WM_VISIBLE_NAME, UTF8_STRING
 	## _NET_WM_WINDOW_TYPE, ATOM[]/32 (several items listed. 'tis special)
+
+# _NET_WM_ICON CARDINAL[][2+n]/32 (deliberately skipping this one)
 
 ###---

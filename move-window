@@ -4172,9 +4172,9 @@ exit 0
         ## _NET_WM_ACTION_RESIZE, ATOM
         ## _NET_WM_ACTION_SHADE, ATOM
         ## _NET_WM_ACTION_STICK, ATOM
-# _NET_WM_BYPASS_COMPOSITOR, CARDINAL/32
+## _NET_WM_BYPASS_COMPOSITOR, CARDINAL/32
 	## _NET_WM_DESKTOP desktop, CARDINAL/32
-# _NET_WM_HANDLED_ICONS
+## _NET_WM_HANDLED_ICONS
 	## _NET_WM_ICON_GEOMETRY, x, y, width, height, CARDINAL[4]/32
 	## _NET_WM_ICON_NAME, UTF8_STRING
 	## _NET_WM_NAME, UTF8_STRING
@@ -4217,6 +4217,6 @@ exit 0
         ## _NET_WM_WINDOW_TYPE_TOOLTIP, ATOM
         ## _NET_WM_WINDOW_TYPE_UTILITY, ATOM
 
-# _NET_WM_ICON CARDINAL[][2+n]/32 (deliberately skipping this one)
+## _NET_WM_ICON CARDINAL[][2+n]/32 (deliberately skipping this one)
 
 ###---

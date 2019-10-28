@@ -38,6 +38,10 @@
 #   specification that lack information suitable for me to come up with syntax
 #   appropriate for calling sed. as such, they're not displayed (for now)
 
+# IDEA:
+# - allow windows to be "nudged" by a relative offset of pixels. +/- format
+# - this will require a complete rethink of how "-1" is handled
+
 # OOPS:
 # - changelog order is unpredictable. some series of entries per date are
 #   chronologically top-to-bottom while others are bottom-to-top. preferred

@@ -789,6 +789,10 @@ function _coordinates_calculate()
   # "1080"
 
   # NOTE:
+  # - Openbox doesn't support large desktops so these just match the screen
+  #   size.
+
+  # NOTE:
   # - "function _coordinates_calculate" & "function _coordinates_validate"
   #   share identical calculations for the 4 corners
 
@@ -899,6 +903,10 @@ function _coordinates_force()
   # "_NET_DESKTOP_GEOMETRY(CARDINAL) = "
   # "1920, "
   # "1080"
+
+  # NOTE:
+  # - Openbox doesn't support large desktops so these just match the screen
+  #   size.
 
   # IDEA:
   # - maybe get quite a bit fancier & put the window in workarea center while
@@ -1073,6 +1081,10 @@ function _coordinates_validate()
   # "_NET_DESKTOP_GEOMETRY(CARDINAL) = "
   # "1920, "
   # "1080"
+
+  # NOTE:
+  # - Openbox doesn't support large desktops so these just match the screen
+  #   size.
 
   # NOTE:
   # - "function _coordinates_calculate" & "function _coordinates_validate"
@@ -1552,6 +1564,10 @@ function _get_net_desktop_geometry_cardinal()
   # "1920, "
   # "1080"
 
+  # NOTE:
+  # - Openbox doesn't support large desktops so these just match the screen
+  #   size.
+
   _NET_DESKTOP_GEOMETRY_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_GEOMETRY(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
 
   _eko_pv \$_NET_DESKTOP_GEOMETRY_CARDINAL: \""$_NET_DESKTOP_GEOMETRY_CARDINAL\""
@@ -1786,6 +1802,9 @@ function _get_net_desktop_viewport_cardinal()
   # "0, 0, "
   # "0, 0, "
   # "0, 0"
+
+  # NOTE:
+  # - Openbox doesn't support large desktops so these are just (0, 0).
 
   # NOTE:
   # - unused?
@@ -2106,6 +2125,9 @@ function _get_net_wm_allowed_actions_atom()
   # NOTE:
   # - unused
 
+  # NOTE: (_NET_WM_ACTION_STICK)
+  # - Openbox does not do large desktops, so no sticky state is needed.
+
   _NET_WM_ALLOWED_ACTIONS_ATOM=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_ALLOWED_ACTIONS(ATOM) = /!d ; /\(.* = \|,\)/ s///g')
 
   _eko_pv \$_NET_WM_ALLOWED_ACTIONS_ATOM: \""$_NET_WM_ALLOWED_ACTIONS_ATOM\" (unused)"
@@ -2351,6 +2373,9 @@ function _get_net_wm_pid_cardinal()
   # "_NET_WM_PID(CARDINAL) = 1454"
   # "1454"
 
+  # NOTE:
+  # - Openbox does not currently kill processes.
+
   _NET_WM_PID_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_PID(CARDINAL) = /!d ; /.* = / s///g')
 
   _eko_pv \$_NET_WM_PID_CARDINAL: \""$_NET_WM_PID_CARDINAL\" (unused)"
@@ -2527,6 +2552,9 @@ function _get_net_wm_strut_partial_cardinal()
   # "0, "
   # "0, "
   # "1919"
+
+  # NOTE:
+  # - Openbox uses these to create per-monitor struts in Xinerama setups.
 
   # NOTE:
   # - unused
@@ -3455,6 +3483,9 @@ function _pass_fail_by_window_type()
   #   _NET_WM_WINDOW_TYPE_UTILITY, ATOM
 
   # NOTE:
+  # - Openbox does not let windows change this hint after mapping.
+
+  # NOTE:
   # - the root window itself
   #   "^_NET_CLIENT_LIST(WINDOW): window id # "
   # - not (yet?) encountered in openbox
@@ -4114,18 +4145,21 @@ exit 0
 
 # - root window properties (& related messages)
 
+# NOTE: (_NET_VIRTUAL_ROOTS)
+# - Openbox does not use virtual roots, so this is not needed.
+
 	# _NET_ACTIVE_WINDOW, WINDOW/32
 	# _NET_CLIENT_LIST, WINDOW[]/32
 	# _NET_CLIENT_LIST_STACKING, WINDOW[]/32
 	# _NET_CURRENT_DESKTOP desktop, CARDINAL/32
 	# _NET_DESKTOP_GEOMETRY width, height, CARDINAL[2]/32
 	# _NET_DESKTOP_LAYOUT, orientation, columns, rows, starting_corner CARDINAL[4]/32
-        #define _NET_WM_ORIENTATION_HORZ 0
-        #define _NET_WM_ORIENTATION_VERT 1
-        #define _NET_WM_TOPLEFT     0
-        #define _NET_WM_TOPRIGHT    1
-        #define _NET_WM_BOTTOMRIGHT 2
-        #define _NET_WM_BOTTOMLEFT  3
+	#define _NET_WM_ORIENTATION_HORZ 0
+	#define _NET_WM_ORIENTATION_VERT 1
+	#define _NET_WM_TOPLEFT     0
+	#define _NET_WM_TOPRIGHT    1
+	#define _NET_WM_BOTTOMRIGHT 2
+	#define _NET_WM_BOTTOMLEFT  3
 	# _NET_DESKTOP_NAMES, UTF8_STRING[]
 	# _NET_DESKTOP_VIEWPORT x, y, CARDINAL[][2]/32
 	# _NET_NUMBER_OF_DESKTOPS, CARDINAL/32
@@ -4158,20 +4192,26 @@ exit 0
 
 # - application window properties
 
+# NOTE: (_NET_WM_HANDLED_ICONS)
+# - Openbox does not display icons for iconic windows.
+
+# NOTE: (_NET_WM_PING)
+# - Openbox doesn't look for hung processes at this time.
+
 	## _NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32
 	## _NET_WM_ALLOWED_ACTIONS, ATOM[] (12 possibilities)
-        ## _NET_WM_ACTION_ABOVE, ATOM
-        ## _NET_WM_ACTION_BELOW, ATOM
-        ## _NET_WM_ACTION_CHANGE_DESKTOP, ATOM
-        ## _NET_WM_ACTION_CLOSE, ATOM
-        ## _NET_WM_ACTION_FULLSCREEN, ATOM
-        ## _NET_WM_ACTION_MAXIMIZE_HORZ, ATOM
-        ## _NET_WM_ACTION_MAXIMIZE_VERT, ATOM
-        ## _NET_WM_ACTION_MINIMIZE, ATOM
-        ## _NET_WM_ACTION_MOVE, ATOM
-        ## _NET_WM_ACTION_RESIZE, ATOM
-        ## _NET_WM_ACTION_SHADE, ATOM
-        ## _NET_WM_ACTION_STICK, ATOM
+	## _NET_WM_ACTION_ABOVE, ATOM
+	## _NET_WM_ACTION_BELOW, ATOM
+	## _NET_WM_ACTION_CHANGE_DESKTOP, ATOM
+	## _NET_WM_ACTION_CLOSE, ATOM
+	## _NET_WM_ACTION_FULLSCREEN, ATOM
+	## _NET_WM_ACTION_MAXIMIZE_HORZ, ATOM
+	## _NET_WM_ACTION_MAXIMIZE_VERT, ATOM
+	## _NET_WM_ACTION_MINIMIZE, ATOM
+	## _NET_WM_ACTION_MOVE, ATOM
+	## _NET_WM_ACTION_RESIZE, ATOM
+	## _NET_WM_ACTION_SHADE, ATOM
+	## _NET_WM_ACTION_STICK, ATOM
 ## _NET_WM_BYPASS_COMPOSITOR, CARDINAL/32
 	## _NET_WM_DESKTOP desktop, CARDINAL/32
 ## _NET_WM_HANDLED_ICONS
@@ -4181,19 +4221,19 @@ exit 0
 	## _NET_WM_OPAQUE_REGION, x, y, width, height, CARDINAL[][4]/32
 	## _NET_WM_PID CARDINAL/32
 	## _NET_WM_STATE, ATOM[] (13 possibilities)
-        ## _NET_WM_STATE_ABOVE, ATOM
-        ## _NET_WM_STATE_BELOW, ATOM
-        ## _NET_WM_STATE_DEMANDS_ATTENTION, ATOM
-        ## _NET_WM_STATE_FOCUSED, ATOM
-        ## _NET_WM_STATE_FULLSCREEN, ATOM
-        ## _NET_WM_STATE_HIDDEN, ATOM
-        ## _NET_WM_STATE_MAXIMIZED_HORZ, ATOM
-        ## _NET_WM_STATE_MAXIMIZED_VERT, ATOM
-        ## _NET_WM_STATE_MODAL, ATOM
-        ## _NET_WM_STATE_SHADED, ATOM
-        ## _NET_WM_STATE_SKIP_PAGER, ATOM
-        ## _NET_WM_STATE_SKIP_TASKBAR, ATOM
-        ## _NET_WM_STATE_STICKY, ATOM
+	## _NET_WM_STATE_ABOVE, ATOM
+	## _NET_WM_STATE_BELOW, ATOM
+	## _NET_WM_STATE_DEMANDS_ATTENTION, ATOM
+	## _NET_WM_STATE_FOCUSED, ATOM
+	## _NET_WM_STATE_FULLSCREEN, ATOM
+	## _NET_WM_STATE_HIDDEN, ATOM
+	## _NET_WM_STATE_MAXIMIZED_HORZ, ATOM
+	## _NET_WM_STATE_MAXIMIZED_VERT, ATOM
+	## _NET_WM_STATE_MODAL, ATOM
+	## _NET_WM_STATE_SHADED, ATOM
+	## _NET_WM_STATE_SKIP_PAGER, ATOM
+	## _NET_WM_STATE_SKIP_TASKBAR, ATOM
+	## _NET_WM_STATE_STICKY, ATOM
 	## _NET_WM_STRUT, left, right, top, bottom, CARDINAL[4]/32
 	## _NET_WM_STRUT_PARTIAL, left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x, CARDINAL[12]/32
 	## _NET_WM_SYNC_REQUEST_COUNTER, ?, ?, CARDINAL[]/32
@@ -4202,20 +4242,20 @@ exit 0
 	## _NET_WM_VISIBLE_ICON_NAME, UTF8_STRING
 	## _NET_WM_VISIBLE_NAME, UTF8_STRING
 	## _NET_WM_WINDOW_TYPE, ATOM[]/32 (14 possibilities)
-        ## _NET_WM_WINDOW_TYPE_COMBO, ATOM
-        ## _NET_WM_WINDOW_TYPE_DESKTOP, ATOM
-        ## _NET_WM_WINDOW_TYPE_DIALOG, ATOM
-        ## _NET_WM_WINDOW_TYPE_DND, ATOM
-        ## _NET_WM_WINDOW_TYPE_DOCK, ATOM
-        ## _NET_WM_WINDOW_TYPE_DROPDOWN_MENU, ATOM
-        ## _NET_WM_WINDOW_TYPE_MENU, ATOM
-        ## _NET_WM_WINDOW_TYPE_NORMAL, ATOM
-        ## _NET_WM_WINDOW_TYPE_NOTIFICATION, ATOM
-        ## _NET_WM_WINDOW_TYPE_POPUP_MENU, ATOM
-        ## _NET_WM_WINDOW_TYPE_SPLASH, ATOM
-        ## _NET_WM_WINDOW_TYPE_TOOLBAR, ATOM
-        ## _NET_WM_WINDOW_TYPE_TOOLTIP, ATOM
-        ## _NET_WM_WINDOW_TYPE_UTILITY, ATOM
+	## _NET_WM_WINDOW_TYPE_COMBO, ATOM
+	## _NET_WM_WINDOW_TYPE_DESKTOP, ATOM
+	## _NET_WM_WINDOW_TYPE_DIALOG, ATOM
+	## _NET_WM_WINDOW_TYPE_DND, ATOM
+	## _NET_WM_WINDOW_TYPE_DOCK, ATOM
+	## _NET_WM_WINDOW_TYPE_DROPDOWN_MENU, ATOM
+	## _NET_WM_WINDOW_TYPE_MENU, ATOM
+	## _NET_WM_WINDOW_TYPE_NORMAL, ATOM
+	## _NET_WM_WINDOW_TYPE_NOTIFICATION, ATOM
+	## _NET_WM_WINDOW_TYPE_POPUP_MENU, ATOM
+	## _NET_WM_WINDOW_TYPE_SPLASH, ATOM
+	## _NET_WM_WINDOW_TYPE_TOOLBAR, ATOM
+	## _NET_WM_WINDOW_TYPE_TOOLTIP, ATOM
+	## _NET_WM_WINDOW_TYPE_UTILITY, ATOM
 
 ## _NET_WM_ICON CARDINAL[][2+n]/32 (deliberately skipping this one)
 

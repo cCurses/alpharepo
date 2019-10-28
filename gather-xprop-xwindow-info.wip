@@ -567,6 +567,9 @@ exit 0
 
 # - root window properties (& related messages)
 
+# NOTE: (_NET_VIRTUAL_ROOTS)
+# - Openbox does not use virtual roots, so this is not needed.
+
 	# _NET_ACTIVE_WINDOW, WINDOW/32
 	# _NET_CLIENT_LIST, WINDOW[]/32
 	# _NET_CLIENT_LIST_STACKING, WINDOW[]/32
@@ -611,6 +614,12 @@ exit 0
 
 # - application window properties
 
+# NOTE: (_NET_WM_HANDLED_ICONS)
+# - Openbox does not display icons for iconic windows.
+
+# NOTE: (_NET_WM_PING)
+# - Openbox doesn't look for hung processes at this time.
+
 	## _NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32
 	## _NET_WM_ALLOWED_ACTIONS, ATOM[] (12 possibilities)
 	## _NET_WM_ACTION_ABOVE, ATOM
@@ -649,7 +658,7 @@ exit 0
 	## _NET_WM_STATE_STICKY, ATOM
 	## _NET_WM_STRUT, left, right, top, bottom, CARDINAL[4]/32
 	## _NET_WM_STRUT_PARTIAL, left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x,CARDINAL[12]/32
-        ## _NET_WM_SYNC_REQUEST_COUNTER, ?, ?, CARDINAL[]/32 (not in the spec)
+	## _NET_WM_SYNC_REQUEST_COUNTER, ?, ?, CARDINAL[]/32 (not in the spec)
 	## _NET_WM_USER_TIME CARDINAL/32
 	## _NET_WM_USER_TIME_WINDOW WINDOW/32
 	## _NET_WM_VISIBLE_ICON_NAME, UTF8_STRING

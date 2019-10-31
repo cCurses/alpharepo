@@ -6,6 +6,14 @@
 # - figure out calling order of all functions
 # - fix stuff
 
+for i in mc same ul uc ur ml mc mr bl bc br 123,123
+  do move-window -d -v -u -id 0x1400044 -c $i > tigervnc.$i
+done
+
+for i in mc same ul uc ur ml mc mr bl bc br 123,123
+  do move-window -d -v -u -id 0x4000099 -c $i > wmagnify.$i
+done
+
 # FIXME:
 # - "function _set_window_position" look *very* carefully at the numbers
 # - kludge is being handled incorrectly. everything is fine until the *very*
@@ -29,19 +37,33 @@
 # - remove them from here:
 #   "function _set_window_position"
 
+# - do all the calculations for _COORDINATE_X & _COORDINATE_Y without kludging,
+#   regardless of window type/name. apply _KLUDGE_X & _KLUDGE_Y *somewhere*
+# > key questions: precisely how & where?
+# - if _COORDINATE_X & _COORDINATE_Y are not -1 & -1 apply the kludges?
+
 # TRY: (first deliberately break stuff to see what is affected)
-# - is this:
-  _COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 0,$(( $_COORDINATE_X +
- $_KLUDGE_X )),$(( $_COORDINATE_Y + $_KLUDGE_Y )),-1,-1"
-# - #1
+# - from this:
+
+# - #3
+  _COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 
+0,$(( $_COORDINATE_X + $_KLUDGE_X )),$(( $_COORDINATE_Y + $_KLUDGE_Y )),-1,-1"
+
+# - #1 & #3
   _eko_pv "new X,Y coordinates:" \""$_COORDINATE_X,$_COORDINATE_Y\""
+
   _eko_pv "X,Y kludges:" \""$_KLUDGE_X,$_KLUDGE_Y\""
   _eko_pv "wmctrl command (move):" \""$_COMMAND\""
 
-# - try this: (only the changed line(s) is/are quoted)
+# - to this: (only the changed line(s) is/are quoted)
+
 # - #2
   _eko_pv "new X,Y coordinates:" \""$(( $_COORDINATE_X + $_KLUDGE_X )),$((
  $_COORDINATE_Y + $_KLUDGE_Y ))\""
+
+# - #3
+  _COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 
+0,$_COORDINATE_X,$_COORDINATE_Y,-1,-1"
 
 # - all functions are listed here, but only a (large) subset have extra notes
 
@@ -400,6 +422,7 @@ function _pass_fail_by_window_type()
 
 function _set_window_position()
     # - succeeds: everything
+#1 (matches #3) (these are correct)
                    new X,Y coordinates: "-1,-1" (from tigervnc - same - #1)
                    new X,Y coordinates: "0,0" (from tigervnc - ul - #1)
                    new X,Y coordinates: "242,0" (from tigervnc - uc - #1)
@@ -411,7 +434,22 @@ function _set_window_position()
                    new X,Y coordinates: "242,260" (from tigervnc - bc - #1)
                    new X,Y coordinates: "484,260" (from tigervnc - br - #1)
                    new X,Y coordinates: "123,123" (from tigervnc - X,Y - #1)
+#1
+# fail (do not apply kludges here)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,0,21,-1,-1" (from tigervnc - same - #1)
+# pass (apply kludges here)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,1,22,-1,-1" (from tigervnc - ul - #1)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,243,22,-1,-1" (from tigervnc - uc - #1)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,485,22,-1,-1" (from tigervnc - ur - #1)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,1,152,-1,-1" (from tigervnc - ml - #1)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,243,152,-1,-1" (from tigervnc - mc - #1)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,485,152,-1,-1" (from tigervnc - mr - #1)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,1,282,-1,-1" (from tigervnc - bl - #1)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,243,282,-1,-1" (from tigervnc - bc - #1)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,485,282,-1,-1" (from tigervnc - br - #1)
 
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,124,145,-1,-1" (from tigervnc - X,Y - #1)
+#2
                    new X,Y coordinates: "0,21" (from tigervnc - same - #2)
                    new X,Y coordinates: "1,22" (from tigervnc - ul - #2)
                    new X,Y coordinates: "243,22" (from tigervnc - uc - #2)
@@ -423,18 +461,46 @@ function _set_window_position()
                    new X,Y coordinates: "243,282" (from tigervnc - bc - #2)
                    new X,Y coordinates: "485,282" (from tigervnc - br - #2)
                    new X,Y coordinates: "124,145" (from tigervnc - X,Y - #2)
+#2
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,0,21,-1,-1" (from tigervnc - same - #2)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,1,22,-1,-1" (from tigervnc - ul - #2)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,243,22,-1,-1" (from tigervnc - uc - #2)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,485,22,-1,-1" (from tigervnc - ur - #2)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,1,152,-1,-1" (from tigervnc - ml - #2)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,243,152,-1,-1" (from tigervnc - mc - #2)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,485,152,-1,-1" (from tigervnc - mr - #2)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,1,282,-1,-1" (from tigervnc - bl - #2)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,243,282,-1,-1" (from tigervnc - bc - #2)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,485,282,-1,-1" (from tigervnc - br - #2)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,124,145,-1,-1" (from tigervnc - X,Y - #2)
+#3 (matches #1) (these are correct)
+                   new X,Y coordinates: "-1,-1" (from tigervnc - same - #3)
+                   new X,Y coordinates: "0,0" (from tigervnc - ul - #3)
+                   new X,Y coordinates: "242,0" (from tigervnc - uc - #3)
+                   new X,Y coordinates: "484,0" (from tigervnc - ur - #3)
+                   new X,Y coordinates: "0,130" (from tigervnc - ml - #3)
+                   new X,Y coordinates: "242,130" (from tigervnc - mc - #3)
+                   new X,Y coordinates: "484,130" (from tigervnc - mr - #3)
+                   new X,Y coordinates: "0,260" (from tigervnc - bl - #3)
+                   new X,Y coordinates: "242,260" (from tigervnc - bc - #3)
+                   new X,Y coordinates: "484,260" (from tigervnc - br - #3)
+                   new X,Y coordinates: "123,123" (from tigervnc - X,Y - #3)
+#3 (correct numbers, but the window is placed at an incorrect offset)
+# pass (do not apply kludges here)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,-1,-1,-1,-1" (from tigervnc - same - #3)
+# fail (apply kludges here)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,0,0,-1,-1" (from tigervnc - ul - #3)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,242,0,-1,-1" (from tigervnc - uc - #3)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,484,0,-1,-1" (from tigervnc - ur - #3)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,0,130,-1,-1" (from tigervnc - ml - #3)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,242,130,-1,-1" (from tigervnc - mc - #3)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,484,130,-1,-1" (from tigervnc - mr - #3)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,0,260,-1,-1" (from tigervnc - bl - #3)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,242,260,-1,-1" (from tigervnc - bc - #3)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,484,260,-1,-1" (from tigervnc - br - #3)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,123,123,-1,-1" (from tigervnc - X,Y - #3)
 
-                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,0,21,-1,-1" (from tigervnc - same)
-                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,1,22,-1,-1" (from tigervnc - ul)
-                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,243,22,-1,-1" (from tigervnc - uc)
-                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,485,22,-1,-1" (from tigervnc - ur)
-                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,1,152,-1,-1" (from tigervnc - ml)
-                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,243,152,-1,-1" (from tigervnc - mc)
-                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,485,152,-1,-1" (from tigervnc - mr)
-                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,1,282,-1,-1" (from tigervnc - bl)
-                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,243,282,-1,-1" (from tigervnc - bc)
-                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,485,282,-1,-1" (from tigervnc - br)
-                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,124,145,-1,-1" (from tigervnc - X,Y)
+#- marker edit -#
 
                    new X,Y coordinates: "-1,-1" (from wmagnify - same)
                    new X,Y coordinates: "0,0" (from wmagnify - ul)
@@ -462,3 +528,5 @@ function _set_window_position()
 
 function _window_id_acquire()
     # - called from _parse_parameters
+
+# eof #

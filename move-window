@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# move-window v2019.10.25+
+# move-window v2019.10.31
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -47,11 +47,17 @@
 #   chronologically top-to-bottom while others are bottom-to-top. preferred
 #   order is bottom-to-top. this will gradually be fixed when time permits
 
-# 2019-10-25+
-# (experimenting)
-# - "function _set_window_position" changed the following line:
-#  was: _eko_pv "new X,Y coordinates:" \""$_COORDINATE_X,$_COORDINATE_Y\""
-#   is: _eko_pv "new X,Y coordinates:" \""$(( $_COORDINATE_X + $_KLUDGE_X )),$(( $_COORDINATE_Y + $_KLUDGE_Y ))\""
+# 2019-10-31
+# - "function _set_window_position" changed the following lines:
+#  add: if [[ $_COORDINATE_X != -1 ]] \
+#  add: && [[ $_COORDINATE_Y != -1 ]]
+#  add: then
+#  add:   # - $((expression))
+#  add:   _COORDINATE_X=$(( $_COORDINATE_X + $_KLUDGE_X ))
+#  add:   _COORDINATE_Y=$(( $_COORDINATE_Y + $_KLUDGE_Y ))
+#  add: fi
+#  was: _COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 0,$(( $_COORDINATE_X + $_KLUDGE_X )),$(( $_COORDINATE_Y + $_KLUDGE_Y )),-1,-1"
+#   is: _COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 0,$_COORDINATE_X,$_COORDINATE_Y,-1,-1"
 # 2019-10-25
 # - "function _binary_validate_setup" converted "sed", "xprop", & "xwininfo"
 #   testing from nested to sequential
@@ -3667,8 +3673,14 @@ function _set_window_position()
   # - experimented with "-b add,above". something's not going as expected so
   #   it's not used in $_COMMAND below. instead, do a second call to raise the
   #   window
-  # - $((expression))
-  _COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 0,$(( $_COORDINATE_X + $_KLUDGE_X )),$(( $_COORDINATE_Y + $_KLUDGE_Y )),-1,-1"
+  if [[ $_COORDINATE_X != -1 ]] \
+  && [[ $_COORDINATE_Y != -1 ]]
+  then
+    # - $((expression))
+    _COORDINATE_X=$(( $_COORDINATE_X + $_KLUDGE_X ))
+    _COORDINATE_Y=$(( $_COORDINATE_Y + $_KLUDGE_Y ))
+  fi
+  _COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 0,$_COORDINATE_X,$_COORDINATE_Y,-1,-1"
 
   _eko_pv "window id:" \""$_OPTION_WINDOW_ID\""
   _eko_pv "window name:" \""$_NET_WM_NAME_UTF8_STRING\""
@@ -3680,8 +3692,7 @@ function _set_window_position()
   _eko_pv "window decorations (L,R,T,B):" \""$_NET_FRAME_EXTENTS_L,$_NET_FRAME_EXTENTS_R,$_NET_FRAME_EXTENTS_T,$_NET_FRAME_EXTENTS_B\""
   _eko_pv "window X,Y (decorated):" \""$_WINDOW_DECORATED_X,$_WINDOW_DECORATED_Y\""
   _eko_pv "window maximized X,Y:" \""$_BOOLEAN_MAXIMIZED_X,$_BOOLEAN_MAXIMIZED_Y\""
-#  _eko_pv "new X,Y coordinates:" \""$_COORDINATE_X,$_COORDINATE_Y\""
-  _eko_pv "new X,Y coordinates:" \""$(( $_COORDINATE_X + $_KLUDGE_X )),$(( $_COORDINATE_Y + $_KLUDGE_Y ))\""
+  _eko_pv "new X,Y coordinates:" \""$_COORDINATE_X,$_COORDINATE_Y\""
   _eko_pv "X,Y kludges:" \""$_KLUDGE_X,$_KLUDGE_Y\""
   _eko_pv "wmctrl command (move):" \""$_COMMAND\""
 

@@ -1,0 +1,439 @@
+# sof #
+
+# reminder to self. why am I even doing this?
+# - to add various notes to "move-window" afterwards
+# - figure out what functions are absolutely needed & which are optional
+# - figure out calling order of all functions
+# - fix stuff
+
+# FIXME:
+# - "function _set_window_position" look *very* carefully at the numbers
+# - kludge is being handled incorrectly. everything is fine until the *very*
+#   last step (I think)
+# - "-c same" puts tigervnc in almost "ul".
+# - originating coordinates don't seem to matter. tigervnc *always* ends up in
+#   the same (wrong) spot with "-c same"
+# - "function _coordinates_kludge" appears to be the culprit (or not?)
+# - correct numbers, but they're being used incorrectly
+# ^ try different order of functions or different calculations (somehow)
+# - honestly not sure if it's 1 bug showing up 2 ways or 2 separate bugs
+
+# TRY: (first deliberately break stuff to see what is affected)
+# - is this:
+  _COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 0,$(( $_COORDINATE_X +
+ $_KLUDGE_X )),$(( $_COORDINATE_Y + $_KLUDGE_Y )),-1,-1"
+  _eko_pv "new X,Y coordinates:" \""$_COORDINATE_X,$_COORDINATE_Y\""
+  _eko_pv "X,Y kludges:" \""$_KLUDGE_X,$_KLUDGE_Y\""
+  _eko_pv "wmctrl command (move):" \""$_COMMAND\""
+
+# - try this: (only the changed line(s) is/are quoted)
+  _eko_pv "new X,Y coordinates:" \""$(( $_COORDINATE_X + $_KLUDGE_X )),$((
+ $_COORDINATE_Y + $_KLUDGE_Y ))\""
+
+# - all functions are listed here, but only a (large) subset have extra notes
+
+# - these are self-explanatory & called almost everywhere
+function _binary_validate_setup()
+function _builtin_validate_setup()
+function _eko_iod()
+function _eko_ps()
+function _eko_ps_en()
+function _eko_pv()
+function _eko_pv_en()
+function _show_error()
+function _show_help()
+
+function _coordinates_calculate()
+    # - succeeds: _coordinates_kludge (not mandatory?)
+    # - succeeds: _get_net_desktop_geometry_cardinal
+    # - succeeds: _get_net_workarea_cardinal
+    # - succeeds: _get_window_undecorated_geometry
+
+function _coordinates_force()
+    # - succeeds: _get_net_client_list_window
+    # - acquires: _get_net_desktop_geometry_cardinal
+
+function _coordinates_kludge()
+    # - succeeds: _get_net_frame_extents_cardinal
+    # - succeeds: _get_net_wm_name_utf8_string
+    # - precedes: _set_window_position (by some degree)
+                            $_KLUDGE_X: "1" (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+                            $_KLUDGE_Y: "22" (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+
+                            $_KLUDGE_X: "0" (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+                            $_KLUDGE_Y: "0" (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+
+function _coordinates_user_specified()
+    # - succeeds:_coordinates_calculate
+    # - precedes:_coordinates_validate
+                        $_COORDINATE_X: "123" (from tigervnc - X,Y)
+                        $_COORDINATE_Y: "123" (from tigervnc - X,Y)
+
+                        $_COORDINATE_X: "123" (from wmagnify - X,Y)
+                        $_COORDINATE_Y: "123" (from wmagnify - X,Y)
+
+function _coordinates_validate()
+    # - succeeds: _coordinates_calculate
+    # - succeeds: _get_net_desktop_geometry_cardinal
+    # - succeeds: _get_net_wm_state_atom
+    # - succeeds: _get_net_workarea_cardinal
+    # - succeeds: _get_window_undecorated_geometry
+                        $_COORDINATE_X: "-1" (from tigervnc - same)
+                        $_COORDINATE_Y: "-1" (from tigervnc - same)
+                        $_COORDINATE_X: "0" (from tigervnc - ul)
+                        $_COORDINATE_Y: "0" (from tigervnc - ul)
+                        $_COORDINATE_X: "242" (from tigervnc - uc)
+                        $_COORDINATE_Y: "0" (from tigervnc - uc)
+                        $_COORDINATE_X: "484" (from tigervnc - ur)
+                        $_COORDINATE_Y: "0" (from tigervnc - ur)
+                        $_COORDINATE_X: "0" (from tigervnc - ml)
+                        $_COORDINATE_Y: "130" (from tigervnc - ml)
+                        $_COORDINATE_X: "242" (from tigervnc - mc)
+                        $_COORDINATE_Y: "130" (from tigervnc - mc)
+                        $_COORDINATE_X: "484" (from tigervnc - mr)
+                        $_COORDINATE_Y: "130" (from tigervnc - mr)
+                        $_COORDINATE_X: "0" (from tigervnc - bl)
+                        $_COORDINATE_Y: "260" (from tigervnc - bl)
+                        $_COORDINATE_X: "242" (from tigervnc - bc)
+                        $_COORDINATE_Y: "260" (from tigervnc - bc)
+                        $_COORDINATE_X: "484" (from tigervnc - br)
+                        $_COORDINATE_Y: "260" (from tigervnc - br)
+                        $_COORDINATE_X: "123" (from tigervnc - X,Y)
+                        $_COORDINATE_Y: "123" (from tigervnc - X,Y)
+
+                        $_COORDINATE_X: "-1" (from wmagnify - same)
+                        $_COORDINATE_Y: "-1" (from wmagnify - same)
+                        $_COORDINATE_X: "0" (from wmagnify - ul)
+                        $_COORDINATE_Y: "0" (from wmagnify - ul)
+                        $_COORDINATE_X: "775" (from wmagnify - uc)
+                        $_COORDINATE_Y: "0" (from wmagnify - uc)
+                        $_COORDINATE_X: "1550" (from wmagnify - ur)
+                        $_COORDINATE_Y: "0" (from wmagnify - ur)
+                        $_COORDINATE_X: "0" (from wmagnify - ml)
+                        $_COORDINATE_Y: "414" (from wmagnify - ml)
+                        $_COORDINATE_X: "775" (from wmagnify - mc)
+                        $_COORDINATE_Y: "414" (from wmagnify - mc)
+                        $_COORDINATE_X: "1550" (from wmagnify - mr)
+                        $_COORDINATE_Y: "414" (from wmagnify - mr)
+                        $_COORDINATE_X: "0" (from wmagnify - bl)
+                        $_COORDINATE_Y: "828" (from wmagnify - bl)
+                        $_COORDINATE_X: "775" (from wmagnify - bc)
+                        $_COORDINATE_Y: "828" (from wmagnify - bc)
+                        $_COORDINATE_X: "1550" (from wmagnify - br)
+                        $_COORDINATE_Y: "828" (from wmagnify - br)
+                        $_COORDINATE_X: "123" (from wmagnify - X,Y)
+                        $_COORDINATE_Y: "123" (from wmagnify - X,Y)
+
+function _get_net_active_window_window()
+    # - unused
+            $_NET_ACTIVE_WINDOW_WINDOW: "0xa000b3"
+
+function _get_net_client_list_stacking_window()
+    # - unused
+     $_NET_CLIENT_LIST_STACKING_WINDOW: "0x1400044 0xa00477 0xa0002b 0xa01755 0xa01a47 0xa01393 0xa017cb 0x36008e1 0xa001cf 0xa00f91 0xa01787 0xa003b5 0x36000de 0xa000d5 0xa01a25 0x36004a8 0xa01369 0xa00c05 0xa00c2f 0xa019b1 0xa0038b 0xa019db 0xa0063e 0xa000f7 0xa001f1 0xa00361 0xa00d1f 0xa00499 0x360024f 0xa00213 0xa0029b 0x3600316 0xa00257 0xa00235 0xa001ad 0xa00409 0xa00009 0xa0006f 0xa0004d 0xa01b72 0xa017a9 0xa00433 0xa0018b 0xa00279 0x3400011 0xa00091 0xa00fb4 0xa00119 0xa000b3 0x4000099 0x1200004 0xe00008" (unused)
+
+function _get_net_client_list_window()
+    # - precedes: _coordinates_force
+    # - precedes: _pass_fail_by_window_id
+              $_NET_CLIENT_LIST_WINDOW: "0x1200004 0xa00009 0xa0002b 0xa0004d 0xa0006f 0xa00091 0xa000b3 0xa000d5 0xa000f7 0xa00119 0xa0018b 0xa001ad 0xa001cf 0xa001f1 0xa00213 0xa00235 0xa00257 0xa00279 0xa0029b 0xa00361 0xa0038b 0xa003b5 0xa00409 0xa00433 0xa00477 0xa00499 0xa0063e 0xa00c05 0xa00c2f 0xa00d1f 0xa00f91 0xa00fb4 0xa01369 0xa01393 0x3400011 0xa01755 0xa01787 0xa017a9 0xa017cb 0xa019b1 0xa019db 0xa01a25 0xa01a47 0x36000de 0x4000099 0x360024f 0x3600316 0x36004a8 0xa01b72 0x36008e1 0xe00008 0x1400044"
+
+function _get_net_current_desktop_cardinal()
+    # - precedes: _get_net_desktop_names_utf8_string
+    # - precedes: _get_net_desktop_viewport_cardinal
+    # - precedes: _get_net_workarea_cardinal
+        $_NET_CURRENT_DESKTOP_CARDINAL: "0"
+
+function _get_net_desktop_geometry_cardinal()
+    # - precedes: _get_net_workarea_cardinal
+       $_NET_DESKTOP_GEOMETRY_CARDINAL: "1920 1080"
+              $_NET_DESKTOP_GEOMETRY_W: "1920"
+              $_NET_DESKTOP_GEOMETRY_H: "1080"
+
+function _get_net_desktop_layout_cardinal()
+    # - unused
+         $_NET_DESKTOP_LAYOUT_CARDINAL: "1 1 0 0" (unused)
+                $_NET_DESKTOP_LAYOUT_O: "1"
+                $_NET_DESKTOP_LAYOUT_C: "1"
+                $_NET_DESKTOP_LAYOUT_R: "0"
+                $_NET_DESKTOP_LAYOUT_S: "0"
+
+function _get_net_desktop_names_utf8_string()
+    # - succeeds: _get_net_current_desktop_cardinal
+       $_NET_DESKTOP_NAMES_UTF8_STRING: ""I" "II" "III" "IV" "V" "VI" "VII" "VIII""
+        $_NET_DESKTOP_NAME_UTF8_STRING: ""I""
+
+function _get_net_desktop_viewport_cardinal()
+    # - unused
+    # - succeeds: _get_net_current_desktop_cardinal
+       $_NET_DESKTOP_VIEWPORT_CARDINAL: "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
+              $_NET_DESKTOP_VIEWPORT_X: "0"
+              $_NET_DESKTOP_VIEWPORT_Y: "0"
+  # NOTE:
+  # - Openbox doesn't support large desktops so these are just (0, 0).
+
+function _get_net_frame_extents_cardinal()
+    # - precedes: _coordinates_kludge
+    # - precedes: _get_window_undecorated_geometry
+          $_NET_FRAME_EXTENTS_CARDINAL: "1 1 22 6"
+                 $_NET_FRAME_EXTENTS_L: "1"
+                 $_NET_FRAME_EXTENTS_R: "1"
+                 $_NET_FRAME_EXTENTS_T: "22"
+                 $_NET_FRAME_EXTENTS_B: "6"
+
+function _get_net_number_of_desktops_cardinal()
+    # - unused
+     $_NET_NUMBER_OF_DESKTOPS_CARDINAL: "8"
+
+function _get_net_showing_desktop_cardinal()
+    # - unused
+        $_NET_SHOWING_DESKTOP_CARDINAL: "0" (unused)
+
+function _get_net_supported_atom()
+    # - unused
+                  $_NET_SUPPORTED_ATOM: "_NET_SUPPORTING_WM_CHECK _NET_WM_FULL_PLACEMENT _NET_CURRENT_DESKTOP _NET_NUMBER_OF_DESKTOPS _NET_DESKTOP_GEOMETRY _NET_DESKTOP_VIEWPORT _NET_ACTIVE_WINDOW _NET_WORKAREA _NET_CLIENT_LIST _NET_CLIENT_LIST_STACKING _NET_DESKTOP_NAMES _NET_CLOSE_WINDOW _NET_DESKTOP_LAYOUT _NET_SHOWING_DESKTOP _NET_WM_NAME _NET_WM_VISIBLE_NAME _NET_WM_ICON_NAME _NET_WM_VISIBLE_ICON_NAME _NET_WM_DESKTOP _NET_WM_STRUT _NET_WM_STRUT_PARTIAL _NET_WM_ICON _NET_WM_ICON_GEOMETRY _NET_WM_WINDOW_TYPE _NET_WM_WINDOW_TYPE_DESKTOP _NET_WM_WINDOW_TYPE_DOCK _NET_WM_WINDOW_TYPE_TOOLBAR _NET_WM_WINDOW_TYPE_MENU _NET_WM_WINDOW_TYPE_UTILITY _NET_WM_WINDOW_TYPE_SPLASH _NET_WM_WINDOW_TYPE_DIALOG _NET_WM_WINDOW_TYPE_NORMAL _NET_WM_ALLOWED_ACTIONS _NET_WM_WINDOW_OPACITY _NET_WM_ACTION_MOVE _NET_WM_ACTION_RESIZE _NET_WM_ACTION_MINIMIZE _NET_WM_ACTION_SHADE _NET_WM_ACTION_MAXIMIZE_HORZ _NET_WM_ACTION_MAXIMIZE_VERT _NET_WM_ACTION_FULLSCREEN _NET_WM_ACTION_CHANGE_DESKTOP _NET_WM_ACTION_CLOSE _NET_WM_ACTION_ABOVE _NET_WM_ACTION_BELOW _NET_WM_STATE _NET_WM_STATE_MODAL _NET_WM_STATE_MAXIMIZED_VERT _NET_WM_STATE_MAXIMIZED_HORZ _NET_WM_STATE_SHADED _NET_WM_STATE_SKIP_TASKBAR _NET_WM_STATE_SKIP_PAGER _NET_WM_STATE_HIDDEN _NET_WM_STATE_FULLSCREEN _NET_WM_STATE_ABOVE _NET_WM_STATE_BELOW _NET_WM_STATE_DEMANDS_ATTENTION _NET_MOVERESIZE_WINDOW _NET_WM_MOVERESIZE _NET_WM_USER_TIME _NET_FRAME_EXTENTS _NET_REQUEST_FRAME_EXTENTS _NET_RESTACK_WINDOW _NET_STARTUP_ID _NET_WM_SYNC_REQUEST _NET_WM_SYNC_REQUEST_COUNTER _NET_WM_PID _NET_WM_PING _KDE_WM_CHANGE_STATE _KDE_NET_WM_FRAME_STRUT _KDE_NET_WM_WINDOW_TYPE_OVERRIDE _OB_WM_ACTION_UNDECORATE _OB_WM_STATE_UNDECORATED _OPENBOX_PID _OB_THEME _OB_CONFIG_FILE _OB_CONTROL _OB_VERSION _OB_APP_ROLE _OB_APP_TITLE _OB_APP_NAME _OB_APP_CLASS _OB_APP_GROUP_NAME _OB_APP_GROUP_CLASS _OB_APP_TYPE" (unused)
+
+function _get_net_supporting_wm_check_window()
+    # - unused
+      $_NET_SUPPORTING_WM_CHECK_WINDOW: "0x8000bb" (unused)
+
+function _get_net_wm_allowed_actions_atom()
+    # - unused
+         $_NET_WM_ALLOWED_ACTIONS_ATOM: "_NET_WM_ACTION_CHANGE_DESKTOP _NET_WM_ACTION_SHADE _NET_WM_ACTION_CLOSE _NET_WM_ACTION_MOVE _NET_WM_ACTION_MINIMIZE _NET_WM_ACTION_RESIZE _NET_WM_ACTION_FULLSCREEN _NET_WM_ACTION_MAXIMIZE_HORZ _NET_WM_ACTION_MAXIMIZE_VERT _NET_WM_ACTION_ABOVE _NET_WM_ACTION_BELOW _OB_WM_ACTION_UNDECORATE" (unused)
+
+function _get_net_wm_desktop_cardinal()
+    # - unused
+             $_NET_WM_DESKTOP_CARDINAL: "5" (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+
+             $_NET_WM_DESKTOP_CARDINAL: "4294967295" (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+
+function _get_net_wm_icon_geometry_cardinal()
+    # - unused
+       $_NET_WM_ICON_GEOMETRY_CARDINAL: "1373 1056 337 24" (unused) (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+              $_NET_WM_ICON_GEOMETRY_X: "1373" (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+              $_NET_WM_ICON_GEOMETRY_Y: "1056" (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+              $_NET_WM_ICON_GEOMETRY_W: "337" (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+              $_NET_WM_ICON_GEOMETRY_H: "24" (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+
+       $_NET_WM_ICON_GEOMETRY_CARDINAL: "1290 1056 138 24" (unused) (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+              $_NET_WM_ICON_GEOMETRY_X: "1290" (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+              $_NET_WM_ICON_GEOMETRY_Y: "1056" (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+              $_NET_WM_ICON_GEOMETRY_W: "138" (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+              $_NET_WM_ICON_GEOMETRY_H: "24" (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+
+function _get_net_wm_icon_name_utf8_string()
+    # - unused
+        $_NET_WM_ICON_NAME_UTF8_STRING: ""helium.elements.lan - TigerVNC"" (unused) (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+
+        $_NET_WM_ICON_NAME_UTF8_STRING: "" (unused) (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+  # NOTE:
+  # - identical output from the following (so far):
+  # - "function _get_net_wm_icon_name_utf8_string" (may not be available. may be "")
+  # - "function _get_net_wm_name_utf8_string"
+  # - "function _get_net_wm_visible_icon_name_utf8_string"
+  # - "function _get_net_wm_visible_name_utf8_string"
+
+function _get_net_wm_name_utf8_string()
+    # - precedes: _coordinates_kludge
+             $_NET_WM_NAME_UTF8_STRING: ""helium.elements.lan - TigerVNC"" (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+
+             $_NET_WM_NAME_UTF8_STRING: ""Magnify 3x"" (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+  # NOTE:
+  # - identical output from the following (so far):
+  # - "function _get_net_wm_icon_name_utf8_string" (may not be available. may be "")
+  # - "function _get_net_wm_name_utf8_string"
+  # - "function _get_net_wm_visible_icon_name_utf8_string"
+  # - "function _get_net_wm_visible_name_utf8_string"
+
+function _get_net_wm_opaque_region_cardinal()
+    # - unused
+       $_NET_WM_OPAQUE_REGION_CARDINAL: "" (unused)
+              $_NET_WM_OPAQUE_REGION_X: ""
+              $_NET_WM_OPAQUE_REGION_Y: ""
+              $_NET_WM_OPAQUE_REGION_W: ""
+              $_NET_WM_OPAQUE_REGION_H: ""
+
+function _get_net_wm_pid_cardinal()
+    # - unused
+                 $_NET_WM_PID_CARDINAL: "" (unused)
+
+function _get_net_wm_state_atom()
+    # - precedes: _coordinates_validate
+                   $_NET_WM_STATE_ATOM: ""
+                 $_BOOLEAN_MAXIMIZED_X: "false"
+                 $_BOOLEAN_MAXIMIZED_Y: "false"
+
+function _get_net_wm_strut_cardinal()
+    # - unused
+               $_NET_WM_STRUT_CARDINAL: "" (unused)
+                      $_NET_WM_STRUT_L: ""
+                      $_NET_WM_STRUT_R: ""
+                      $_NET_WM_STRUT_T: ""
+                      $_NET_WM_STRUT_B: ""
+
+function _get_net_wm_strut_partial_cardinal()
+    # - unused
+       $_NET_WM_STRUT_PARTIAL_CARDINAL: "" (unused)
+              $_NET_WM_STRUT_PARTIAL_L: ""
+              $_NET_WM_STRUT_PARTIAL_R: ""
+              $_NET_WM_STRUT_PARTIAL_T: ""
+              $_NET_WM_STRUT_PARTIAL_B: ""
+            $_NET_WM_STRUT_PARTIAL_LSY: ""
+            $_NET_WM_STRUT_PARTIAL_LEY: ""
+            $_NET_WM_STRUT_PARTIAL_RSY: ""
+            $_NET_WM_STRUT_PARTIAL_REY: ""
+            $_NET_WM_STRUT_PARTIAL_TSX: ""
+            $_NET_WM_STRUT_PARTIAL_TEX: ""
+            $_NET_WM_STRUT_PARTIAL_BSX: ""
+            $_NET_WM_STRUT_PARTIAL_BEX: ""
+
+function _get_net_wm_sync_request_counter_cardinal()
+    # - unused
+$_NET_WM_SYNC_REQUEST_COUNTER_CARDINAL: "" (unused)
+
+function _get_net_wm_user_time_cardinal()
+    # - unused
+           $_NET_WM_USER_TIME_CARDINAL: "" (unused)
+
+function _get_net_wm_user_time_window_window()
+    # - unused
+      $_NET_WM_USER_TIME_WINDOW_WINDOW: "" (unused)
+
+function _get_net_wm_visible_icon_name_utf8_string()
+    # - unused
+$_NET_WM_VISIBLE_ICON_NAME_UTF8_STRING: ""helium.elements.lan - TigerVNC"" (unused) (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+
+$_NET_WM_VISIBLE_ICON_NAME_UTF8_STRING: ""Magnify 3x"" (unused) (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+  # NOTE:
+  # - identical output from the following (so far):
+  # - "function _get_net_wm_icon_name_utf8_string" (may not be available. may be "")
+  # - "function _get_net_wm_name_utf8_string"
+  # - "function _get_net_wm_visible_icon_name_utf8_string"
+  # - "function _get_net_wm_visible_name_utf8_string"
+
+function _get_net_wm_visible_name_utf8_string()
+    # - unused
+     $_NET_WM_VISIBLE_NAME_UTF8_STRING: ""helium.elements.lan - TigerVNC"" (unused) (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+
+     $_NET_WM_VISIBLE_NAME_UTF8_STRING: ""Magnify 3x"" (unused) (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+  # NOTE:
+  # - identical output from the following (so far):
+  # - "function _get_net_wm_icon_name_utf8_string" (may not be available. may be "")
+  # - "function _get_net_wm_name_utf8_string"
+  # - "function _get_net_wm_visible_icon_name_utf8_string"
+  # - "function _get_net_wm_visible_name_utf8_string"
+
+function _get_net_workarea_cardinal()
+    # - succeeds: _get_net_current_desktop_cardinal
+    # - succeeds: _get_net_desktop_geometry_cardinal
+    # - precedes: _coordinates_kludge (does this matter?)
+               $_NET_WORKAREA_CARDINAL: "0 0 1852 1056 0 0 1852 1056 0 0 1852 1056 0 0 1852 1056 0 0 1852 1056 0 0 1852 1056 0 0 1852 1056 0 0 1852 1056"
+                      $_NET_WORKAREA_X: "0"
+                      $_NET_WORKAREA_Y: "0"
+                      $_NET_WORKAREA_W: "1852"
+                      $_NET_WORKAREA_H: "1056"
+                   $_WORKAREA_BORDER_L: "0"
+                   $_WORKAREA_BORDER_R: "68"
+                   $_WORKAREA_BORDER_T: "0"
+                   $_WORKAREA_BORDER_B: "24"
+
+function _get_window_undecorated_geometry()
+    # - succeeds: _get_net_frame_extents_cardinal
+                $_WINDOW_UNDECORATED_X: "1366" (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+                $_WINDOW_UNDECORATED_Y: "768" (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+                  $_WINDOW_DECORATED_X: "1368" (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+                  $_WINDOW_DECORATED_Y: "796" (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+
+                $_WINDOW_UNDECORATED_X: "300" (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+                $_WINDOW_UNDECORATED_Y: "200" (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+                  $_WINDOW_DECORATED_X: "302" (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+                  $_WINDOW_DECORATED_Y: "228" (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+
+function _parse_parameters()
+    # - precedes: everything
+                    $_OPTION_WINDOW_ID: "0x1400044" (from tigervnc - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+
+                    $_OPTION_WINDOW_ID: "0x4000099" (from wmagnify - ul|uc|ur|ml|mc|mr|bl|bc|br|same|X,Y)
+
+           $_OPTION_WINDOW_COORDINATES: "same" (from tigervnc - same)
+           $_OPTION_WINDOW_COORDINATES: "ul" (from tigervnc - ul)
+           $_OPTION_WINDOW_COORDINATES: "uc" (from tigervnc - uc)
+           $_OPTION_WINDOW_COORDINATES: "ur" (from tigervnc - ur)
+           $_OPTION_WINDOW_COORDINATES: "ml" (from tigervnc - ml)
+           $_OPTION_WINDOW_COORDINATES: "mc" (from tigervnc - mc)
+           $_OPTION_WINDOW_COORDINATES: "mr" (from tigervnc - mr)
+           $_OPTION_WINDOW_COORDINATES: "bl" (from tigervnc - bl)
+           $_OPTION_WINDOW_COORDINATES: "bc" (from tigervnc - bc)
+           $_OPTION_WINDOW_COORDINATES: "br" (from tigervnc - br)
+           $_OPTION_WINDOW_COORDINATES: "123,123" (from tigervnc - X,Y)
+
+           $_OPTION_WINDOW_COORDINATES: "same" (from wmagnify - same)
+           $_OPTION_WINDOW_COORDINATES: "ul" (from wmagnify - ul)
+           $_OPTION_WINDOW_COORDINATES: "uc" (from wmagnify - uc)
+           $_OPTION_WINDOW_COORDINATES: "ur" (from wmagnify - ur)
+           $_OPTION_WINDOW_COORDINATES: "ml" (from wmagnify - ml)
+           $_OPTION_WINDOW_COORDINATES: "mc" (from wmagnify - mc)
+           $_OPTION_WINDOW_COORDINATES: "mr" (from wmagnify - mr)
+           $_OPTION_WINDOW_COORDINATES: "bl" (from wmagnify - bl)
+           $_OPTION_WINDOW_COORDINATES: "bc" (from wmagnify - bc)
+           $_OPTION_WINDOW_COORDINATES: "br" (from wmagnify - br)
+           $_OPTION_WINDOW_COORDINATES: "123,123" (from wmagnify - X,Y)
+
+function _pass_fail_by_window_id()
+    # - succeeds: _get_net_client_list_window
+    # - precedes: _pass_fail_by_window_type
+
+function _pass_fail_by_window_type()
+    # - succeeds: _pass_fail_by_window_id
+
+function _set_window_position()
+    # - succeeds: everything
+                   new X,Y coordinates: "-1,-1" (from tigervnc - same)
+                   new X,Y coordinates: "0,0" (from tigervnc - ul)
+                   new X,Y coordinates: "242,0" (from tigervnc - uc)
+                   new X,Y coordinates: "484,0" (from tigervnc - ur)
+                   new X,Y coordinates: "0,130" (from tigervnc - ml)
+                   new X,Y coordinates: "242,130" (from tigervnc - mc)
+                   new X,Y coordinates: "484,130" (from tigervnc - mr)
+                   new X,Y coordinates: "0,260" (from tigervnc - bl)
+                   new X,Y coordinates: "242,260" (from tigervnc - bc)
+                   new X,Y coordinates: "484,260" (from tigervnc - br)
+                   new X,Y coordinates: "123,123" (from tigervnc - X,Y)
+
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,0,21,-1,-1" (from tigervnc - same)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,1,22,-1,-1" (from tigervnc - ul)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,243,22,-1,-1" (from tigervnc - uc)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,485,22,-1,-1" (from tigervnc - ur)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,1,152,-1,-1" (from tigervnc - ml)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,243,152,-1,-1" (from tigervnc - mc)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,485,152,-1,-1" (from tigervnc - mr)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,1,282,-1,-1" (from tigervnc - bl)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,243,282,-1,-1" (from tigervnc - bc)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,485,282,-1,-1" (from tigervnc - br)
+                 wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,124,145,-1,-1" (from tigervnc - X,Y)
+
+                   new X,Y coordinates: "-1,-1" (from wmagnify - same)
+                   new X,Y coordinates: "0,0" (from wmagnify - ul)
+                   new X,Y coordinates: "775,0" (from wmagnify - uc)
+                   new X,Y coordinates: "1550,0" (from wmagnify - ur)
+                   new X,Y coordinates: "0,414" (from wmagnify - ml)
+                   new X,Y coordinates: "775,414" (from wmagnify - mc)
+                   new X,Y coordinates: "1550,414" (from wmagnify - mr)
+                   new X,Y coordinates: "0,828" (from wmagnify - bl)
+                   new X,Y coordinates: "775,828" (from wmagnify - bc)
+                   new X,Y coordinates: "1550,828" (from wmagnify - br)
+                   new X,Y coordinates: "123,123" (from wmagnify - X,Y)
+
+                 wmctrl command (move): "wmctrl -i -r 0x4000099 -e 0,-1,-1,-1,-1" (from wmagnify - same)
+                 wmctrl command (move): "wmctrl -i -r 0x4000099 -e 0,0,0,-1,-1" (from wmagnify - ul)
+                 wmctrl command (move): "wmctrl -i -r 0x4000099 -e 0,775,0,-1,-1" (from wmagnify - uc)
+                 wmctrl command (move): "wmctrl -i -r 0x4000099 -e 0,1550,0,-1,-1" (from wmagnify - ur)
+                 wmctrl command (move): "wmctrl -i -r 0x4000099 -e 0,0,414,-1,-1" (from wmagnify - ml)
+                 wmctrl command (move): "wmctrl -i -r 0x4000099 -e 0,775,414,-1,-1" (from wmagnify - mc)
+                 wmctrl command (move): "wmctrl -i -r 0x4000099 -e 0,1550,414,-1,-1" (from wmagnify - mr)
+                 wmctrl command (move): "wmctrl -i -r 0x4000099 -e 0,0,828,-1,-1" (from wmagnify - bl)
+                 wmctrl command (move): "wmctrl -i -r 0x4000099 -e 0,775,828,-1,-1" (from wmagnify - bc)
+                 wmctrl command (move): "wmctrl -i -r 0x4000099 -e 0,1550,828,-1,-1" (from wmagnify - br)
+                 wmctrl command (move): "wmctrl -i -r 0x4000099 -e 0,124,145,-1,-1" (from wmagnify - X,Y)
+
+function _window_id_acquire()
+    # - called from _parse_parameters

@@ -17,16 +17,29 @@
 # - correct numbers, but they're being used incorrectly
 # ^ try different order of functions or different calculations (somehow)
 # - honestly not sure if it's 1 bug showing up 2 ways or 2 separate bugs
+# - definitely the correct numbers being applied in the incorrect spot
+
+# IDEA:
+# - possibly alter the calculations in the following for the kludges:
+# - add them to here:
+#   "function _coordinates_calculate"
+#   "function _coordinates_user_specified" (maybe)
+#   "function _coordinates_validate" (maybe)
+# * test coordinates first. do not add kludges if the coordinates are "-1"
+# - remove them from here:
+#   "function _set_window_position"
 
 # TRY: (first deliberately break stuff to see what is affected)
 # - is this:
   _COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 0,$(( $_COORDINATE_X +
  $_KLUDGE_X )),$(( $_COORDINATE_Y + $_KLUDGE_Y )),-1,-1"
+# - #1
   _eko_pv "new X,Y coordinates:" \""$_COORDINATE_X,$_COORDINATE_Y\""
   _eko_pv "X,Y kludges:" \""$_KLUDGE_X,$_KLUDGE_Y\""
   _eko_pv "wmctrl command (move):" \""$_COMMAND\""
 
 # - try this: (only the changed line(s) is/are quoted)
+# - #2
   _eko_pv "new X,Y coordinates:" \""$(( $_COORDINATE_X + $_KLUDGE_X )),$((
  $_COORDINATE_Y + $_KLUDGE_Y ))\""
 
@@ -387,17 +400,29 @@ function _pass_fail_by_window_type()
 
 function _set_window_position()
     # - succeeds: everything
-                   new X,Y coordinates: "-1,-1" (from tigervnc - same)
-                   new X,Y coordinates: "0,0" (from tigervnc - ul)
-                   new X,Y coordinates: "242,0" (from tigervnc - uc)
-                   new X,Y coordinates: "484,0" (from tigervnc - ur)
-                   new X,Y coordinates: "0,130" (from tigervnc - ml)
-                   new X,Y coordinates: "242,130" (from tigervnc - mc)
-                   new X,Y coordinates: "484,130" (from tigervnc - mr)
-                   new X,Y coordinates: "0,260" (from tigervnc - bl)
-                   new X,Y coordinates: "242,260" (from tigervnc - bc)
-                   new X,Y coordinates: "484,260" (from tigervnc - br)
-                   new X,Y coordinates: "123,123" (from tigervnc - X,Y)
+                   new X,Y coordinates: "-1,-1" (from tigervnc - same - #1)
+                   new X,Y coordinates: "0,0" (from tigervnc - ul - #1)
+                   new X,Y coordinates: "242,0" (from tigervnc - uc - #1)
+                   new X,Y coordinates: "484,0" (from tigervnc - ur - #1)
+                   new X,Y coordinates: "0,130" (from tigervnc - ml - #1)
+                   new X,Y coordinates: "242,130" (from tigervnc - mc - #1)
+                   new X,Y coordinates: "484,130" (from tigervnc - mr - #1)
+                   new X,Y coordinates: "0,260" (from tigervnc - bl - #1)
+                   new X,Y coordinates: "242,260" (from tigervnc - bc - #1)
+                   new X,Y coordinates: "484,260" (from tigervnc - br - #1)
+                   new X,Y coordinates: "123,123" (from tigervnc - X,Y - #1)
+
+                   new X,Y coordinates: "0,21" (from tigervnc - same - #2)
+                   new X,Y coordinates: "1,22" (from tigervnc - ul - #2)
+                   new X,Y coordinates: "243,22" (from tigervnc - uc - #2)
+                   new X,Y coordinates: "485,22" (from tigervnc - ur - #2)
+                   new X,Y coordinates: "1,152" (from tigervnc - ml - #2)
+                   new X,Y coordinates: "243,152" (from tigervnc - mc - #2)
+                   new X,Y coordinates: "485,152" (from tigervnc - mr - #2)
+                   new X,Y coordinates: "1,282" (from tigervnc - bl - #2)
+                   new X,Y coordinates: "243,282" (from tigervnc - bc - #2)
+                   new X,Y coordinates: "485,282" (from tigervnc - br - #2)
+                   new X,Y coordinates: "124,145" (from tigervnc - X,Y - #2)
 
                  wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,0,21,-1,-1" (from tigervnc - same)
                  wmctrl command (move): "wmctrl -i -r 0x1400044 -e 0,1,22,-1,-1" (from tigervnc - ul)

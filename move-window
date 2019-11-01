@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# move-window v2019.10.31
+# move-window v2019.11.02
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -24,6 +24,8 @@
 #   _NET_WM_STATE_BELOW, ATOM
 # ^ "function _get_net_wm_state_atom" for examples
 # - this will not work. more details later
+# - alternate approach to attempt: manipulate window stacking order directly &
+#   see what happens
 
 # FIXME
 # - something's going on in "function _coordinates_validate". more notes there
@@ -42,11 +44,39 @@
 # - allow windows to be "nudged" by a relative offset of pixels. +/- format
 # - this will require a complete rethink of how "-1" is handled
 
+# IDEA:
+# - add "-p, --permissive" (or somesuch) to permit moving otherwise unmoveable
+#   windows. also very useful for the above (nudge) idea (done)
+
 # OOPS:
 # - changelog order is unpredictable. some series of entries per date are
 #   chronologically top-to-bottom while others are bottom-to-top. preferred
 #   order is bottom-to-top. this will gradually be fixed when time permits
 
+# 2019-11-02
+
+# (in progress)
+# - tagged various functions as:
+#   "# - unused"
+#   "# - required"
+#   "#     parent: "function <function name>""
+#   "#      child: "function <function name>""
+#   "#   precedes: "function <function name>""
+#   "#   succeeds: "function <function name>""
+# ^ I may quietly remove these at some point. they've been added simply to
+#   help me figure out precisely what is unused &/or required & in what order
+
+# (done)
+# - "function _pass_fail_by_window_type" added $_BOOLEAN_PERMISSIVE test
+# - added "-p, --permissive" option to permit moving otherwise unmoveable
+#   windows
+# - rearranged calls to the following functions to be displayed only when
+#   "-u, --unused" is specified:
+#   "function _get_net_active_window_window"
+#   "function _get_net_desktop_names_utf8_string"
+#   "function _get_net_desktop_viewport_cardinal"
+#   "function _get_net_number_of_desktops_cardinal"
+#   "function _get_net_wm_desktop_cardinal"
 # 2019-10-31
 # - "function _set_window_position" changed the following lines:
 #  add: if [[ $_COORDINATE_X != -1 ]] \
@@ -123,6 +153,7 @@
 # - "function _get_net_wm_visible_icon_name_utf8_string" added
 # - "function _get_net_wm_visible_name_utf8_string" added
 # - "_NET_WM_ICON(CARDINAL)" deliberately skipped from this treatment
+# - "function _parse_parameters" added $_BOOLEAN_UNUSED test
 # - added "-u, --unused" option to gather/see them in "-v, --verbose" mode
 # 2019-10-19
 # - experimenting with different sed syntax formats. output is identical
@@ -194,8 +225,8 @@
 #  was: _eko_v "      Foo Bar:" \""$_FOO\""
 #   is: _eko_pv "Foo Bar:" \""$_FOO\""
 # - "function _eko_pv" added for properly formatted verbose output
-# - "# functions:", "# variables:", "# binaries:", & "# builtins:" listings
-#   added/appended to each function & in main
+# - "functions:/variables:/binaries:/builtins:" listings added/appended to
+#   each function & in main
 # ^ "# builtins:" is to keep track of "echo" &/or "printf" usage. technically
 #   speaking, "(none)" is a misnomer as it's only in reference to these 2
 #   builtins
@@ -389,6 +420,7 @@
   # _BOOLEAN_MAXIMIZED_X (window state. not script option)
   # _BOOLEAN_MAXIMIZED_Y (window state. not script option)
   # _BOOLEAN_OVERALL
+  # _BOOLEAN_PERMISSIVE
   # _BOOLEAN_RAISE
   # _BOOLEAN_STDOUT
   # _BOOLEAN_UNUSED
@@ -583,6 +615,14 @@ function _binary_validate_setup()
   # echo
 
   # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
+  # NOTE:
   # - rather than test a given binary's version in hopes of figuring out which
   #   features it supports, test its supported feature set directly. not only
   #   is this much simpler to do, it's possible to test only those features
@@ -733,6 +773,14 @@ function _builtin_validate_setup()
   # read
 
   # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
+  # NOTE:
   # - rather than test a given builtin's version (or more accurately, test a
   #   given version of bash itself) in hopes of figuring out which features it
   #   supports, test its supported feature set directly. not only is this much
@@ -795,6 +843,16 @@ function _coordinates_calculate()
 
   # builtins:
   # (none)
+
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function _coordinates_user_specified"
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function _get_window_undecorated_geometry"
+  #   succeeds: "function "
 
   # NET:
   # - _NET_DESKTOP_GEOMETRY width, height, CARDINAL[2]/32
@@ -905,6 +963,15 @@ function _coordinates_force()
   # builtins:
   # echo
 
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function _get_net_desktop_geometry_cardinal"
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_CLIENT_LIST, WINDOW[]/32
 
@@ -928,6 +995,7 @@ function _coordinates_force()
   #   taking into account window decorations & kludges (if needed)
   # - if this approach is taken, do so from *within* the $_CORNERS test to
   #   keep calculations at a minimum
+  # - this will require a complete rethink of how this function is handled
 
   _get_net_desktop_geometry_cardinal
 
@@ -996,11 +1064,24 @@ function _coordinates_kludge()
   # builtins:
   # (none)
 
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_WM_NAME, UTF8_STRING
 
   # "_NET_WM_NAME(UTF8_STRING) = "
   # ""Magnify 3x""
+  # - also:
+  # ""helium.elements.lan - TigerVNC""
+  # ""beryllium.elements.lan - TigerVNC""
+  # ""boron.elements.lan - TigerVNC""
+  # ""carbon.elements.lan - TigerVNC""
 
   # - the regex must be *outside* the doublequotes
   # - note the extra trailing doublequote on the rhs. that's from the window's
@@ -1042,6 +1123,15 @@ function _coordinates_user_specified()
 
   # builtins:
   # (none)
+
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function _coordinates_calculate"
+  #   succeeds: "function "
 
   # - ${parameter/pattern/string}
   _COORDINATE_X=${_OPTION_WINDOW_COORDINATES/,*/}
@@ -1089,6 +1179,14 @@ function _coordinates_validate()
 
   # builtins:
   # (none)
+
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
 
   # NET:
   # - _NET_DESKTOP_GEOMETRY width, height, CARDINAL[2]/32
@@ -1234,6 +1332,13 @@ function _eko_iod()
   # printf
 
   # NOTE:
+  # - required
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
+  # NOTE:
   # - why "$(( ${#FUNCNAME[@]} - 3 ))"? to account for main, parent, current
   # - pay special attention to the "*" in "%*s". it's part of the magic
 
@@ -1267,6 +1372,13 @@ function _eko_ps()
   # builtins:
   # echo
   # printf
+
+  # NOTE:
+  # - required
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
 
   # NOTE:
   # - why "%26s "? to simplify setting column width in stdout reports. a
@@ -1308,6 +1420,13 @@ function _eko_ps_en()
   # printf
 
   # NOTE:
+  # - required
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
+  # NOTE:
   # - why "%26s "? to simplify setting column width in stdout reports. a
   #   single change here affects the output globally
   # - unformatted (non-columnized) output is now supported. simply pass "" as
@@ -1345,6 +1464,13 @@ function _eko_pv()
   # builtins:
   # echo
   # printf
+
+  # NOTE:
+  # - required
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
 
   # NOTE:
   # - why "%39s "? to simplify setting column width in verbose reports. a
@@ -1386,6 +1512,13 @@ function _eko_pv_en()
   # printf
 
   # NOTE:
+  # - required
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
+  # NOTE:
   # - why "%39s "? to simplify setting column width in verbose reports. a
   #   single change here affects the output globally
   # - unformatted (non-columnized) output is now supported. simply pass "" as
@@ -1423,6 +1556,14 @@ function _get_net_active_window_window()
   # builtins:
   # echo
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_ACTIVE_WINDOW, WINDOW/32
 
@@ -1430,8 +1571,7 @@ function _get_net_active_window_window()
   # "0xa000b3"
 
   # NOTE:
-  # - unused?
-  # - do we need this? I don't think so
+  # - do we need this? I don't think so. at least, not for now
   # - possibly in the future, though. as part of an alternate approach to
   #   implement "-l, --lower" & "-r, --raise"
 
@@ -1441,7 +1581,7 @@ function _get_net_active_window_window()
 
   _NET_ACTIVE_WINDOW_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_ACTIVE_WINDOW(WINDOW): window id # /!d ; /.* # / s///g')
 
-  _eko_pv \$_NET_ACTIVE_WINDOW_WINDOW: \""$_NET_ACTIVE_WINDOW_WINDOW\""
+  _eko_pv \$_NET_ACTIVE_WINDOW_WINDOW: \""$_NET_ACTIVE_WINDOW_WINDOW\" (unused)"
 
   _eko_iod "#- _get_net_active_window_window -#"
 }
@@ -1464,6 +1604,14 @@ function _get_net_client_list_stacking_window()
   # builtins:
   # echo
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_CLIENT_LIST_STACKING, WINDOW[]/32
 
@@ -1471,9 +1619,6 @@ function _get_net_client_list_stacking_window()
   # "0xa00009, "
   # etc, etc
   # "0x1200004"
-
-  # NOTE:
-  # - unused
 
   _NET_CLIENT_LIST_STACKING_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CLIENT_LIST_STACKING(WINDOW): window id # /!d ; /\(.* # \|,\)/ s///g')
 
@@ -1499,6 +1644,14 @@ function _get_net_client_list_window()
 
   # builtins:
   # echo
+
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
 
   # NET:
   # - _NET_CLIENT_LIST, WINDOW[]/32
@@ -1532,6 +1685,17 @@ function _get_net_current_desktop_cardinal()
 
   # builtins:
   # echo
+
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function _get_net_desktop_names_utf8_string" (unused)
+  #   precedes: "function _get_net_desktop_viewport_cardinal" (unused)
+  #   precedes: "function _get_net_workarea_cardinal" (required)
+  #   precedes: "function "
+  #   succeeds: "function "
 
   # NET:
   # - _NET_CURRENT_DESKTOP desktop, CARDINAL/32
@@ -1571,6 +1735,14 @@ function _get_net_desktop_geometry_cardinal()
   # builtins:
   # echo
   # read
+
+  # NOTE:
+  # - required
+  #     parent: "function _coordinates_force"
+  #      child: "function "
+  #   precedes: "function _get_net_workarea_cardinal"
+  #   precedes: "function "
+  #   succeeds: "function "
 
   # NET:
   # - _NET_DESKTOP_GEOMETRY width, height, CARDINAL[2]/32
@@ -1623,6 +1795,14 @@ function _get_net_desktop_layout_cardinal()
   # echo
   # read
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_DESKTOP_LAYOUT, orientation, columns, rows, starting_corner CARDINAL[4]/32
 
@@ -1631,9 +1811,6 @@ function _get_net_desktop_layout_cardinal()
   # "1, "
   # "0, "
   # "0"
-
-  # NOTE:
-  # - unused
 
   _NET_DESKTOP_LAYOUT_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_LAYOUT(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
 
@@ -1679,6 +1856,15 @@ function _get_net_desktop_names_utf8_string()
   # builtins:
   # echo
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function _get_net_current_desktop_cardinal"
+  #   succeeds: "function "
+
   # NET:
   # - _NET_DESKTOP_NAMES, UTF8_STRING[]
 
@@ -1693,13 +1879,8 @@ function _get_net_desktop_names_utf8_string()
   # ""VIII""
 
   # NOTE:
-  # - unused?
   # - do we need this? I don't think so
   # - keep it anyway. it's a good reference
-
-  # NOTE:
-  # - "function _get_net_current_desktop_cardinal" must precede this function
-  #   since it acquires _NET_CURRENT_DESKTOP_CARDINAL which is used below
 
   # NOTE:
   # - unlike cardinal types, utf-8 requires special handling
@@ -1717,7 +1898,7 @@ function _get_net_desktop_names_utf8_string()
 
   _NET_DESKTOP_NAMES_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_NAMES(UTF8_STRING) = /!d ; /\(.* = \|,\)/ s///g')
 
-  _eko_pv \$_NET_DESKTOP_NAMES_UTF8_STRING: \""$_NET_DESKTOP_NAMES_UTF8_STRING\""
+  _eko_pv \$_NET_DESKTOP_NAMES_UTF8_STRING: \""$_NET_DESKTOP_NAMES_UTF8_STRING\" (unused)"
 
   # IDEA:
   # - don't modify the original string
@@ -1805,6 +1986,16 @@ function _get_net_desktop_viewport_cardinal()
   # builtins:
   # echo
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function _sub_function"
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function _get_net_current_desktop_cardinal"
+  #   succeeds: "function "
+
   # NET:
   # - _NET_DESKTOP_VIEWPORT x, y, CARDINAL[][2]/32
 
@@ -1821,17 +2012,9 @@ function _get_net_desktop_viewport_cardinal()
   # NOTE:
   # - Openbox doesn't support large desktops so these are just (0, 0).
 
-  # NOTE:
-  # - unused?
-  # - do we need this? I don't think so
-
-  # NOTE:
-  # - "function _get_net_current_desktop_cardinal" must precede this function
-  #   since it acquires _NET_CURRENT_DESKTOP_CARDINAL which is used below
-
   _NET_DESKTOP_VIEWPORT_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_VIEWPORT(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
 
-  _eko_pv \$_NET_DESKTOP_VIEWPORT_CARDINAL: \""$_NET_DESKTOP_VIEWPORT_CARDINAL\""
+  _eko_pv \$_NET_DESKTOP_VIEWPORT_CARDINAL: \""$_NET_DESKTOP_VIEWPORT_CARDINAL\" (unused)"
 
   function _sub_function()
   {
@@ -1921,6 +2104,15 @@ function _get_net_frame_extents_cardinal()
   # echo
   # read
 
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function _get_window_undecorated_geometry"
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32
 
@@ -1968,6 +2160,14 @@ function _get_net_number_of_desktops_cardinal()
   # builtins:
   # echo
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_NUMBER_OF_DESKTOPS, CARDINAL/32
 
@@ -1979,7 +2179,7 @@ function _get_net_number_of_desktops_cardinal()
 
   _NET_NUMBER_OF_DESKTOPS_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_NUMBER_OF_DESKTOPS(CARDINAL) = /!d ; /.* = / s///g')
 
-  _eko_pv \$_NET_NUMBER_OF_DESKTOPS_CARDINAL: \""$_NET_NUMBER_OF_DESKTOPS_CARDINAL\""
+  _eko_pv \$_NET_NUMBER_OF_DESKTOPS_CARDINAL: \""$_NET_NUMBER_OF_DESKTOPS_CARDINAL\" (unused)"
 
   _eko_iod "#- _get_net_number_of_desktops_cardinal -#"
 }
@@ -2002,14 +2202,19 @@ function _get_net_showing_desktop_cardinal()
   # builtins:
   # echo
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_SHOWING_DESKTOP desktop, CARDINAL/32
 
   # "_NET_SHOWING_DESKTOP(CARDINAL) = "
   # "0"
-
-  # NOTE:
-  # - unused
 
   _NET_SHOWING_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_SHOWING_DESKTOP(CARDINAL) = /!d ; /.* = / s///g')
 
@@ -2036,6 +2241,14 @@ function _get_net_supported_atom()
   # builtins:
   # echo
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_SUPPORTED, ATOM[]/32
 
@@ -2043,9 +2256,6 @@ function _get_net_supported_atom()
   # "_NET_SUPPORTING_WM_CHECK, "
   # etc, etc
   # "_OB_APP_TYPE"
-
-  # NOTE:
-  # - unused
 
   _NET_SUPPORTED_ATOM=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_SUPPORTED(ATOM) = /!d ; /\(.* = \|,\)/ s///g')
 
@@ -2072,14 +2282,19 @@ function _get_net_supporting_wm_check_window()
   # builtins:
   # echo
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_SUPPORTING_WM_CHECK, WINDOW/32
 
   # "_NET_SUPPORTING_WM_CHECK(WINDOW): window id # "
   # "0x8000bb"
-
-  # NOTE:
-  # - unused
 
   _NET_SUPPORTING_WM_CHECK_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_SUPPORTING_WM_CHECK(WINDOW): window id # /!d ; /.* # / s///g')
 
@@ -2105,6 +2320,14 @@ function _get_net_wm_allowed_actions_atom()
 
   # builtins:
   # echo
+
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
 
   # NET:
   # - _NET_WM_ALLOWED_ACTIONS, ATOM[]
@@ -2137,9 +2360,6 @@ function _get_net_wm_allowed_actions_atom()
   #   _NET_WM_ACTION_SHADE, ATOM
   #   _NET_WM_ACTION_STICK, ATOM
 
-  # NOTE:
-  # - unused
-
   # NOTE: (_NET_WM_ACTION_STICK)
   # - Openbox does not do large desktops, so no sticky state is needed.
 
@@ -2168,6 +2388,14 @@ function _get_net_wm_desktop_cardinal()
   # builtins:
   # echo
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_WM_DESKTOP, CARDINAL/32
 
@@ -2179,7 +2407,7 @@ function _get_net_wm_desktop_cardinal()
 
   _NET_WM_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_DESKTOP(CARDINAL) = /!d ; /.* = / s///g')
 
-  _eko_pv \$_NET_WM_DESKTOP_CARDINAL: \""$_NET_WM_DESKTOP_CARDINAL\""
+  _eko_pv \$_NET_WM_DESKTOP_CARDINAL: \""$_NET_WM_DESKTOP_CARDINAL\" (unused)"
 
   _eko_iod "#- _get_net_wm_desktop_cardinal -#"
 }
@@ -2208,6 +2436,14 @@ function _get_net_wm_icon_geometry_cardinal()
   # echo
   # read
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_WM_ICON_GEOMETRY, x, y, width, height, CARDINAL[4]/32
 
@@ -2216,9 +2452,6 @@ function _get_net_wm_icon_geometry_cardinal()
   # "1056, "
   # "117, "
   # "24"
-
-  # NOTE:
-  # - unused
 
   _NET_WM_ICON_GEOMETRY_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_ICON_GEOMETRY(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
 
@@ -2258,14 +2491,19 @@ function _get_net_wm_icon_name_utf8_string()
   # builtins:
   # echo
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_WM_ICON_NAME, UTF8_STRING
 
   # "_NET_WM_ICON_NAME(UTF8_STRING) = "
   # ""Mozilla Firefox""
-
-  # NOTE:
-  # - unused
 
    _NET_WM_ICON_NAME_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_ICON_NAME(UTF8_STRING) = /!d ; /.* = / s///g')
 
@@ -2291,6 +2529,14 @@ function _get_net_wm_name_utf8_string()
 
   # builtins:
   # echo
+
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
 
   # NET:
   # - _NET_WM_NAME, UTF8_STRING
@@ -2332,6 +2578,14 @@ function _get_net_wm_opaque_region_cardinal()
   # echo
   # read
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_WM_ICON_GEOMETRY, x, y, width, height, CARDINAL[4]/32
 
@@ -2340,9 +2594,6 @@ function _get_net_wm_opaque_region_cardinal()
   # "1056, "
   # "117, "
   # "24"
-
-  # NOTE:
-  # - unused
 
   _NET_WM_OPAQUE_REGION_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_OPAQUE_REGION(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
 
@@ -2382,6 +2633,14 @@ function _get_net_wm_pid_cardinal()
   # builtins:
   # echo
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_WM_PID, CARDINAL/32
 
@@ -2417,6 +2676,14 @@ function _get_net_wm_state_atom()
 
   # builtins:
   # echo
+
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
 
   # NET:
   # - _NET_WM_STATE, ATOM[]
@@ -2487,6 +2754,14 @@ function _get_net_wm_strut_cardinal()
   # echo
   # read
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   #  - _NET_WM_STRUT, left, right, top, bottom, CARDINAL[4]/32
 
@@ -2495,9 +2770,6 @@ function _get_net_wm_strut_cardinal()
   # "0, "
   # "0, "
   # "24"
-
-  # NOTE:
-  # - unused
 
   _NET_WM_STRUT_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_STRUT(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
 
@@ -2551,6 +2823,14 @@ function _get_net_wm_strut_partial_cardinal()
   # echo
   # read
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   #  - _NET_WM_STRUT_PARTIAL, left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x, CARDINAL[12]/32
 
@@ -2570,9 +2850,6 @@ function _get_net_wm_strut_partial_cardinal()
 
   # NOTE:
   # - Openbox uses these to create per-monitor struts in Xinerama setups.
-
-  # NOTE:
-  # - unused
 
   _NET_WM_STRUT_PARTIAL_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_STRUT_PARTIAL(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
 
@@ -2630,6 +2907,14 @@ function _get_net_wm_sync_request_counter_cardinal()
   # echo
   # read
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_WM_SYNC_REQUEST_COUNTER, ?, ?, CARDINAL[]/32
 
@@ -2663,14 +2948,19 @@ function _get_net_wm_user_time_cardinal()
   # builtins:
   # echo
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_WM_USER_TIME CARDINAL/32
 
   # "_NET_WM_USER_TIME(CARDINAL) = "
   # "2553195505"
-
-  # NOTE:
-  # - unused
 
   _NET_WM_USER_TIME_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_USER_TIME(CARDINAL) = /!d ; /.* = / s///g')
 
@@ -2697,14 +2987,19 @@ function _get_net_wm_user_time_window_window()
   # builtins:
   # echo
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_WM_USER_TIME CARDINAL/32
 
   # "_NET_WM_USER_TIME(CARDINAL) = "
   # "2553195505"
-
-  # NOTE:
-  # - unused
 
   _NET_WM_USER_TIME_WINDOW_WINDOW=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_USER_TIME_WINDOW(WINDOW): window id # /!d ; /.* # / s///g')
 
@@ -2731,14 +3026,19 @@ function _get_net_wm_visible_icon_name_utf8_string()
   # builtins:
   # echo
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_WM_VISIBLE_ICON_NAME, UTF8_STRING
 
   # "_NET_WM_VISIBLE_ICON_NAME(UTF8_STRING) = "
   # ""Magnify 3x""
-
-  # NOTE:
-  # - unused
 
    _NET_WM_VISIBLE_ICON_NAME_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_VISIBLE_ICON_NAME(UTF8_STRING) = /!d ; /.* = / s///g')
 
@@ -2765,14 +3065,19 @@ function _get_net_wm_visible_name_utf8_string()
   # builtins:
   # echo
 
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_WM_VISIBLE_NAME, UTF8_STRING
 
   # "_NET_WM_VISIBLE_NAME(UTF8_STRING) = "
   # ""Magnify 3x""
-
-  # NOTE:
-  # - unused
 
    _NET_WM_VISIBLE_NAME_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_VISIBLE_NAME(UTF8_STRING) = /!d ; /.* = / s///g')
 
@@ -2800,6 +3105,17 @@ function _get_net_workarea_cardinal()
   # builtins:
   # echo
 
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function _sub_function"
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function _get_net_current_desktop_cardinal"
+  #   succeeds: "function _get_net_desktop_geometry_cardinal"
+  #   succeeds: "function "
+
   # NET:
   # - _NET_WORKAREA, x, y, width, height CARDINAL[][4]/32
 
@@ -2812,10 +3128,6 @@ function _get_net_workarea_cardinal()
   # "0, 0, 1852, 1056, "
   # "0, 0, 1852, 1056, "
   # "0, 0, 1852, 1056"
-
-  # NOTE:
-  # - "function _get_net_current_desktop_cardinal" must precede this function
-  #   since it acquires _NET_CURRENT_DESKTOP_CARDINAL which is used below
 
   _NET_WORKAREA_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_WORKAREA(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
 
@@ -2983,6 +3295,15 @@ function _get_window_undecorated_geometry()
   # echo
   # read
 
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function _get_net_frame_extents_cardinal"
+  #   succeeds: "function "
+
   # NET:
   # - _NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32
 
@@ -2991,10 +3312,6 @@ function _get_window_undecorated_geometry()
   # "1, "
   # "22, "
   # "6"
-
-  # NOTE:
-  # - "function _get_net_frame_extents_cardinal" must precede this function
-  #   since it acquires _NET_FRAME_EXTENTS_* which are used below
 
   # - assign default value if unset
   # - ${parameter:=word}
@@ -3082,6 +3399,7 @@ function _parse_parameters()
   # _BOOLEAN_DRYRUN
   # _BOOLEAN_FORCE
   # _BOOLEAN_OVERALL
+  # _BOOLEAN_PERMISSIVE
   # _BOOLEAN_RAISE
   # _BOOLEAN_STDOUT
   # _BOOLEAN_UNUSED
@@ -3095,6 +3413,12 @@ function _parse_parameters()
 
   # builtins:
   # (none)
+
+  # NOTE:
+  # - required
+  #     parent: "commandline"
+  #      child: "everything"
+  #   precedes: "everything"
 
   # NOTE:
   # - boolean variables are proper toggles
@@ -3111,14 +3435,15 @@ function _parse_parameters()
 
   #+ parameter defaults +#
 
-  _BOOLEAN_DEBUG=false   # display
-  _BOOLEAN_DRYRUN=false  # control
-  _BOOLEAN_FORCE=false   # action
-  _BOOLEAN_OVERALL=false # control
-  _BOOLEAN_RAISE=false   # action
-  _BOOLEAN_STDOUT=true   # display
-  _BOOLEAN_UNUSED=false  # control
-  _BOOLEAN_VERBOSE=false # display
+  _BOOLEAN_DEBUG=false      # display
+  _BOOLEAN_DRYRUN=false     # control
+  _BOOLEAN_FORCE=false      # action
+  _BOOLEAN_OVERALL=false    # control
+  _BOOLEAN_PERMISSIVE=false # control
+  _BOOLEAN_RAISE=false      # action
+  _BOOLEAN_STDOUT=true      # display
+  _BOOLEAN_UNUSED=false     # control
+  _BOOLEAN_VERBOSE=false    # display
   unset _OPTION_WINDOW_COORDINATES
   unset _OPTION_WINDOW_ID
 
@@ -3198,6 +3523,15 @@ function _parse_parameters()
           _BOOLEAN_OVERALL=false
         else
           _BOOLEAN_OVERALL=true
+        fi
+      ;;
+      ( -p \
+      | --permissive )
+        if $_BOOLEAN_PERMISSIVE
+        then
+          _BOOLEAN_PERMISSIVE=false
+        else
+          _BOOLEAN_PERMISSIVE=true
         fi
       ;;
       ( -r \
@@ -3293,6 +3627,7 @@ function _parse_parameters()
   _eko_pv \$_BOOLEAN_DRYRUN: \""$_BOOLEAN_DRYRUN\""
   _eko_pv \$_BOOLEAN_FORCE: \""$_BOOLEAN_FORCE\""
   _eko_pv \$_BOOLEAN_OVERALL: \""$_BOOLEAN_OVERALL\""
+  _eko_pv \$_BOOLEAN_PERMISSIVE: \""$_BOOLEAN_PERMISSIVE\""
   _eko_pv \$_BOOLEAN_RAISE: \""$_BOOLEAN_RAISE\""
   _eko_pv \$_BOOLEAN_STDOUT: \""$_BOOLEAN_STDOUT\""
   _eko_pv \$_BOOLEAN_UNUSED: \""$_BOOLEAN_UNUSED\""
@@ -3340,8 +3675,6 @@ function _parse_parameters()
     # - pass/fail by window type
     _pass_fail_by_window_type
 
-    _get_net_active_window_window
-
     # - precedes: _get_net_desktop_names_utf8_string
     # - precedes: _get_net_desktop_viewport_cardinal
     # - precedes: _get_net_workarea_cardinal
@@ -3351,22 +3684,12 @@ function _parse_parameters()
     _get_net_desktop_geometry_cardinal
 
     # - succeeds: _get_net_current_desktop_cardinal
-    _get_net_desktop_names_utf8_string
-
-    # - succeeds: _get_net_current_desktop_cardinal
-    _get_net_desktop_viewport_cardinal
-
-    _get_net_number_of_desktops_cardinal
-
-    # - succeeds: _get_net_current_desktop_cardinal
     # - succeeds: _get_net_desktop_geometry_cardinal
     # - precedes: _coordinates_kludge
     _get_net_workarea_cardinal
 
     # - precedes: _get_window_undecorated_geometry
     _get_net_frame_extents_cardinal
-
-    _get_net_wm_desktop_cardinal
 
     _get_net_wm_state_atom
 
@@ -3381,14 +3704,21 @@ function _parse_parameters()
     if $_BOOLEAN_UNUSED
     then
       # - from "xprop -root"
+      _get_net_active_window_window
       _get_net_client_list_stacking_window
       _get_net_desktop_layout_cardinal
+      # - succeeds: _get_net_current_desktop_cardinal
+      _get_net_desktop_names_utf8_string
+      # - succeeds: _get_net_current_desktop_cardinal
+      _get_net_desktop_viewport_cardinal
+      _get_net_number_of_desktops_cardinal
       _get_net_showing_desktop_cardinal
       _get_net_supported_atom
       _get_net_supporting_wm_check_window
 
       # - from "xprop -id 0xDEADF00D"
       _get_net_wm_allowed_actions_atom
+      _get_net_wm_desktop_cardinal
       _get_net_wm_icon_geometry_cardinal
       _get_net_wm_icon_name_utf8_string
       _get_net_wm_opaque_region_cardinal
@@ -3436,6 +3766,14 @@ function _pass_fail_by_window_id()
   # builtins:
   # (none)
 
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # NET:
   # - _NET_CLIENT_LIST, WINDOW[]/32
 
@@ -3468,6 +3806,7 @@ function _pass_fail_by_window_type()
   # _show_error
 
   # variables:
+  # _BOOLEAN_PERMISSIVE
   # _OPTION_WINDOW_ID
   # _OUTPUT_XPROP_ID
 
@@ -3477,6 +3816,15 @@ function _pass_fail_by_window_type()
 
   # builtins:
   # echo
+
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function _pass_fail_by_window_id"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
 
   # NET:
   # - _NET_WM_WINDOW_TYPE, ATOM[]/32
@@ -3542,76 +3890,82 @@ function _pass_fail_by_window_type()
     if [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d') ]]
     then
       _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (root window) specified"
+    fi
 
-    # - "-n string" = true if the length of string is non-zero
-    elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_COMBO.*/!d') ]]
+    if ! $_BOOLEAN_PERMISSIVE
     then
+
+      # - "-n string" = true if the length of string is non-zero
+      if [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_COMBO.*/!d') ]]
+      then
       _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (combo) specified"
 
-    # - "-n string" = true if the length of string is non-zero
-    elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DESKTOP.*/!d') ]]
-    then
+      # - "-n string" = true if the length of string is non-zero
+      elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DESKTOP.*/!d') ]]
+      then
       _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (desktop) specified"
 
-    # - "-n string" = true if the length of string is non-zero
-    elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DIALOG.*/!d') ]]
-    then
+      # - "-n string" = true if the length of string is non-zero
+      elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DIALOG.*/!d') ]]
+      then
       _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (dialog) specified"
 
-    # - "-n string" = true if the length of string is non-zero
-    elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DND.*/!d') ]]
-    then
+      # - "-n string" = true if the length of string is non-zero
+      elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DND.*/!d') ]]
+      then
       _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (dnd) specified"
 
-    # - "-n string" = true if the length of string is non-zero
-    elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DOCK.*/!d') ]]
-    then
+      # - "-n string" = true if the length of string is non-zero
+      elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DOCK.*/!d') ]]
+      then
       _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (dock) specified"
 
-    # - "-n string" = true if the length of string is non-zero
-    elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DROPDOWN_MENU.*/!d') ]]
-    then
+      # - "-n string" = true if the length of string is non-zero
+      elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DROPDOWN_MENU.*/!d') ]]
+      then
       _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (dropdown menu) specified"
 
-    # - "-n string" = true if the length of string is non-zero
-    elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_MENU.*/!d') ]]
-    then
+      # - "-n string" = true if the length of string is non-zero
+      elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_MENU.*/!d') ]]
+      then
       _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (menu) specified"
 
-#    # - "-n string" = true if the length of string is non-zero
-#    elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_NORMAL.*/!d') ]]
-#    then
+#      # - "-n string" = true if the length of string is non-zero
+#      elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_NORMAL.*/!d') ]]
+#      then
 #      _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (normal) specified"
 
-    # - "-n string" = true if the length of string is non-zero
-    elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_NOTIFICATION.*/!d') ]]
-    then
+      # - "-n string" = true if the length of string is non-zero
+      elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_NOTIFICATION.*/!d') ]]
+      then
       _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (notification) specified"
 
-    # - "-n string" = true if the length of string is non-zero
-    elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_POPUP_MENU.*/!d') ]]
-    then
+      # - "-n string" = true if the length of string is non-zero
+      elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_POPUP_MENU.*/!d') ]]
+      then
       _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (popup menu) specified"
 
-    # - "-n string" = true if the length of string is non-zero
-    elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_SPLASH.*/!d') ]]
-    then
+      # - "-n string" = true if the length of string is non-zero
+      elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_SPLASH.*/!d') ]]
+      then
       _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (splash) specified"
 
-    # - "-n string" = true if the length of string is non-zero
-    elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_TOOLBAR.*/!d') ]]
-    then
+      # - "-n string" = true if the length of string is non-zero
+      elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_TOOLBAR.*/!d') ]]
+      then
       _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (toolbar) specified"
 
-    # - "-n string" = true if the length of string is non-zero
-    elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_TOOLTIP.*/!d') ]]
-    then
+      # - "-n string" = true if the length of string is non-zero
+      elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_TOOLTIP.*/!d') ]]
+      then
       _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (tooltip) specified"
 
-    # - "-n string" = true if the length of string is non-zero
-    elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_UTILITY.*/!d') ]]
-    then
+      # - "-n string" = true if the length of string is non-zero
+      elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_UTILITY.*/!d') ]]
+      then
       _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (utility) specified"
+      fi
+
     fi
 
   else
@@ -3664,6 +4018,14 @@ function _set_window_position()
 
   # builtins:
   # (none)
+
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
 
   # NET:
   # - several described elsewhere throughout the script
@@ -3731,6 +4093,18 @@ function _show_error()
   # builtins:
   # echo
 
+  # NOTE:
+  # - required
+  #     parent: "function _binary_validate_setup"
+  #     parent: "function _builtin_validate_setup"
+  #     parent: "function _coordinates_validate"
+  #     parent: "function _parse_parameters"
+  #     parent: "function _pass_fail_by_window_type"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   # - output to stderr, not stdout
   # - be explicit for clarity
   echo "Error: $@" 1>&2
@@ -3756,6 +4130,15 @@ function _show_help()
   # builtins:
   # echo
 
+  # NOTE:
+  # - required
+  #     parent: "function _coordinates_calculate"
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
   echo "Provide at least 1 parameter: <Window Coordinates> [OPTION] [[OPTION]]
 
 Mandatory parameter (Window Coordinates):
@@ -3766,15 +4149,16 @@ Mandatory parameter (Window Coordinates):
   -c, --coordinates X,Y       User specified X,Y coordinates
 
 Optional parameters:
-  -D, --dry-run    Perform a trial run of the specified action
-  -f, --force      Force windows to be least partially on the desktop
-  -id <Window ID>  Window ID (in hexadecimal format)
-  -o, --overall    Use overall desktop X,Y for window placement calculations
-  -r, --raise      Raise window & give it focus
-  -u, --unused     Display all known \$_NET_* properties unused by this script
-  -d, --debug      Display debugging information (function names/entry/exit)
-  -v, --verbose    Display verbose information (variable names/contents)
-  -?, -h, --help   Display this help text, useful as it is
+  -D, --dry-run     Perform a trial run of the specified action
+  -f, --force       Force windows to be least partially on the desktop
+  -id <Window ID>   Window ID (in hexadecimal format)
+  -o, --overall     Use overall desktop X,Y for window placement calculations
+  -p, --permissive  Permissive mode allows moving otherwise immovable windows
+  -r, --raise       Raise window & give it focus
+  -u, --unused      Display all known \$_NET_* properties unused by this script
+  -d, --debug       Display debugging information (function names/entry/exit)
+  -v, --verbose     Display verbose information (variable names/contents)
+  -?, -h, --help    Display this help text, useful as it is
 
 Note:
   If an option is specified multiple times, the last invocation is used
@@ -3808,6 +4192,14 @@ function _window_id_acquire()
 
   # builtins:
   # echo
+
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function "
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
 
   _eko_ps_en "Select the window to move:" ""
   _eko_pv_en "select the window to move:" ""
@@ -3843,6 +4235,12 @@ function _window_id_acquire()
 
 # builtins:
 # echo
+
+# NOTE
+# - required
+#     parent: "commandline"
+#      child: "everything"
+#   precedes: "everything"
 
 _parse_parameters "$@"
 
@@ -4118,15 +4516,15 @@ exit 0
 
 # - root window properties (& related messages)
 
-	# - "function _get_net_active_window_window"
+	# - "function _get_net_active_window_window"              (unused)
 	# - "function _get_net_client_list_stacking_window"       (unused)
 	# - "function _get_net_client_list_window"
 	# - "function _get_net_current_desktop_cardinal"
 	# - "function _get_net_desktop_geometry_cardinal"
 	# - "function _get_net_desktop_layout_cardinal"           (unused)
-	# - "function _get_net_desktop_names_utf8_string"
-	# - "function _get_net_desktop_viewport_cardinal"
-	# - "function _get_net_number_of_desktops_cardinal"
+	# - "function _get_net_desktop_names_utf8_string"         (unused)
+	# - "function _get_net_desktop_viewport_cardinal"         (unused)
+	# - "function _get_net_number_of_desktops_cardinal"       (unused)
 	# - "function _get_net_showing_desktop_cardinal"          (unused)
 	# - "function _get_net_supported_atom"                    (unused)
 	# - "function _get_net_supporting_wm_check_window"        (unused)
@@ -4136,7 +4534,7 @@ exit 0
 
 	## - "function _get_net_frame_extents_cardinal"
 	## - "function _get_net_wm_allowed_actions_atom"          (unused)
-	## - "function _get_net_wm_desktop_cardinal"
+	## - "function _get_net_wm_desktop_cardinal"              (unused)
 	## - "function _get_net_wm_icon_geometry_cardinal"        (unused)
 	## - "function _get_net_wm_icon_name_utf8_string"         (unused)
 	## - "function _get_net_wm_name_utf8_string"

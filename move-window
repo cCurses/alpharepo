@@ -67,6 +67,11 @@
 #   help me figure out precisely what is unused &/or required & in what order
 
 # (done)
+# - "function _get_net_frame_extents_cardinal" added the following lines:
+#  add: if [[ -z $_NET_FRAME_EXTENTS_CARDINAL ]]
+#  add: then
+#  add:   _NET_FRAME_EXTENTS_CARDINAL="0 0 0 0"
+#  add: fi
 # - "function _pass_fail_by_window_type" added $_BOOLEAN_PERMISSIVE test
 # - added "-p, --permissive" option to permit moving otherwise unmoveable
 #   windows
@@ -82,7 +87,6 @@
 #  add: if [[ $_COORDINATE_X != -1 ]] \
 #  add: && [[ $_COORDINATE_Y != -1 ]]
 #  add: then
-#  add:   # - $((expression))
 #  add:   _COORDINATE_X=$(( $_COORDINATE_X + $_KLUDGE_X ))
 #  add:   _COORDINATE_Y=$(( $_COORDINATE_Y + $_KLUDGE_Y ))
 #  add: fi
@@ -2123,6 +2127,13 @@ function _get_net_frame_extents_cardinal()
   # "6"
 
   _NET_FRAME_EXTENTS_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_FRAME_EXTENTS(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
+
+  # - openbox dock returns absolutely nothing here. provide safe values
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_NET_FRAME_EXTENTS_CARDINAL ]]
+  then
+    _NET_FRAME_EXTENTS_CARDINAL="0 0 0 0"
+  fi
 
   _eko_pv \$_NET_FRAME_EXTENTS_CARDINAL: \""$_NET_FRAME_EXTENTS_CARDINAL\""
 

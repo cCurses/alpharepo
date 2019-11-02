@@ -48,13 +48,74 @@
 # - add "-p, --permissive" (or somesuch) to permit moving otherwise unmoveable
 #   windows. also very useful for the above (nudge) idea (done)
 
+# TODO:
+# - figure out a different method of doing calculations regarding window size
+#   & placement from "xwininfo" output. excerpts of interesting stuff below:
+# - possibly use xwininfo's "Corners:" somehow?
+# - xwininfo's "-geometry" cannot be used. it reports characters not pixels
+#   for rxvt
+
+# $ xwininfo -id 0x80010c # gkrellm & wmnd in the dock
+# Absolute upper-left X:  1852
+# Absolute upper-left Y:  0
+# Relative upper-left X:  1852
+# Relative upper-left Y:  0
+# Width: 66
+# Height: 379
+# Border width: 1
+
+# $ xwininfo -id 0x1200004 # xfce4-panel
+# Absolute upper-left X:  1852
+# Absolute upper-left Y:  380
+# Relative upper-left X:  0
+# Relative upper-left Y:  0
+# Width: 68
+# Height: 407
+# Border width: 0
+
+# $ xwininfo -id 0xe00008 # tint2
+# Absolute upper-left X:  0
+# Absolute upper-left Y:  1056
+# Relative upper-left X:  0
+# Relative upper-left Y:  0
+# Width: 1920
+# Height: 24
+# Border width: 0
+
+# wmctrl -i -r 0xe00008 -e 0,0,1056,-1,-1 # bl (overall)
+# wmctrl -i -r 0xe00008 -e 0,-68,-1,-1,-1 # same (wups)
+
+# wmctrl -i -r 0xe00008 -e 0,-68,1032,-1,-1 # bc (wups)
+# wmctrl -i -r 0xe00008 -e 0,0,1056,-1,-1 # bc (overall)
+
+#+
+# #+ _coordinates_validate +#
+#                        $_COORDINATE_X: "-68"
+#                        $_COORDINATE_Y: "-1"
+# #- _coordinates_validate -#
+#-
+
+# $ xwininfo -id 0x3400011 # quassel
+# Absolute upper-left X:  1
+# Absolute upper-left Y:  22
+# Relative upper-left X:  1
+# Relative upper-left Y:  22
+# Width: 1000
+# Height: 630
+# Border width: 0
+
+# wmctrl -i -r 0x3400011 -e 0,  0,  0,-1,-1 # ul
+# wmctrl -i -r 0x3400011 -e 0,850,  0,-1,-1 # ur
+# wmctrl -i -r 0x3400011 -e 0,  0,398,-1,-1 # bl
+# wmctrl -i -r 0x3400011 -e 0,850,398,-1,-1 # br
+# wmctrl -i -r 0x3400011 -e 0,123,123,-1,-1 # 123,123
+
 # OOPS:
 # - changelog order is unpredictable. some series of entries per date are
 #   chronologically top-to-bottom while others are bottom-to-top. preferred
 #   order is bottom-to-top. this will gradually be fixed when time permits
 
 # 2019-11-02
-
 # (in progress)
 # - tagged various functions as:
 #   "# - unused"
@@ -67,13 +128,25 @@
 #   help me figure out precisely what is unused &/or required & in what order
 
 # (done)
+# - "function _get_window_undecorated_geometry" changed the following lines:
+#  add: _WINDOW_BORDER_WIDTH \
+#  was: <(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Width: \(.*\) Height: \(.*\) Depth:.*/ s//\1 \2/g')
+#   is: <(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Width: \(.*\) Height: \(.*\) Depth:.*Border width: \(.*\) Class:.*/ s//\1 \2 \3/g')
+#  add: _eko_pv \$_WINDOW_BORDER_WIDTH: \""$_WINDOW_BORDER_WIDTH\""
+# - "function _set_window_position" changed the following lines:
+#  was: _eko_pv "desktop name:" \""$_NET_DESKTOP_NAME_UTF8_STRING\""
+#  add: if $_BOOLEAN_UNUSED
+#  add: then
+#   is:   _eko_pv "desktop name:" \""$_NET_DESKTOP_NAME_UTF8_STRING\""
+#  add: fi
+#  add: _eko_pv "window border width:" \""$_WINDOW_BORDER_WIDTH\""
 # - "function _get_net_frame_extents_cardinal" added the following lines:
 #  add: if [[ -z $_NET_FRAME_EXTENTS_CARDINAL ]]
 #  add: then
 #  add:   _NET_FRAME_EXTENTS_CARDINAL="0 0 0 0"
 #  add: fi
 # - "function _pass_fail_by_window_type" added $_BOOLEAN_PERMISSIVE test
-# - added "-p, --permissive" option to permit moving otherwise unmoveable
+# - added "-p, --permissive" option to allow moving otherwise unmoveable
 #   windows
 # - rearranged calls to the following functions to be displayed only when
 #   "-u, --unused" is specified:
@@ -514,6 +587,7 @@
   # _POSITION_CURRENT
   # _POSITION_FINISH
   # _POSITION_START
+  # _WINDOW_BORDER_WIDTH
   # _WINDOW_DECORATED_X
   # _WINDOW_DECORATED_Y
   # _WINDOW_UNDECORATED_X
@@ -3293,6 +3367,7 @@ function _get_window_undecorated_geometry()
   # _OPTIONS_READ (read options, not script options)
   # _OPTION_WINDOW_ID
   # _OUTPUT_XWININFO_ID
+  # _WINDOW_BORDER_WIDTH
   # _WINDOW_DECORATED_X
   # _WINDOW_DECORATED_Y
   # _WINDOW_UNDECORATED_X
@@ -3331,11 +3406,13 @@ function _get_window_undecorated_geometry()
   read $_OPTIONS_READ -- \
   _WINDOW_UNDECORATED_X \
   _WINDOW_UNDECORATED_Y \
+  _WINDOW_BORDER_WIDTH \
   < \
-  <(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Width: \(.*\) Height: \(.*\) Depth:.*/ s//\1 \2/g')
+  <(echo $_OUTPUT_XWININFO_ID | sed --expression='/.*Width: \(.*\) Height: \(.*\) Depth:.*Border width: \(.*\) Class:.*/ s//\1 \2 \3/g')
 
   _eko_pv \$_WINDOW_UNDECORATED_X: \""$_WINDOW_UNDECORATED_X\""
   _eko_pv \$_WINDOW_UNDECORATED_Y: \""$_WINDOW_UNDECORATED_Y\""
+  _eko_pv \$_WINDOW_BORDER_WIDTH: \""$_WINDOW_BORDER_WIDTH\""
 
   # - calculate window's decorated geometry (undecorated + decorations)
   # - doing so here is as good as anywhere else
@@ -4015,6 +4092,7 @@ function _set_window_position()
   # _NET_WORKAREA_H
   # _NET_WORKAREA_W
   # _OPTION_WINDOW_ID
+  # _WINDOW_BORDER_WIDTH
   # _WINDOW_DECORATED_X
   # _WINDOW_DECORATED_Y
   # _WINDOW_UNDECORATED_X
@@ -4057,13 +4135,17 @@ function _set_window_position()
 
   _eko_pv "window id:" \""$_OPTION_WINDOW_ID\""
   _eko_pv "window name:" \""$_NET_WM_NAME_UTF8_STRING\""
-  _eko_pv "desktop name:" \""$_NET_DESKTOP_NAME_UTF8_STRING\""
+  if $_BOOLEAN_UNUSED
+  then
+    _eko_pv "desktop name:" \""$_NET_DESKTOP_NAME_UTF8_STRING\""
+  fi
   _eko_pv "desktop geometry:" \""$_NET_DESKTOP_GEOMETRY_W,$_NET_DESKTOP_GEOMETRY_H\""
   _eko_pv "workarea geometry:" \""$_NET_WORKAREA_W,$_NET_WORKAREA_H\""
   _eko_pv "desktop borders (L,R,T,B):" \""$_WORKAREA_BORDER_L,$_WORKAREA_BORDER_R,$_WORKAREA_BORDER_T,$_WORKAREA_BORDER_B\""
   _eko_pv "window X,Y (undecorated):" \""$_WINDOW_UNDECORATED_X,$_WINDOW_UNDECORATED_Y\""
   _eko_pv "window decorations (L,R,T,B):" \""$_NET_FRAME_EXTENTS_L,$_NET_FRAME_EXTENTS_R,$_NET_FRAME_EXTENTS_T,$_NET_FRAME_EXTENTS_B\""
   _eko_pv "window X,Y (decorated):" \""$_WINDOW_DECORATED_X,$_WINDOW_DECORATED_Y\""
+  _eko_pv "window border width:" \""$_WINDOW_BORDER_WIDTH\""
   _eko_pv "window maximized X,Y:" \""$_BOOLEAN_MAXIMIZED_X,$_BOOLEAN_MAXIMIZED_Y\""
   _eko_pv "new X,Y coordinates:" \""$_COORDINATE_X,$_COORDINATE_Y\""
   _eko_pv "X,Y kludges:" \""$_KLUDGE_X,$_KLUDGE_Y\""

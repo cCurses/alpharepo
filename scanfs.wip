@@ -153,8 +153,8 @@ _BOOLEAN_TESTING_01=true # enabled
 #   is: printf "%30s " "$1"
 #  add: shift
 #  add: echo "$@"
-# - "# functions:", "# variables:", "# binaries:", & "# builtins:" listings
-#   added/appended to each function & in main
+# - "functions:/variables:/binaries:/builtins:" listings added/appended to
+#   each function & in main
 # ^ "# builtins:" is to keep track of "echo" &/or "printf" usage. technically
 #   speaking, "(none)" is a misnomer as it's only in reference to these 2
 #   builtins

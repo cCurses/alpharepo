@@ -27,9 +27,17 @@
 # - alternate approach to attempt: manipulate window stacking order directly &
 #   see what happens
 
-# FIXME
-# - something's going on in "function _coordinates_validate". more notes there
-# - #+ marker testing +# / #- marker testing -#
+# FIXME: (or not)
+# - something's going on in "function _coordinates_validate"
+# - "function _pass_fail_by_window_type" disabled the tests for
+#   _NET_WM_WINDOW_TYPE_DOCK (now possible with "-p, --permissive")
+# - something appears to be incorrect in the "force to fits" calculation 2/4
+# ^ it appears to directly involve _WORKAREA_BORDER_R in some way
+# - this may also be the case in the "force to fits" calculation 4/4
+# ^ if so, it would likely involve _WORKAREA_BORDER_B in some way
+# - it's low priority. I'll look into it further later
+# - status: wontfix
+# - reason: it's doing what it's supposed to be doing. aka: it's not broken
 
 # NOTE:
 # - additional information acquired from:
@@ -43,10 +51,6 @@
 # IDEA:
 # - allow windows to be "nudged" by a relative offset of pixels. +/- format
 # - this will require a complete rethink of how "-1" is handled
-
-# IDEA:
-# - add "-p, --permissive" (or somesuch) to permit moving otherwise unmoveable
-#   windows. also very useful for the above (nudge) idea (done)
 
 # TODO:
 # - figure out a different method of doing calculations regarding window size
@@ -1281,19 +1285,6 @@ function _coordinates_validate()
   # - "function _coordinates_calculate" & "function _coordinates_validate"
   #   share identical calculations for the 4 corners
 
-  # FIXME:
-  # - only seen during testing. "function _pass_fail_by_window_type" disabled
-  #   the tests for _NET_WM_WINDOW_TYPE_DOCK
-  # - something is incorrect in the "force to fits" calculation 2/4
-  # ^ it appears to directly involve _WORKAREA_BORDER_R in some way
-  # - this may also be the case in the "force to fits" calculation 4/4
-  # ^ if so, it would likely involve _WORKAREA_BORDER_B in some way
-
-#+ marker testing +#
-#_eko_pv \$_COORDINATE_X: \""$_COORDINATE_X\" (entry)"
-#_eko_pv \$_COORDINATE_Y: \""$_COORDINATE_Y\" (entry)"
-#- marker testing -#
-
   #+ error exits +#
 
   # - (1/2)
@@ -1303,9 +1294,6 @@ function _coordinates_validate()
   then
     _show_error "non-numeric X coordinate \"$_COORDINATE_X\" specified"
   fi
-#+ marker testing +#
-#_eko_pv \$_COORDINATE_X: \""$_COORDINATE_X\" (error exit)"
-#- marker testing -#
 
   # - (2/2)
   # - non-numeric Y coordinate?
@@ -1327,9 +1315,6 @@ function _coordinates_validate()
   then
     _COORDINATE_X=$_WORKAREA_BORDER_L
   fi
-#+ marker testing +#
-#_eko_pv \$_COORDINATE_X: \""$_COORDINATE_X\" (force to fit 1/4)"
-#- marker testing -#
 
   # - (2/4)
   # - force X coordinate to fit within usable or overall desktop X
@@ -1340,9 +1325,6 @@ function _coordinates_validate()
     # - $((expression))
     _COORDINATE_X=$((   $_NET_DESKTOP_GEOMETRY_W                        - $_WINDOW_DECORATED_X - $_WORKAREA_BORDER_R       ))
   fi
-#+ marker testing +#
-#_eko_pv \$_COORDINATE_X: \""$_COORDINATE_X\" (force to fit 2/4)"
-#- marker testing -#
 
   # - (3/4)
   # - force Y coordinate to fit within usable or overall desktop Y
@@ -1967,12 +1949,6 @@ function _get_net_desktop_names_utf8_string()
   #   performing on your system as expected, let me know so I can fix it
   # - method: preserve anything & everything *between* pairs of doublequotes,
   #   including the doublequotes themselves
-
-  # TODO:
-  # - possibly improve the logic so the loop exits when a match is found
-  # ^ currently, it continues scanning $_NET_DESKTOP_NAMES_UTF8_STRING to the
-  #   very end. this is completely harmless, but I'm a perfectionist :)
-  # - conditional "break" if $_NET_DESKTOP_NAME_UTF8_STRING is set?
 
   _NET_DESKTOP_NAMES_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_NAMES(UTF8_STRING) = /!d ; /\(.* = \|,\)/ s///g')
 
@@ -3942,7 +3918,9 @@ function _pass_fail_by_window_type()
   # - not (yet?) encountered in openbox
   #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_COMBO.*"
   #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DESKTOP.*"
+  # - quasselclient dialog windows
   #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DIALOG.*"
+  # - not (yet?) encountered in openbox
   #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DND.*"
   # - blackbox/fluxbox/openbox dock, tint2 panel/taskbar, likely others
   #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_DOCK.*"

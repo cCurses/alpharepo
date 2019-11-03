@@ -1,0 +1,27 @@
+#!/bin/bash
+
+_WINDOW_ID=0x80010c
+
+  read $_OPTIONS_READ -- \
+  _WINDOW_UNDECORATED_X \
+  _WINDOW_UNDECORATED_Y \
+  < \
+  <(echo $(xwininfo -id $_WINDOW_ID) | \
+  sed --expression='/.*Width: \(.*\) Height: \(.*\) Depth:.*/ s//\1 \2/g')
+
+  echo \$_WINDOW_UNDECORATED_X: \""$_WINDOW_UNDECORATED_X\""
+  echo \$_WINDOW_UNDECORATED_Y: \""$_WINDOW_UNDECORATED_Y\""
+
+echo
+
+  read $_OPTIONS_READ -- \
+  _WINDOW_UNDECORATED_X \
+  _WINDOW_UNDECORATED_Y \
+  _WINDOW_BORDER_WIDTH \
+  < \
+  <(echo $(xwininfo -id $_WINDOW_ID) | \
+  sed --expression='/.*Width: \(.*\) Height: \(.*\) Depth:.*Border width: \(.*\) Class:.*/ s//\1 \2 \3/g')
+
+  echo \$_WINDOW_UNDECORATED_X: \""$_WINDOW_UNDECORATED_X\""
+  echo \$_WINDOW_UNDECORATED_Y: \""$_WINDOW_UNDECORATED_Y\""
+  echo " \$_WINDOW_BORDER_WIDTH:" \""$_WINDOW_BORDER_WIDTH\""

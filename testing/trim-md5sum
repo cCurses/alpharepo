@@ -1,0 +1,291 @@
+#!/bin/bash
+#+ marker sof +#
+
+# concept:
+# - keep only the 32 char md5sum in $_ST_MD5 (remove everything else)
+# - md5sum: keep prefix. remove suffix
+# - openssl: keep suffix. remove prefix
+# - currently 3 ${parameter/pattern/string} methods in testing for each binary
+
+# currently:
+# - md5sum: blindly keep prefix. explicitly remove 1 of 3 possible suffixes
+# - openssl: blindly keep suffix. explicitly remove 1 of 3 possible prefixes
+
+# desired:
+# - md5sum: explicitly keep 32 char prefix. blindly remove suffix
+# - openssl: explicitly keep 32 char suffix. blindly remove prefix
+# - ensure that the 32 char prefix/suffix is only "xdigit"
+
+# desired: (same, worded differently)
+# - md5sum: left justified 32 char xdigit. 2 spaces. "whatever" suffix
+# - openssl: "whatever" prefix. single space. right justified 32 char xdigit
+# - explicitly keep 32 char xdigit prefix/suffix. blindly remove remainder
+
+# desired:
+# - simplify things so there is only 1 ${parameter/pattern/string} method
+#   required for each binary
+
+# - something like this, but very strict using xdigit
+# - md5sum: _ST_MD5=${_ST_MD5/%  */} # works. false positives possible?
+# - openssl: _ST_MD5=${_ST_MD5/#* /} # works. false positives possible?
+
+# - get 32 char [[:xdigit:]] involved somehow
+
+# yet another idea:
+# - explicitly remove any of the possible 3 prefixes/suffixes in 1 step
+# - md5sum: (suffixes)
+# "  $_ST_NAME"
+# "  /dev/fd/63"
+# "  -"
+# - openssl: (prefixes)
+# "MD5($_ST_NAME)= "
+# "MD5(/dev/fd/63)= "
+# "(stdin)= "
+
+# comment block
+if [[ 0 == 1 ]]
+then
+
+# $ egrep "(/%.*using now|/%.*false)" ~/devel/bash/scanfs/ideas/trim-md5sum
+
+#  _ST_MD5=${_ST_MD5/%  $_ST_NAME/} # works. what I'm using now (full)
+  _ST_MD5=${_ST_MD5/%  */} # works. false positives possible?
+
+#  _ST_MD5=${_ST_MD5/%  -/} # works. what I'm using now (partial)
+  _ST_MD5=${_ST_MD5/%  */} # works. false positives possible?
+#  _ST_MD5=${_ST_MD5/%  \/dev\/fd\/*/} # works. what I'm using now (partial)
+  _ST_MD5=${_ST_MD5/%  */} # works. false positives possible?
+#  _ST_MD5=${_ST_MD5/%  -/} # works. what I'm using now (partial)
+  _ST_MD5=${_ST_MD5/%  */} # works. false positives possible?
+
+# $ egrep "(/#.*using now|/#.*false)" ~/devel/bash/scanfs/ideas/trim-md5sum
+
+#  _ST_MD5=${_ST_MD5/#MD5($_ST_NAME)= /} # works. what I'm using now (full)
+  _ST_MD5=${_ST_MD5/#* /} # works. false positives possible?
+
+#  _ST_MD5=${_ST_MD5/#(stdin)= /} # works. what I'm using now (partial)
+  _ST_MD5=${_ST_MD5/#* /} # works. false positives possible?
+#  _ST_MD5=${_ST_MD5/#MD5(\/dev\/fd\/*)= /} # works. what I'm using now (partial)
+  _ST_MD5=${_ST_MD5/#* /} # works. false positives possible?
+#  _ST_MD5=${_ST_MD5/#(stdin)= /} # works. what I'm using now (partial)
+  _ST_MD5=${_ST_MD5/#* /} # works. false positives possible?
+
+fi
+
+if [[ m0 == m0 ]]
+then
+
+  _ST_NAME=1024.0
+
+#  _ST_MD5=$(md5sum "$_ST_NAME" 2>/dev/null)
+
+  _ST_MD5="0f343b0931126a20f133d67c2b018a3b  $_ST_NAME"
+
+  # - ${parameter/pattern/string}
+  # - strip "  <pathname>" suffix from output. keep the rest
+#  _ST_MD5=${_ST_MD5/%  $_ST_NAME/} # works. what I'm using now (full)
+
+  _ST_MD5=${_ST_MD5/%  */} # works. false positives possible?
+
+  # desired:
+  # - keep 32 char "xdigit" prefix. blindly strip the rest
+
+#  _ST_MD5=${_ST_MD5/[:xdigit:]%  $_ST_NAME/} # no change. no error
+#  _ST_MD5=${_ST_MD5/[[:xdigit:]]%  $_ST_NAME/} # no change. no error
+
+#  _ST_MD5=${_ST_MD5/[:xdigit:]/} # 1 char ("d") removed. no error
+#  _ST_MD5=${_ST_MD5/[[:xdigit:]]/} # 1 leading char removed. no error
+# ^ the latter form directly above appears to be the correct syntax
+
+  # - brute force. keep exact 32 char prefix. remove "whatever" suffix
+  # - somehow reverse the substitution?
+  # - currently incomplete. "#"/"%" anchor, double space, "*" required
+#  _ST_MD5=${_ST_MD5/[[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]]/}
+
+  echo \""$_ST_MD5\" m0"
+
+fi
+
+if [[ o0 == o0 ]]
+then
+
+  _ST_NAME=1024.0
+
+#  _ST_MD5=$(openssl dgst -md5 "$_ST_NAME" 2>/dev/null)
+
+  _ST_MD5="MD5($_ST_NAME)= 0f343b0931126a20f133d67c2b018a3b"
+
+  # - ${parameter/pattern/string}
+  # - strip "MD5(<pathname>)= " prefix from output. keep the rest
+#  _ST_MD5=${_ST_MD5/#MD5($_ST_NAME)= /} # works. what I'm using now (full)
+
+  _ST_MD5=${_ST_MD5/#* /} # works. false positives possible?
+
+  # desired:
+  # - keep 32 char "xdigit" suffix. blindly strip the rest
+  # - (TODO)
+
+  # - brute force. keep exact 32 char suffix. remove "whatever" prefix
+  # - somehow reverse the substitution?
+  # - currently incomplete. "#"/"%" anchor, single space, "*" required
+#  _ST_MD5=${_ST_MD5/[[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]]/}
+
+  echo \""$_ST_MD5\" o0"
+
+fi
+
+if [[ m1 == m1 ]]
+then
+
+  _OPTION_MD5SUM_SIZE=1024
+  _ST_NAME=1024.0
+
+#  _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null | md5sum -)
+
+  _ST_MD5="0f343b0931126a20f133d67c2b018a3b  -"
+
+  # - ${parameter/pattern/string}
+  # - strip "  -" suffix from output. keep the rest
+#  _ST_MD5=${_ST_MD5/%  -/} # works. what I'm using now (partial)
+
+  _ST_MD5=${_ST_MD5/%  */} # works. false positives possible?
+
+  echo \""$_ST_MD5\" m1"
+
+fi
+
+if [[ o1 == o1 ]]
+then
+
+  _OPTION_MD5SUM_SIZE=1024
+  _ST_NAME=1024.0
+
+#  _ST_MD5=$(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null | openssl dgst -md5)
+
+  _ST_MD5="(stdin)= 0f343b0931126a20f133d67c2b018a3b"
+
+  # - ${parameter/pattern/string}
+  # - strip "(stdin)= " prefix from output. keep the rest
+#  _ST_MD5=${_ST_MD5/#(stdin)= /} # works. what I'm using now (partial)
+
+  _ST_MD5=${_ST_MD5/#* /} # works. false positives possible?
+
+  echo \""$_ST_MD5\" o1"
+
+fi
+
+if [[ m2 == m2 ]]
+then
+
+  _OPTION_MD5SUM_SIZE=1024
+  _ST_NAME=1024.0
+
+#  _ST_MD5=$(md5sum <(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null) 2>/dev/null)
+
+  _ST_MD5="0f343b0931126a20f133d67c2b018a3b  /dev/fd/63"
+
+  # - ${parameter/pattern/string}
+  # - strip "  /dev/fd/<number>" suffix from output. keep the rest
+#  _ST_MD5=${_ST_MD5/%  \/dev\/fd\/*/} # works. what I'm using now (partial)
+
+  # - almost. only tests 1st char
+  # - slight improvement of what I'm using now
+  _ST_MD5=${_ST_MD5/%  \/dev\/fd\/[[:digit:]]*/} # idea. seems to work
+
+#  _ST_MD5=${_ST_MD5/%  */} # works. false positives possible?
+
+  echo \""$_ST_MD5\" m2"
+
+fi
+
+if [[ o2 == o2 ]]
+then
+
+  _OPTION_MD5SUM_SIZE=1024
+  _ST_NAME=1024.0
+
+#  ST_MD5=$(openssl dgst -md5 <(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null) 2>/dev/null)
+
+  _ST_MD5="MD5(/dev/fd/63)= 0f343b0931126a20f133d67c2b018a3b"
+
+  # - ${parameter/pattern/string}
+  # - strip "MD5(/dev/fd/<number>)= " prefix from output. keep the rest
+#  _ST_MD5=${_ST_MD5/#MD5(\/dev\/fd\/*)= /} # works. what I'm using now (partial)
+
+  # - almost. only tests 1st char
+  # - slight improvement of what I'm using now
+  _ST_MD5=${_ST_MD5/#MD5(\/dev\/fd\/[[:digit:]]*)= /} # idea. seems to work
+
+#  _ST_MD5=${_ST_MD5/#* /} # works. false positives possible?
+
+  echo \""$_ST_MD5\" o2"
+
+fi
+
+if [[ m3 == m3 ]]
+then
+
+  _OPTION_MD5SUM_SIZE=1024
+  _ST_NAME=1024.0
+
+#  _ST_MD5=$(md5sum < <(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null) 2>/dev/null)
+
+  _ST_MD5="0f343b0931126a20f133d67c2b018a3b  -"
+
+  # - ${parameter/pattern/string}
+  # - strip "  -" suffix from output. keep the rest
+#  _ST_MD5=${_ST_MD5/%  -/} # works. what I'm using now (partial)
+
+  _ST_MD5=${_ST_MD5/%  */} # works. false positives possible?
+
+  echo \""$_ST_MD5\" m3"
+
+fi
+
+if [[ o3 == o3 ]]
+then
+
+  _OPTION_MD5SUM_SIZE=1024
+  _ST_NAME=1024.0
+
+#  ST_MD5=$(openssl dgst -md5 < <(head --bytes=$_OPTION_MD5SUM_SIZE "$_ST_NAME" 2>/dev/null) 2>/dev/null)
+
+  _ST_MD5="(stdin)= 0f343b0931126a20f133d67c2b018a3b"
+
+  # - ${parameter/pattern/string}
+  # - strip "(stdin)= " prefix from output. keep the rest
+#  _ST_MD5=${_ST_MD5/#(stdin)= /} # works. what I'm using now (partial)
+
+  _ST_MD5=${_ST_MD5/#* /} # works. false positives possible?
+
+  echo \""$_ST_MD5\" o3"
+
+fi
+
+#- marker eof -#
+exit 0
+
+# random stuff from freenode #bash
+
+[09:02:37] <mrjpaxton> Heya, I'm a big noob with sed. I'm looking automate PCI 
+passthrough setup in a QEMU bash script. I have the variables 
+VGAPCI="$(lspci)" and VGAGREP="VGA compatible controller: Advanced Micro 
+Devices" and so, I want to get the matching PCI ID from VGAID="$(lspci -n)" 
+with regex string "[0-9]{4}:[0-9]{4}" if that makes any sense.
+[09:07:37] <lopid> -nn will show both
+[09:08:46] <mrjpaxton> lopid: Oh right, great. I forgot about that. That will 
+save a variable, yes.
+[09:12:56] <lopid> it's hex so you'll want to use [[ "$VGAID" =~ 
+(\[[a-z0-9]{4}:[a-z0-9]{4}\]) ]]
+[09:13:00] <kerframil> # lspci() { echo "blah VGA blah [8086:0166] blah"; }; 
+while read -r line; do [[ $line == *'VGA'* ]] || continue; [[ $line =~ 
+\[([[:xdigit:]]{4}:[[:xdigit:]]{4})\] ]] && id=${BASH_REMATCH[1]}; break; done 
+< <(lspci -nn); declare -p id
+[09:13:02] <shbot> kerframil: declare -- id="8086:0166"
+[09:13:30] <kerframil> er, the break should be contingent on the match too, 
+but yeah.
+[09:13:33] <lopid> i forget about xdigit, thanks
+[09:16:26] <kerframil> mrjpaxton: {4} isn't valid in a basic regex (BRE), by 
+the way. \{4\} would be. bash uses ERE.
+[09:17:37] <mrjpaxton> lopid, kerframil: Ah right, they are hex! Thanks for 
+the help so far. I'll see about getting this working.

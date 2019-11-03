@@ -1,0 +1,105 @@
+#!/bin/bash
+#+ marker sof +#
+
+# concept:
+# - toggle the state of a given boolean variable
+# - the mechanism behind how it works is rather subtle, but it's rock solid
+
+# requirements:
+# - "true" & "false" as either shell builtins or standalone binaries
+# - exit code from "true" is always "0"
+# - exit code from "false" is always "1"
+
+# how it works: (badly worded, sorry folks)
+# - in function _parse_parameters(), the variable is conditionally set to the
+#   *name* of the desired state
+# - in the if/then/else/fi tests (in the function & elsewhere), the *state* of
+#   variable is tested & actions are performed accordingly
+
+# NOTE:
+# - for added fun, try passing the same option to this stub multiple times
+#   paying careful attention to the results each time. think: odd number of
+#   the same option vs even number of the same option
+
+function _parse_parameters()
+{
+  # variables:
+  # _BOOLEAN_AA
+  # _BOOLEAN_BB
+
+  #+ parameter defaults +#
+
+  _BOOLEAN_AA=false
+  _BOOLEAN_BB=false
+
+  #- parameter defaults -#
+
+  while [[ $# -gt 0 ]]
+  do
+    case "$1" in
+      ( -a \
+      | --aa )
+        if $_BOOLEAN_AA
+        then
+          _BOOLEAN_AA=false
+        else
+          _BOOLEAN_AA=true
+        fi
+      ;;
+      ( -b \
+      | --bb )
+        if $_BOOLEAN_BB
+        then
+          _BOOLEAN_BB=false
+        else
+          _BOOLEAN_BB=true
+        fi
+      ;;
+      ( -* )
+        echo "invalid option \"$1\" specified"
+        exit 1
+      ;;
+      ( * )
+        echo "invalid parameter \"$1\" specified"
+        exit 1
+      ;;
+    esac
+    shift
+  done
+
+  echo " \$_BOOLEAN_AA (name) : \"$_BOOLEAN_AA\""
+  echo " \$_BOOLEAN_BB (name) : \"$_BOOLEAN_BB\""
+}
+
+#+ start here +#
+
+# functions:
+# _parse_parameters
+
+# variables:
+# @
+
+_parse_parameters "$@"
+
+echo
+
+echo -n " \$_BOOLEAN_AA (state): "
+if $_BOOLEAN_AA
+then
+  echo \""pass\""
+else
+  echo \""fail\""
+fi
+
+echo -n " \$_BOOLEAN_BB (state): "
+if $_BOOLEAN_BB
+then
+  echo \""pass\""
+else
+  echo \""fail\""
+fi
+
+#- start here -#
+
+#- marker eof -#
+exit 0

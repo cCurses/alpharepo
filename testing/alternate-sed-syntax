@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# - the "new" syntax comes from point #87
+# https://catonmat.net/sed-one-liners-explained-part-three
+
+_WINDOW_ID=0x5600049 # tigervnc boron
+_WINDOW_ID=0x1400044 # tigervnc helium
+
+# old
+xprop -id $_WINDOW_ID | \
+sed --expression='/^_NET_WM_NAME(UTF8_STRING) = /!d ; /.* = / s///g'
+
+# new
+xprop -id $_WINDOW_ID | \
+sed --expression='/^_NET_WM_NAME(UTF8_STRING) = /!d ; s/// ; q'

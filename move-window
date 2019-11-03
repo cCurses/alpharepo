@@ -19,6 +19,10 @@
 #   specification that lack information suitable for me to come up with syntax
 #   appropriate for calling sed. as such, they're not displayed (for now)
 
+# TODO:
+# - explore yet another sed syntax variation from point #87 of
+#   https://catonmat.net/sed-one-liners-explained-part-three
+
 # IDEA:
 # - allow windows to be "nudged" by a relative offset of pixels. +/- format
 # - this will require a complete rethink of how "-1" is handled
@@ -166,12 +170,11 @@
 # ^ I may quietly remove these at some point. they've been added simply to
 #   help me figure out precisely what is unused &/or required & in what order
 
-# 2019-11-03
-
 # (in progress)
 #+ marker edit +#
-
 # (done)
+
+# 2019-11-03
 # - added "2>&1" to all invocations of "xprop" & "xwininfo"
 # - "function _get_net_wm_window_type_atom" added
 # 2019-11-02

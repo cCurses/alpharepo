@@ -166,14 +166,24 @@
 # ^ I may quietly remove these at some point. they've been added simply to
 #   help me figure out precisely what is unused &/or required & in what order
 
-# 2019-11-04
-
 # (pending)
-# - possibly add stdout mode for use in "function _set_window_position". if
-#   this is done, mimick _eko_v for printf/echo formatting
-# - add human-readable "window type:" to "function _set_window_position"
+# - do something special with _NET_ACTIVE_WINDOW_WINDOW from
+#   "function _get_net_active_window_window"
+# - interesting discovery: "_NET_ACTIVE_WINDOW(WINDOW): window id # 0x0" is
+#   returned in a desktop containing no _NET_WM_WINDOW_TYPE_NORMAL windows
+#   (or if any _NET_WM_WINDOW_TYPE_NORMAL windows exist, they're minimized)
+# ^ is this behaviour specific to openbox? find out
 
-# (done)
+# 2019-11-04
+# - added human-readable $_NET_WM_WINDOW_TYPE_ATOM: (aka: "window type:") to
+#   "function _set_window_position"
+# - added human readable & raw $_NET_WM_STATE_ATOM: (aka: "window state:) to
+#   "function _set_window_position"
+# - "function _eko_ps" & "function _eko_ps_en" changed the following line:
+#  was: printf "%26s " "$1"
+#   is: printf "%29s " "$1"
+# - "function _parse_parameters" added "-q, --quiet" option
+# - "function _set_window_position" added stdout mode
 # - updated the "old/new" sed syntax notes in
 #   "function _get_window_undecorated_geometry" since there are now 3
 #   variables set (formerly 2)
@@ -268,10 +278,7 @@
 #   trapped
 # - removed all comments in #+ marker sed syntax +# / #- marker sed syntax -#
 # 2019-10-20
-# - "function _eko_pv" changed the following line:
-#  was: printf "%34s " "$1"
-#   is: printf "%39s " "$1"
-# - "function _eko_pv_en" changed the following line:
+# - "function _eko_pv" & "function _eko_pv_en" changed the following line:
 #  was: printf "%34s " "$1"
 #   is: printf "%39s " "$1"
 # - added several routines to gather more information on all known _NET_*
@@ -287,8 +294,7 @@
 # - "function _get_net_wm_visible_icon_name_utf8_string" added
 # - "function _get_net_wm_visible_name_utf8_string" added
 # - "_NET_WM_ICON(CARDINAL)" deliberately skipped from this treatment
-# - "function _parse_parameters" added $_BOOLEAN_UNUSED test
-# - added "-u, --unused" option to gather/see them in "-v, --verbose" mode
+# - "function _parse_parameters" added "-u, --unused" option
 # 2019-10-19
 # - experimenting with different sed syntax formats. output is identical
 #   between the old & new approaches, but the new approach is technically
@@ -555,6 +561,7 @@
   # _BOOLEAN_MAXIMIZED_Y (window state. not script option)
   # _BOOLEAN_OVERALL
   # _BOOLEAN_PERMISSIVE
+  # _BOOLEAN_QUIET
   # _BOOLEAN_RAISE
   # _BOOLEAN_STDOUT
   # _BOOLEAN_UNUSED
@@ -567,6 +574,8 @@
   # _COORDINATE_Y
   # _CORNERS
   # _COUNTER
+  # _HUMAN_READABLE_WM_STATE_ATOM
+  # _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM
   # _KLUDGE_X
   # _KLUDGE_Y
   # _NET_ACTIVE_WINDOW_WINDOW
@@ -1492,7 +1501,7 @@ function _eko_ps()
   #   succeeds: "function "
 
   # NOTE:
-  # - why "%26s "? to simplify setting column width in stdout reports. a
+  # - why "%29s "? to simplify setting column width in stdout reports. a
   #   single change here affects the output globally
   # - unformatted (non-columnized) output is now supported. simply pass "" as
   #   the first parameter
@@ -1502,7 +1511,7 @@ function _eko_ps()
     # - "-n string" = true if the length of string is non-zero
     if [[ -n $1 ]]
     then
-      printf "%26s " "$1"
+      printf "%29s " "$1"
     fi
     shift
     echo "$@"
@@ -1538,7 +1547,7 @@ function _eko_ps_en()
   #   succeeds: "function "
 
   # NOTE:
-  # - why "%26s "? to simplify setting column width in stdout reports. a
+  # - why "%29s "? to simplify setting column width in stdout reports. a
   #   single change here affects the output globally
   # - unformatted (non-columnized) output is now supported. simply pass "" as
   #   the first parameter
@@ -1548,7 +1557,7 @@ function _eko_ps_en()
     # - "-n string" = true if the length of string is non-zero
     if [[ -n $1 ]]
     then
-      printf "%26s " "$1"
+      printf "%29s " "$1"
     fi
     shift
     echo -en "$@"
@@ -3757,6 +3766,7 @@ function _parse_parameters()
   # _BOOLEAN_FORCE
   # _BOOLEAN_OVERALL
   # _BOOLEAN_PERMISSIVE
+  # _BOOLEAN_QUIET
   # _BOOLEAN_RAISE
   # _BOOLEAN_STDOUT
   # _BOOLEAN_UNUSED
@@ -3781,14 +3791,27 @@ function _parse_parameters()
   # - boolean variables are proper toggles
 
   # NOTE:
-  # - _BOOLEAN_STDOUT is special. it's quite simple to set up initially
+  # - _BOOLEAN_QUIET
+  # - _BOOLEAN_STDOUT
+  # ^ are special. they're quite simple to set up initially. their testing is
+  #   order-dependent. $_BOOLEAN_STDOUT first, followed by $_BOOLEAN_QUIET
 
   # - _BOOLEAN_STDOUT
-  # - companion functions: _eko_ps/_eko_ps_en
   # - default: true
-  # - *not* toggled in while/do/done loop like the others
-  # - immediately *after* the while/do/done loop _BOOLEAN_STDOUT is set to
-  #   false if either $_BOOLEAN_DEBUG or $_BOOLEAN_VERBOSE are true
+  # - companion functions: _eko_ps/_eko_ps_en
+  # - *not* toggled in the while/do/done loop like the others
+  # - immediately *after* the while/do/done loop, but before $_BOOLEAN_QUIET
+  # - if $_BOOLEAN_DEBUG or $_BOOLEAN_VERBOSE are true sets _BOOLEAN_STDOUT to
+  #   false
+
+  # - _BOOLEAN_QUIET
+  # - default: false
+  # - companion functions: none
+  # - toggled in the while/do/done loop like the others
+  # - option "-q, --quiet"
+  # - immediately *after* the while/do/done loop, but after $_BOOLEAN_STDOUT
+  # - if $_BOOLEAN_QUIET is true sets _BOOLEAN_DEBUG, _BOOLEAN_STDOUT, &
+  #   _BOOLEAN_VERBOSE to false
 
   #+ parameter defaults +#
 
@@ -3797,6 +3820,7 @@ function _parse_parameters()
   _BOOLEAN_FORCE=false      # action
   _BOOLEAN_OVERALL=false    # control
   _BOOLEAN_PERMISSIVE=false # control
+  _BOOLEAN_QUIET=false      # display
   _BOOLEAN_RAISE=false      # action
   _BOOLEAN_STDOUT=true      # display
   _BOOLEAN_UNUSED=false     # control
@@ -3893,6 +3917,15 @@ function _parse_parameters()
           _BOOLEAN_PERMISSIVE=true
         fi
       ;;
+      ( -q \
+      | --quiet )
+        if $_BOOLEAN_QUIET
+        then
+          _BOOLEAN_QUIET=false
+        else
+          _BOOLEAN_QUIET=true
+        fi
+      ;;
       ( -r \
       | --raise )
         if $_BOOLEAN_RAISE
@@ -3965,12 +3998,6 @@ function _parse_parameters()
   # NOTE:
   # - the following blocks are *very* sensitive to order of operations
 
-  if $_BOOLEAN_DEBUG \
-  || $_BOOLEAN_VERBOSE
-  then
-    _BOOLEAN_STDOUT=false  # display
-  fi
-
   # - assign default value if unset
   # - ${parameter:=word}
   _OPTION_WINDOW_COORDINATES=${_OPTION_WINDOW_COORDINATES:=same}
@@ -3981,18 +4008,32 @@ function _parse_parameters()
     _BINARY_WMCTRL=true
   fi
 
+  if $_BOOLEAN_DEBUG \
+  || $_BOOLEAN_VERBOSE
+  then
+    _BOOLEAN_STDOUT=false     # display
+  fi
+
   _eko_pv \$_BINARY_WMCTRL: \""$_BINARY_WMCTRL\""
   _eko_pv \$_BOOLEAN_DEBUG: \""$_BOOLEAN_DEBUG\""
   _eko_pv \$_BOOLEAN_DRYRUN: \""$_BOOLEAN_DRYRUN\""
   _eko_pv \$_BOOLEAN_FORCE: \""$_BOOLEAN_FORCE\""
   _eko_pv \$_BOOLEAN_OVERALL: \""$_BOOLEAN_OVERALL\""
   _eko_pv \$_BOOLEAN_PERMISSIVE: \""$_BOOLEAN_PERMISSIVE\""
+  _eko_pv \$_BOOLEAN_QUIET: \""$_BOOLEAN_QUIET\""
   _eko_pv \$_BOOLEAN_RAISE: \""$_BOOLEAN_RAISE\""
   _eko_pv \$_BOOLEAN_STDOUT: \""$_BOOLEAN_STDOUT\""
   _eko_pv \$_BOOLEAN_UNUSED: \""$_BOOLEAN_UNUSED\""
   _eko_pv \$_BOOLEAN_VERBOSE: \""$_BOOLEAN_VERBOSE\""
   _eko_pv \$_OPTION_WINDOW_COORDINATES: \""$_OPTION_WINDOW_COORDINATES\""
   _eko_pv \$_OPTION_WINDOW_ID: \""$_OPTION_WINDOW_ID\""
+
+  if $_BOOLEAN_QUIET
+  then
+    _BOOLEAN_DEBUG=false      # display
+    _BOOLEAN_STDOUT=false     # display
+    _BOOLEAN_VERBOSE=false    # display
+  fi
 
   #- parameter settings (in (mostly) proper order of operation) -#
 
@@ -4344,6 +4385,7 @@ function _set_window_position()
 
   # functions:
   # _eko_iod
+  # _eko_ps
   # _eko_pv
 
   # variables:
@@ -4354,6 +4396,8 @@ function _set_window_position()
   # _COMMAND
   # _COORDINATE_X
   # _COORDINATE_Y
+  # _HUMAN_READABLE_WM_STATE_ATOM
+  # _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM
   # _KLUDGE_X
   # _KLUDGE_Y
   # _NET_DESKTOP_GEOMETRY_H
@@ -4364,6 +4408,7 @@ function _set_window_position()
   # _NET_FRAME_EXTENTS_R
   # _NET_FRAME_EXTENTS_T
   # _NET_WM_NAME_UTF8_STRING
+  # _NET_WM_STATE_ATOM
   # _NET_WM_WINDOW_TYPE_ATOM
   # _NET_WORKAREA_H
   # _NET_WORKAREA_W
@@ -4394,6 +4439,148 @@ function _set_window_position()
   # NET:
   # - several described elsewhere throughout the script
 
+  # (sorted listing from the original source)
+  #   _NET_WM_STATE_ABOVE, ATOM
+  #   _NET_WM_STATE_BELOW, ATOM
+  #   _NET_WM_STATE_DEMANDS_ATTENTION, ATOM
+  #   _NET_WM_STATE_FOCUSED, ATOM
+  #   _NET_WM_STATE_FULLSCREEN, ATOM
+  #   _NET_WM_STATE_HIDDEN, ATOM
+  #   _NET_WM_STATE_MAXIMIZED_HORZ, ATOM
+  #   _NET_WM_STATE_MAXIMIZED_VERT, ATOM
+  #   _NET_WM_STATE_MODAL, ATOM
+  #   _NET_WM_STATE_SHADED, ATOM
+  #   _NET_WM_STATE_SKIP_PAGER, ATOM
+  #   _NET_WM_STATE_SKIP_TASKBAR, ATOM
+  #   _NET_WM_STATE_STICKY, ATOM
+
+  # NOTE:
+  # - pay very careful attention to the syntax used below
+  # - which form to use instead of ";;"? ";;&" or ";&"? bash(1) is *extremely*
+  #   cryptic on this subject
+
+  # - be explicit for clarity
+  unset _HUMAN_READABLE_WM_STATE_ATOM
+
+  case $_NET_WM_STATE_ATOM in
+    ( *_NET_WM_STATE_ABOVE* )
+      _HUMAN_READABLE_WM_STATE_ATOM+=", above"
+    ;;&
+    ( *_NET_WM_STATE_BELOW* )
+      _HUMAN_READABLE_WM_STATE_ATOM+=", below"
+    ;;&
+    ( *_NET_WM_STATE_DEMANDS_ATTENTION* )
+      _HUMAN_READABLE_WM_STATE_ATOM+=", demands attention"
+    ;;&
+    ( *_NET_WM_STATE_FOCUSED* )
+      _HUMAN_READABLE_WM_STATE_ATOM+=", focused"
+    ;;&
+    ( *_NET_WM_STATE_FULLSCREEN* )
+      _HUMAN_READABLE_WM_STATE_ATOM+=", fullscreen"
+    ;;&
+    ( *_NET_WM_STATE_HIDDEN* )
+      _HUMAN_READABLE_WM_STATE_ATOM+=", hidden"
+    ;;&
+    ( *_NET_WM_STATE_MAXIMIZED_HORZ* )
+      _HUMAN_READABLE_WM_STATE_ATOM+=", maximized horizontally"
+    ;;&
+    ( *_NET_WM_STATE_MAXIMIZED_VERT* )
+      _HUMAN_READABLE_WM_STATE_ATOM+=", maximized vertically"
+    ;;&
+    ( *_NET_WM_STATE_MODAL* )
+      _HUMAN_READABLE_WM_STATE_ATOM+=", modal"
+    ;;&
+    ( *_NET_WM_STATE_SHADED* )
+      _HUMAN_READABLE_WM_STATE_ATOM+=", shaded"
+    ;;&
+    ( *_NET_WM_STATE_SKIP_PAGER* )
+      _HUMAN_READABLE_WM_STATE_ATOM+=", skip pager"
+    ;;&
+    ( *_NET_WM_STATE_SKIP_TASKBAR* )
+      _HUMAN_READABLE_WM_STATE_ATOM+=", skip taskbar"
+    ;;&
+    ( *_NET_WM_STATE_STICKY* )
+      _HUMAN_READABLE_WM_STATE_ATOM+=", sticky"
+    ;;&
+    ( * )
+      # - "-z string" = true if the length of string is zero
+      if [[ -z $_NET_WM_STATE_ATOM ]]
+      then
+        _HUMAN_READABLE_WM_STATE_ATOM="undefined"
+      fi
+    ;;
+  esac
+
+  # - tidy up
+  if [[ ${_HUMAN_READABLE_WM_STATE_ATOM:0:2} == ", " ]]
+  then
+    _HUMAN_READABLE_WM_STATE_ATOM=${_HUMAN_READABLE_WM_STATE_ATOM:2}
+  fi
+
+  # (sorted listing from the original source)
+  #   _NET_WM_WINDOW_TYPE_COMBO, ATOM
+  #   _NET_WM_WINDOW_TYPE_DESKTOP, ATOM
+  #   _NET_WM_WINDOW_TYPE_DIALOG, ATOM
+  #   _NET_WM_WINDOW_TYPE_DND, ATOM
+  #   _NET_WM_WINDOW_TYPE_DOCK, ATOM
+  #   _NET_WM_WINDOW_TYPE_DROPDOWN_MENU, ATOM
+  #   _NET_WM_WINDOW_TYPE_MENU, ATOM
+  #   _NET_WM_WINDOW_TYPE_NORMAL, ATOM
+  #   _NET_WM_WINDOW_TYPE_NOTIFICATION, ATOM
+  #   _NET_WM_WINDOW_TYPE_POPUP_MENU, ATOM
+  #   _NET_WM_WINDOW_TYPE_SPLASH, ATOM
+  #   _NET_WM_WINDOW_TYPE_TOOLBAR, ATOM
+  #   _NET_WM_WINDOW_TYPE_TOOLTIP, ATOM
+  #   _NET_WM_WINDOW_TYPE_UTILITY, ATOM
+
+  case $_NET_WM_WINDOW_TYPE_ATOM in
+    ( _NET_WM_WINDOW_TYPE_COMBO )
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=combo
+    ;;
+    ( _NET_WM_WINDOW_TYPE_DESKTOP )
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=desktop
+    ;;
+    ( _NET_WM_WINDOW_TYPE_DIALOG )
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=dialog
+    ;;
+    ( _NET_WM_WINDOW_TYPE_DND )
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=dnd
+    ;;
+    ( _NET_WM_WINDOW_TYPE_DOCK )
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=dock
+    ;;
+    ( _NET_WM_WINDOW_TYPE_DROPDOWN_MENU )
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM="dropdown menu"
+    ;;
+    ( _NET_WM_WINDOW_TYPE_MENU )
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=menu
+    ;;
+    ( _NET_WM_WINDOW_TYPE_NORMAL )
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=normal
+    ;;
+    ( _NET_WM_WINDOW_TYPE_NOTIFICATION )
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=notification
+    ;;
+    ( _NET_WM_WINDOW_TYPE_POPUP_MENU )
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM="popup menu"
+    ;;
+    ( _NET_WM_WINDOW_TYPE_SPLASH )
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=splash
+    ;;
+    ( _NET_WM_WINDOW_TYPE_TOOLBAR )
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=toolbar
+    ;;
+    ( _NET_WM_WINDOW_TYPE_TOOLTIP )
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=tooltip
+    ;;
+    ( _NET_WM_WINDOW_TYPE_UTILITY )
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=utility
+    ;;
+    ( * )
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=undefined
+    ;;
+  esac
+
   # - first: the command to move the window
   # - "-i -r" order is important
   # - experimented with "-b add,above". something's not going as expected so
@@ -4408,23 +4595,40 @@ function _set_window_position()
   fi
   _COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 0,$_COORDINATE_X,$_COORDINATE_Y,-1,-1"
 
+  _eko_ps "window id:" \""$_OPTION_WINDOW_ID\""
   _eko_pv "window id:" \""$_OPTION_WINDOW_ID\""
+  _eko_ps "window name:" \""$_NET_WM_NAME_UTF8_STRING\""
   _eko_pv "window name:" \""$_NET_WM_NAME_UTF8_STRING\""
+  _eko_ps "window state:" \""$_HUMAN_READABLE_WM_STATE_ATOM\""
+  _eko_pv "window state:" \""$_NET_WM_STATE_ATOM\""
+  _eko_ps "window type:" \""$_HUMAN_READABLE_WM_WINDOW_TYPE_ATOM\""
   _eko_pv "window type:" \""$_NET_WM_WINDOW_TYPE_ATOM\""
+  _eko_ps "window X,Y (undecorated):" \""$_WINDOW_UNDECORATED_X,$_WINDOW_UNDECORATED_Y\""
+  _eko_pv "window X,Y (undecorated):" \""$_WINDOW_UNDECORATED_X,$_WINDOW_UNDECORATED_Y\""
+  _eko_ps "window decorations (L,R,T,B):" \""$_NET_FRAME_EXTENTS_L,$_NET_FRAME_EXTENTS_R,$_NET_FRAME_EXTENTS_T,$_NET_FRAME_EXTENTS_B\""
+  _eko_pv "window decorations (L,R,T,B):" \""$_NET_FRAME_EXTENTS_L,$_NET_FRAME_EXTENTS_R,$_NET_FRAME_EXTENTS_T,$_NET_FRAME_EXTENTS_B\""
+  _eko_ps "window X,Y (decorated):" \""$_WINDOW_DECORATED_X,$_WINDOW_DECORATED_Y\""
+  _eko_pv "window X,Y (decorated):" \""$_WINDOW_DECORATED_X,$_WINDOW_DECORATED_Y\""
+  _eko_ps "window border width:" \""$_WINDOW_BORDER_WIDTH\""
+  _eko_pv "window border width:" \""$_WINDOW_BORDER_WIDTH\""
+  _eko_ps "window maximized X,Y:" \""$_BOOLEAN_MAXIMIZED_X,$_BOOLEAN_MAXIMIZED_Y\""
+  _eko_pv "window maximized X,Y:" \""$_BOOLEAN_MAXIMIZED_X,$_BOOLEAN_MAXIMIZED_Y\""
   if $_BOOLEAN_UNUSED
   then
-    _eko_pv "desktop name:" \""$_NET_DESKTOP_NAME_UTF8_STRING\""
+    _eko_ps "current desktop name:" \""$_NET_DESKTOP_NAME_UTF8_STRING\""
+    _eko_pv "current desktop name:" \""$_NET_DESKTOP_NAME_UTF8_STRING\""
   fi
+  _eko_ps "desktop geometry:" \""$_NET_DESKTOP_GEOMETRY_W,$_NET_DESKTOP_GEOMETRY_H\""
   _eko_pv "desktop geometry:" \""$_NET_DESKTOP_GEOMETRY_W,$_NET_DESKTOP_GEOMETRY_H\""
+  _eko_ps "workarea geometry:" \""$_NET_WORKAREA_W,$_NET_WORKAREA_H\""
   _eko_pv "workarea geometry:" \""$_NET_WORKAREA_W,$_NET_WORKAREA_H\""
+  _eko_ps "desktop borders (L,R,T,B):" \""$_WORKAREA_BORDER_L,$_WORKAREA_BORDER_R,$_WORKAREA_BORDER_T,$_WORKAREA_BORDER_B\""
   _eko_pv "desktop borders (L,R,T,B):" \""$_WORKAREA_BORDER_L,$_WORKAREA_BORDER_R,$_WORKAREA_BORDER_T,$_WORKAREA_BORDER_B\""
-  _eko_pv "window X,Y (undecorated):" \""$_WINDOW_UNDECORATED_X,$_WINDOW_UNDECORATED_Y\""
-  _eko_pv "window decorations (L,R,T,B):" \""$_NET_FRAME_EXTENTS_L,$_NET_FRAME_EXTENTS_R,$_NET_FRAME_EXTENTS_T,$_NET_FRAME_EXTENTS_B\""
-  _eko_pv "window X,Y (decorated):" \""$_WINDOW_DECORATED_X,$_WINDOW_DECORATED_Y\""
-  _eko_pv "window border width:" \""$_WINDOW_BORDER_WIDTH\""
-  _eko_pv "window maximized X,Y:" \""$_BOOLEAN_MAXIMIZED_X,$_BOOLEAN_MAXIMIZED_Y\""
+  _eko_ps "new X,Y coordinates:" \""$_COORDINATE_X,$_COORDINATE_Y\""
   _eko_pv "new X,Y coordinates:" \""$_COORDINATE_X,$_COORDINATE_Y\""
+  _eko_ps "X,Y kludges:" \""$_KLUDGE_X,$_KLUDGE_Y\""
   _eko_pv "X,Y kludges:" \""$_KLUDGE_X,$_KLUDGE_Y\""
+  _eko_ps "wmctrl command (move):" \""$_COMMAND\""
   _eko_pv "wmctrl command (move):" \""$_COMMAND\""
 
   # - move window if possible
@@ -4437,6 +4641,7 @@ function _set_window_position()
     # - don't use "-R". it causes the window to become "unsticky"
     _COMMAND="$_BINARY_WMCTRL -i -a $_OPTION_WINDOW_ID"
 
+    _eko_ps "wmctrl command (raise):" \""$_COMMAND\""
     _eko_pv "wmctrl command (raise):" \""$_COMMAND\""
 
     # - raise/focus window if possible
@@ -4521,6 +4726,7 @@ Optional parameters:
   -id <Window ID>   Window ID (in hexadecimal format)
   -o, --overall     Use overall desktop X,Y for window placement calculations
   -p, --permissive  Permissive mode allows moving otherwise immovable windows
+  -q, --quiet       Limit what's displayed to error messages & this help text
   -r, --raise       Raise window & give it focus
   -u, --unused      Display all known \$_NET_* properties unused by this script
   -d, --debug       Display debugging information (function names/entry/exit)

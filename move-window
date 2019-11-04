@@ -168,6 +168,11 @@
 
 # 2019-11-04
 
+# (pending)
+# - possibly add stdout mode for use in "function _set_window_position". if
+#   this is done, mimick _eko_v for printf/echo formatting
+# - add human-readable "window type:" to "function _set_window_position"
+
 # (done)
 # - updated the "old/new" sed syntax notes in
 #   "function _get_window_undecorated_geometry" since there are now 3
@@ -1679,6 +1684,10 @@ function _get_net_active_window_window()
   # - do we need this? I don't think so. at least, not for now
   # - or do we? when it comes time to move the window, use this window id if
   #   none was specified. result: currently focussed window will be processed
+  # - interesting discovery: "_NET_ACTIVE_WINDOW(WINDOW): window id # 0x0" is
+  #   returned in a desktop containing no _NET_WM_WINDOW_TYPE_NORMAL windows
+  #   (or if any _NET_WM_WINDOW_TYPE_NORMAL windows exist, they're minimized)
+  # ^ is this behaviour specific to openbox? find out
 
   _NET_ACTIVE_WINDOW_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_ACTIVE_WINDOW(WINDOW): window id # /!d ; /.* # / s///g')
 

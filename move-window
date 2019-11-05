@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# move-window v2019.11.04
+# move-window v2019.11.05
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -166,6 +166,7 @@
 # ^ I may quietly remove these at some point. they've been added simply to
 #   help me figure out precisely what is unused &/or required & in what order
 
+#+ marker edit +#
 # (pending)
 # - do something special with _NET_ACTIVE_WINDOW_WINDOW from
 #   "function _get_net_active_window_window"
@@ -174,19 +175,30 @@
 #   (or if any _NET_WM_WINDOW_TYPE_NORMAL windows exist, they're minimized)
 # ^ is this behaviour specific to openbox? find out
 
+# 2019-11-05
+# - added the following functions even though their freedesktop definitions
+#   are quite vague. Sherlock Holmes to the rescue
+# - "function _get_net_virtual_roots_window" added
+# - "function _get_net_wm_bypass_compositor_cardinal" added
+# - cleanup & improvements including, but not limited to, the following:
+# - removed several irrelevant comments
+# - added several irrelevant comments
+# - "function _set_window_position" wrapped the lengthy case statements in
+#   a simple if/then/fi conditional for efficiency (not that it's necessary)
+# - "function _set_window_position" reordered the stdout & verbose reports to
+#   be thematic rather than random
 # 2019-11-04
-# - added human-readable $_NET_WM_WINDOW_TYPE_ATOM: (aka: "window type:") to
-#   "function _set_window_position"
-# - added human readable & raw $_NET_WM_STATE_ATOM: (aka: "window state:) to
-#   "function _set_window_position"
+# - "function _set_window_position" added human-readable output for
+#   $_NET_WM_WINDOW_TYPE_ATOM: (aka: "window type:") to stdout mode
+# - "function _set_window_position" added human-readable & raw output for
+#   $_NET_WM_STATE_ATOM: (aka: "window state:) to stdout & verbose modes
 # - "function _eko_ps" & "function _eko_ps_en" changed the following line:
 #  was: printf "%26s " "$1"
 #   is: printf "%29s " "$1"
 # - "function _parse_parameters" added "-q, --quiet" option
 # - "function _set_window_position" added stdout mode
-# - updated the "old/new" sed syntax notes in
-#   "function _get_window_undecorated_geometry" since there are now 3
-#   variables set (formerly 2)
+# - "function _get_window_undecorated_geometry" updated the "old/new" sed
+#   syntax notes since there are now 3 variables set (formerly 2)
 # - restored the "old/new" sed syntax notes that I'd originally been using
 #   in the script, but #'d out. also added appropriate notes for the functions
 #   that had been added since 2019-10-19
@@ -602,7 +614,9 @@
   # _NET_SHOWING_DESKTOP_CARDINAL
   # _NET_SUPPORTED_ATOM
   # _NET_SUPPORTING_WM_CHECK_WINDOW
+  # _NET_VIRTUAL_ROOTS_WINDOW
   # _NET_WM_ALLOWED_ACTIONS_ATOM
+  # _NET_WM_BYPASS_COMPOSITOR_CARDINAL
   # _NET_WM_DESKTOP_CARDINAL
   # _NET_WM_ICON_GEOMETRY_CARDINAL
   # _NET_WM_ICON_GEOMETRY_H
@@ -694,7 +708,9 @@
   # _get_net_showing_desktop_cardinal
   # _get_net_supported_atom
   # _get_net_supporting_wm_check_window
+  # _get_net_virtual_roots_window
   # _get_net_wm_allowed_actions_atom
+  # _get_net_wm_bypass_compositor_cardinal
   # _get_net_wm_desktop_cardinal
   # _get_net_wm_icon_geometry_cardinal
   # _get_net_wm_icon_name_utf8_string
@@ -2287,7 +2303,7 @@ function _get_net_frame_extents_cardinal()
 #  _NET_FRAME_EXTENTS_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_FRAME_EXTENTS(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
 #- marker sed syntax -#
 
-  # - openbox dock returns absolutely nothing here. provide safe values
+  # - openbox dock may return absolutely nothing here. provide safe values
   # - "-z string" = true if the length of string is zero
   if [[ -z $_NET_FRAME_EXTENTS_CARDINAL ]]
   then
@@ -2497,6 +2513,55 @@ function _get_net_supporting_wm_check_window()
   _eko_iod "#- _get_net_supporting_wm_check_window -#"
 }
 
+function _get_net_virtual_roots_window()
+{
+  _eko_iod "#+ _get_net_virtual_roots_window +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_pv
+
+  # variables:
+  # _NET_VIRTUAL_ROOTS_WINDOW
+  # _OUTPUT_XPROP_ROOT
+
+  # binaries:
+  # sed
+
+  # builtins:
+  # echo
+
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
+  # NET:
+  # - _NET_VIRTUAL_ROOTS, WINDOW[]/32
+
+  # - no example available in openbox. Sherlock Holmes to the rescue
+  # - sed syntax derived from the freedesktop description
+  # ^ assumed to be the same as _NET_CLIENT_LIST & _NET_CLIENT_LIST_STACKING
+
+  # NOTE:
+  # - Openbox does not use virtual roots, so this is not needed.
+
+  _NET_VIRTUAL_ROOTS_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_VIRTUAL_ROOTS(WINDOW): window id # /!d ; /\(.* # \|,\)/ s///g')
+
+#+ marker sed syntax +#
+# old
+#  _NET_VIRTUAL_ROOTS_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_VIRTUAL_ROOTS(WINDOW): window id # /!d ; s/\(.* # \|,\)//g')
+# new
+#  _NET_VIRTUAL_ROOTS_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_VIRTUAL_ROOTS(WINDOW): window id # /!d ; /\(.* # \|,\)/ s///g')
+#- marker sed syntax -#
+
+  _eko_pv \$_NET_VIRTUAL_ROOTS_WINDOW: \""$_NET_VIRTUAL_ROOTS_WINDOW\" (unused)"
+
+  _eko_iod "#- _get_net_virtual_roots_window -#"
+}
+
 function _get_net_wm_allowed_actions_atom()
 {
   _eko_iod "#+ _get_net_wm_allowed_actions_atom +#"
@@ -2568,6 +2633,52 @@ function _get_net_wm_allowed_actions_atom()
   _eko_pv \$_NET_WM_ALLOWED_ACTIONS_ATOM: \""$_NET_WM_ALLOWED_ACTIONS_ATOM\" (unused)"
 
   _eko_iod "#- _get_net_wm_allowed_actions_atom -#"
+}
+
+function _get_net_wm_bypass_compositor_cardinal()
+{
+  _eko_iod "#+ _get_net_wm_bypass_compositor_cardinal +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_pv
+
+  # variables:
+  # _NET_WM_BYPASS_COMPOSITOR_CARDINAL
+  # _OUTPUT_XPROP_ID
+
+  # binaries:
+  # sed
+
+  # builtins:
+  # echo
+
+  # NOTE:
+  # - unused
+  #     parent: "function _parse_parameters"
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
+  # NET:
+  # - _NET_WM_BYPASS_COMPOSITOR, CARDINAL/32
+
+  # - no example available in openbox. Sherlock Holmes to the rescue
+  # - sed syntax derived from the freedesktop description
+  # ^ assumed to be the same as _NET_WM_DESKTOP & _NET_WM_PID
+
+  _NET_WM_BYPASS_COMPOSITOR_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_BYPASS_COMPOSITOR(CARDINAL) = /!d ; /.* = / s///g')
+
+#+ marker sed syntax +#
+# old
+#  _NET_WM_BYPASS_COMPOSITOR_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_BYPASS_COMPOSITOR(CARDINAL) = /!d ; s/.* = //g')
+# new
+#  _NET_WM_BYPASS_COMPOSITOR_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_BYPASS_COMPOSITOR(CARDINAL) = /!d ; /.* = / s///g')
+#- marker sed syntax -#
+
+  _eko_pv \$_NET_WM_BYPASS_COMPOSITOR_CARDINAL: \""$_NET_WM_BYPASS_COMPOSITOR_CARDINAL\" (unused)"
+
+  _eko_iod "#- _get_net_wm_bypass_compositor_cardinal -#"
 }
 
 function _get_net_wm_desktop_cardinal()
@@ -3219,7 +3330,7 @@ function _get_net_wm_user_time_cardinal()
   # - _NET_WM_USER_TIME CARDINAL/32
 
   # "_NET_WM_USER_TIME(CARDINAL) = "
-  # "2553195505"
+  # "2553561896"
 
   _NET_WM_USER_TIME_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_USER_TIME(CARDINAL) = /!d ; /.* = / s///g')
 
@@ -3263,8 +3374,8 @@ function _get_net_wm_user_time_window_window()
   # NET:
   # - _NET_WM_USER_TIME CARDINAL/32
 
-  # "_NET_WM_USER_TIME(CARDINAL) = "
-  # "2553195505"
+  # "_NET_WM_USER_TIME_WINDOW(WINDOW): window id # "
+  # "0x36007f7"
 
   _NET_WM_USER_TIME_WINDOW_WINDOW=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_USER_TIME_WINDOW(WINDOW): window id # /!d ; /.* # / s///g')
 
@@ -3586,32 +3697,32 @@ function _get_net_workarea_cardinal()
     # -    top: nothing
     # - bottom: tint2
     #          desktop geometry: "1920,1080"
-    #         workarea geometry: "1852,1056"
     # desktop borders (L,R,T,B): "0,68,0,24"
+    #         workarea geometry: "1852,1056"
 
     # -   left: xfce4-panel
     # -  right: dock
     # -    top: nothing
     # - bottom: tint2
     #          desktop geometry: "1920,1080"
-    #         workarea geometry: "1784,1056"
     # desktop borders (L,R,T,B): "68,68,0,24"
+    #         workarea geometry: "1784,1056"
 
     # -   left: nothing
     # -  right: dock, xfce4-panel
     # -    top: tint2
     # - bottom: nothing
     #          desktop geometry: "1920,1080"
-    #         workarea geometry: "1852,1056"
     # desktop borders (L,R,T,B): "0,68,24,0"
+    #         workarea geometry: "1852,1056"
 
     # -   left: xfce4-panel
     # -  right: dock
     # -    top: tint2
     # - bottom: nothing
     #          desktop geometry: "1920,1080"
-    #         workarea geometry: "1784,1056"
     # desktop borders (L,R,T,B): "68,68,24,0"
+    #         workarea geometry: "1784,1056"
 
     _eko_iod "#- _sub_function -#"
   }
@@ -3731,7 +3842,9 @@ function _parse_parameters()
   # _get_net_showing_desktop_cardinal
   # _get_net_supported_atom
   # _get_net_supporting_wm_check_window
+  # _get_net_virtual_roots_window
   # _get_net_wm_allowed_actions_atom
+  # _get_net_wm_bypass_compositor_cardinal
   # _get_net_wm_desktop_cardinal
   # _get_net_wm_icon_geometry_cardinal
   # _get_net_wm_icon_name_utf8_string
@@ -4119,9 +4232,11 @@ function _parse_parameters()
       _get_net_showing_desktop_cardinal
       _get_net_supported_atom
       _get_net_supporting_wm_check_window
+      _get_net_virtual_roots_window
 
       # - from "xprop -id 0xDEADF00D"
       _get_net_wm_allowed_actions_atom
+      _get_net_wm_bypass_compositor_cardinal
       _get_net_wm_desktop_cardinal
       _get_net_wm_icon_geometry_cardinal
       _get_net_wm_icon_name_utf8_string
@@ -4134,7 +4249,7 @@ function _parse_parameters()
       _get_net_wm_user_time_window_window
       _get_net_wm_visible_icon_name_utf8_string
       _get_net_wm_visible_name_utf8_string
-    fi
+    fi # $_BOOLEAN_UNUSED
 
     # - succeeds: _get_net_wm_name_utf8_string
     # - succeeds: _get_net_workarea_cardinal
@@ -4145,7 +4260,7 @@ function _parse_parameters()
     _coordinates_validate
 
     _set_window_position
-  fi
+  fi # $_BOOLEAN_FORCE
 
   # - and so it ends (so far)
 
@@ -4370,11 +4485,11 @@ function _pass_fail_by_window_type()
       _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (utility) specified"
       fi
 
-    fi
+    fi # $_BOOLEAN_PERMISSIVE
 
   else
     _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (does not exist) specified"
-  fi
+  fi # $_OUTPUT_XPROP_ID
 
   _eko_iod "#- _pass_fail_by_window_type -#"
 }
@@ -4393,6 +4508,7 @@ function _set_window_position()
   # _BOOLEAN_MAXIMIZED_X (window state. not script option)
   # _BOOLEAN_MAXIMIZED_Y (window state. not script option)
   # _BOOLEAN_RAISE
+  # _BOOLEAN_STDOUT
   # _COMMAND
   # _COORDINATE_X
   # _COORDINATE_Y
@@ -4437,149 +4553,155 @@ function _set_window_position()
   #   succeeds: "function "
 
   # NET:
-  # - several described elsewhere throughout the script
-
-  # (sorted listing from the original source)
-  #   _NET_WM_STATE_ABOVE, ATOM
-  #   _NET_WM_STATE_BELOW, ATOM
-  #   _NET_WM_STATE_DEMANDS_ATTENTION, ATOM
-  #   _NET_WM_STATE_FOCUSED, ATOM
-  #   _NET_WM_STATE_FULLSCREEN, ATOM
-  #   _NET_WM_STATE_HIDDEN, ATOM
-  #   _NET_WM_STATE_MAXIMIZED_HORZ, ATOM
-  #   _NET_WM_STATE_MAXIMIZED_VERT, ATOM
-  #   _NET_WM_STATE_MODAL, ATOM
-  #   _NET_WM_STATE_SHADED, ATOM
-  #   _NET_WM_STATE_SKIP_PAGER, ATOM
-  #   _NET_WM_STATE_SKIP_TASKBAR, ATOM
-  #   _NET_WM_STATE_STICKY, ATOM
+  # - several described elsewhere throughout the script, so no need to repeat
+  #   them all here
 
   # NOTE:
-  # - pay very careful attention to the syntax used below
-  # - which form to use instead of ";;"? ";;&" or ";&"? bash(1) is *extremely*
-  #   cryptic on this subject
+  # - pay close attention to the syntax used in the first case statement below
+  # - which form to use instead of ";;"? ";;&" or ";&"? they both seem to work
+  # - bash(1) is *extremely* cryptic on this subject
 
-  # - be explicit for clarity
-  unset _HUMAN_READABLE_WM_STATE_ATOM
-
-  case $_NET_WM_STATE_ATOM in
-    ( *_NET_WM_STATE_ABOVE* )
-      _HUMAN_READABLE_WM_STATE_ATOM+=", above"
-    ;;&
-    ( *_NET_WM_STATE_BELOW* )
-      _HUMAN_READABLE_WM_STATE_ATOM+=", below"
-    ;;&
-    ( *_NET_WM_STATE_DEMANDS_ATTENTION* )
-      _HUMAN_READABLE_WM_STATE_ATOM+=", demands attention"
-    ;;&
-    ( *_NET_WM_STATE_FOCUSED* )
-      _HUMAN_READABLE_WM_STATE_ATOM+=", focused"
-    ;;&
-    ( *_NET_WM_STATE_FULLSCREEN* )
-      _HUMAN_READABLE_WM_STATE_ATOM+=", fullscreen"
-    ;;&
-    ( *_NET_WM_STATE_HIDDEN* )
-      _HUMAN_READABLE_WM_STATE_ATOM+=", hidden"
-    ;;&
-    ( *_NET_WM_STATE_MAXIMIZED_HORZ* )
-      _HUMAN_READABLE_WM_STATE_ATOM+=", maximized horizontally"
-    ;;&
-    ( *_NET_WM_STATE_MAXIMIZED_VERT* )
-      _HUMAN_READABLE_WM_STATE_ATOM+=", maximized vertically"
-    ;;&
-    ( *_NET_WM_STATE_MODAL* )
-      _HUMAN_READABLE_WM_STATE_ATOM+=", modal"
-    ;;&
-    ( *_NET_WM_STATE_SHADED* )
-      _HUMAN_READABLE_WM_STATE_ATOM+=", shaded"
-    ;;&
-    ( *_NET_WM_STATE_SKIP_PAGER* )
-      _HUMAN_READABLE_WM_STATE_ATOM+=", skip pager"
-    ;;&
-    ( *_NET_WM_STATE_SKIP_TASKBAR* )
-      _HUMAN_READABLE_WM_STATE_ATOM+=", skip taskbar"
-    ;;&
-    ( *_NET_WM_STATE_STICKY* )
-      _HUMAN_READABLE_WM_STATE_ATOM+=", sticky"
-    ;;&
-    ( * )
-      # - "-z string" = true if the length of string is zero
-      if [[ -z $_NET_WM_STATE_ATOM ]]
-      then
-        _HUMAN_READABLE_WM_STATE_ATOM="undefined"
-      fi
-    ;;
-  esac
-
-  # - tidy up
-  if [[ ${_HUMAN_READABLE_WM_STATE_ATOM:0:2} == ", " ]]
+  if $_BOOLEAN_STDOUT
   then
-    _HUMAN_READABLE_WM_STATE_ATOM=${_HUMAN_READABLE_WM_STATE_ATOM:2}
-  fi
 
-  # (sorted listing from the original source)
-  #   _NET_WM_WINDOW_TYPE_COMBO, ATOM
-  #   _NET_WM_WINDOW_TYPE_DESKTOP, ATOM
-  #   _NET_WM_WINDOW_TYPE_DIALOG, ATOM
-  #   _NET_WM_WINDOW_TYPE_DND, ATOM
-  #   _NET_WM_WINDOW_TYPE_DOCK, ATOM
-  #   _NET_WM_WINDOW_TYPE_DROPDOWN_MENU, ATOM
-  #   _NET_WM_WINDOW_TYPE_MENU, ATOM
-  #   _NET_WM_WINDOW_TYPE_NORMAL, ATOM
-  #   _NET_WM_WINDOW_TYPE_NOTIFICATION, ATOM
-  #   _NET_WM_WINDOW_TYPE_POPUP_MENU, ATOM
-  #   _NET_WM_WINDOW_TYPE_SPLASH, ATOM
-  #   _NET_WM_WINDOW_TYPE_TOOLBAR, ATOM
-  #   _NET_WM_WINDOW_TYPE_TOOLTIP, ATOM
-  #   _NET_WM_WINDOW_TYPE_UTILITY, ATOM
+    # - be explicit for clarity
+    unset _HUMAN_READABLE_WM_STATE_ATOM
 
-  case $_NET_WM_WINDOW_TYPE_ATOM in
-    ( _NET_WM_WINDOW_TYPE_COMBO )
-      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=combo
-    ;;
-    ( _NET_WM_WINDOW_TYPE_DESKTOP )
-      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=desktop
-    ;;
-    ( _NET_WM_WINDOW_TYPE_DIALOG )
-      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=dialog
-    ;;
-    ( _NET_WM_WINDOW_TYPE_DND )
-      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=dnd
-    ;;
-    ( _NET_WM_WINDOW_TYPE_DOCK )
-      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=dock
-    ;;
-    ( _NET_WM_WINDOW_TYPE_DROPDOWN_MENU )
-      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM="dropdown menu"
-    ;;
-    ( _NET_WM_WINDOW_TYPE_MENU )
-      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=menu
-    ;;
-    ( _NET_WM_WINDOW_TYPE_NORMAL )
-      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=normal
-    ;;
-    ( _NET_WM_WINDOW_TYPE_NOTIFICATION )
-      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=notification
-    ;;
-    ( _NET_WM_WINDOW_TYPE_POPUP_MENU )
-      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM="popup menu"
-    ;;
-    ( _NET_WM_WINDOW_TYPE_SPLASH )
-      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=splash
-    ;;
-    ( _NET_WM_WINDOW_TYPE_TOOLBAR )
-      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=toolbar
-    ;;
-    ( _NET_WM_WINDOW_TYPE_TOOLTIP )
-      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=tooltip
-    ;;
-    ( _NET_WM_WINDOW_TYPE_UTILITY )
-      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=utility
-    ;;
-    ( * )
-      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=undefined
-    ;;
-  esac
+    # (sorted listing from the original source)
+    #   _NET_WM_STATE_ABOVE, ATOM
+    #   _NET_WM_STATE_BELOW, ATOM
+    #   _NET_WM_STATE_DEMANDS_ATTENTION, ATOM
+    #   _NET_WM_STATE_FOCUSED, ATOM
+    #   _NET_WM_STATE_FULLSCREEN, ATOM
+    #   _NET_WM_STATE_HIDDEN, ATOM
+    #   _NET_WM_STATE_MAXIMIZED_HORZ, ATOM
+    #   _NET_WM_STATE_MAXIMIZED_VERT, ATOM
+    #   _NET_WM_STATE_MODAL, ATOM
+    #   _NET_WM_STATE_SHADED, ATOM
+    #   _NET_WM_STATE_SKIP_PAGER, ATOM
+    #   _NET_WM_STATE_SKIP_TASKBAR, ATOM
+    #   _NET_WM_STATE_STICKY, ATOM
+
+    case $_NET_WM_STATE_ATOM in
+      ( *_NET_WM_STATE_ABOVE* )
+        _HUMAN_READABLE_WM_STATE_ATOM+=", above"
+      ;;&
+      ( *_NET_WM_STATE_BELOW* )
+        _HUMAN_READABLE_WM_STATE_ATOM+=", below"
+      ;;&
+      ( *_NET_WM_STATE_DEMANDS_ATTENTION* )
+        _HUMAN_READABLE_WM_STATE_ATOM+=", demands attention"
+      ;;&
+      ( *_NET_WM_STATE_FOCUSED* )
+        _HUMAN_READABLE_WM_STATE_ATOM+=", focused"
+      ;;&
+      ( *_NET_WM_STATE_FULLSCREEN* )
+        _HUMAN_READABLE_WM_STATE_ATOM+=", fullscreen"
+      ;;&
+      ( *_NET_WM_STATE_HIDDEN* )
+        _HUMAN_READABLE_WM_STATE_ATOM+=", hidden"
+      ;;&
+      ( *_NET_WM_STATE_MAXIMIZED_HORZ* )
+        _HUMAN_READABLE_WM_STATE_ATOM+=", maximized horizontally"
+      ;;&
+      ( *_NET_WM_STATE_MAXIMIZED_VERT* )
+        _HUMAN_READABLE_WM_STATE_ATOM+=", maximized vertically"
+      ;;&
+      ( *_NET_WM_STATE_MODAL* )
+        _HUMAN_READABLE_WM_STATE_ATOM+=", modal"
+      ;;&
+      ( *_NET_WM_STATE_SHADED* )
+        _HUMAN_READABLE_WM_STATE_ATOM+=", shaded"
+      ;;&
+      ( *_NET_WM_STATE_SKIP_PAGER* )
+        _HUMAN_READABLE_WM_STATE_ATOM+=", skip pager"
+      ;;&
+      ( *_NET_WM_STATE_SKIP_TASKBAR* )
+        _HUMAN_READABLE_WM_STATE_ATOM+=", skip taskbar"
+      ;;&
+      ( *_NET_WM_STATE_STICKY* )
+        _HUMAN_READABLE_WM_STATE_ATOM+=", sticky"
+      ;;&
+      ( * )
+        # - "-z string" = true if the length of string is zero
+        if [[ -z $_NET_WM_STATE_ATOM ]]
+        then
+          _HUMAN_READABLE_WM_STATE_ATOM="undefined"
+        fi
+      ;;
+    esac # $_NET_WM_STATE_ATOM
+
+    # - tidy up
+    if [[ ${_HUMAN_READABLE_WM_STATE_ATOM:0:2} == ", " ]]
+    then
+      _HUMAN_READABLE_WM_STATE_ATOM=${_HUMAN_READABLE_WM_STATE_ATOM:2}
+    fi
+
+    # (sorted listing from the original source)
+    #   _NET_WM_WINDOW_TYPE_COMBO, ATOM
+    #   _NET_WM_WINDOW_TYPE_DESKTOP, ATOM
+    #   _NET_WM_WINDOW_TYPE_DIALOG, ATOM
+    #   _NET_WM_WINDOW_TYPE_DND, ATOM
+    #   _NET_WM_WINDOW_TYPE_DOCK, ATOM
+    #   _NET_WM_WINDOW_TYPE_DROPDOWN_MENU, ATOM
+    #   _NET_WM_WINDOW_TYPE_MENU, ATOM
+    #   _NET_WM_WINDOW_TYPE_NORMAL, ATOM
+    #   _NET_WM_WINDOW_TYPE_NOTIFICATION, ATOM
+    #   _NET_WM_WINDOW_TYPE_POPUP_MENU, ATOM
+    #   _NET_WM_WINDOW_TYPE_SPLASH, ATOM
+    #   _NET_WM_WINDOW_TYPE_TOOLBAR, ATOM
+    #   _NET_WM_WINDOW_TYPE_TOOLTIP, ATOM
+    #   _NET_WM_WINDOW_TYPE_UTILITY, ATOM
+
+    case $_NET_WM_WINDOW_TYPE_ATOM in
+      ( _NET_WM_WINDOW_TYPE_COMBO )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=combo
+      ;;
+      ( _NET_WM_WINDOW_TYPE_DESKTOP )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=desktop
+      ;;
+      ( _NET_WM_WINDOW_TYPE_DIALOG )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=dialog
+      ;;
+      ( _NET_WM_WINDOW_TYPE_DND )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=dnd
+      ;;
+      ( _NET_WM_WINDOW_TYPE_DOCK )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=dock
+      ;;
+      ( _NET_WM_WINDOW_TYPE_DROPDOWN_MENU )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM="dropdown menu"
+      ;;
+      ( _NET_WM_WINDOW_TYPE_MENU )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=menu
+      ;;
+      ( _NET_WM_WINDOW_TYPE_NORMAL )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=normal
+      ;;
+      ( _NET_WM_WINDOW_TYPE_NOTIFICATION )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=notification
+      ;;
+      ( _NET_WM_WINDOW_TYPE_POPUP_MENU )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM="popup menu"
+      ;;
+      ( _NET_WM_WINDOW_TYPE_SPLASH )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=splash
+      ;;
+      ( _NET_WM_WINDOW_TYPE_TOOLBAR )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=toolbar
+      ;;
+      ( _NET_WM_WINDOW_TYPE_TOOLTIP )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=tooltip
+      ;;
+      ( _NET_WM_WINDOW_TYPE_UTILITY )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=utility
+      ;;
+      ( * )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=undefined
+      ;;
+    esac # $_NET_WM_WINDOW_TYPE_ATOM
+
+  fi # $_BOOLEAN_STDOUT
 
   # - first: the command to move the window
   # - "-i -r" order is important
@@ -4620,10 +4742,10 @@ function _set_window_position()
   fi
   _eko_ps "desktop geometry:" \""$_NET_DESKTOP_GEOMETRY_W,$_NET_DESKTOP_GEOMETRY_H\""
   _eko_pv "desktop geometry:" \""$_NET_DESKTOP_GEOMETRY_W,$_NET_DESKTOP_GEOMETRY_H\""
-  _eko_ps "workarea geometry:" \""$_NET_WORKAREA_W,$_NET_WORKAREA_H\""
-  _eko_pv "workarea geometry:" \""$_NET_WORKAREA_W,$_NET_WORKAREA_H\""
   _eko_ps "desktop borders (L,R,T,B):" \""$_WORKAREA_BORDER_L,$_WORKAREA_BORDER_R,$_WORKAREA_BORDER_T,$_WORKAREA_BORDER_B\""
   _eko_pv "desktop borders (L,R,T,B):" \""$_WORKAREA_BORDER_L,$_WORKAREA_BORDER_R,$_WORKAREA_BORDER_T,$_WORKAREA_BORDER_B\""
+  _eko_ps "workarea geometry:" \""$_NET_WORKAREA_W,$_NET_WORKAREA_H\""
+  _eko_pv "workarea geometry:" \""$_NET_WORKAREA_W,$_NET_WORKAREA_H\""
   _eko_ps "new X,Y coordinates:" \""$_COORDINATE_X,$_COORDINATE_Y\""
   _eko_pv "new X,Y coordinates:" \""$_COORDINATE_X,$_COORDINATE_Y\""
   _eko_ps "X,Y kludges:" \""$_KLUDGE_X,$_KLUDGE_Y\""
@@ -5107,12 +5229,14 @@ exit 0
 	# - "function _get_net_showing_desktop_cardinal"          (unused)
 	# - "function _get_net_supported_atom"                    (unused)
 	# - "function _get_net_supporting_wm_check_window"        (unused)
+	# - "function _get_net_virtual_roots_window"              (unused)
 	# - "function _get_net_workarea_cardinal"
 
 # - application window properties
 
 	## - "function _get_net_frame_extents_cardinal"
 	## - "function _get_net_wm_allowed_actions_atom"          (unused)
+	## - "function _get_net_wm_bypass_compositor_cardinal"    (unused)
 	## - "function _get_net_wm_desktop_cardinal"              (unused)
 	## - "function _get_net_wm_icon_geometry_cardinal"        (unused)
 	## - "function _get_net_wm_icon_name_utf8_string"         (unused)
@@ -5165,7 +5289,7 @@ exit 0
 	# _NET_SHOWING_DESKTOP desktop, CARDINAL/32
 	# _NET_SUPPORTED, ATOM[]/32
 	# _NET_SUPPORTING_WM_CHECK, WINDOW/32
-# _NET_VIRTUAL_ROOTS, WINDOW[]/32
+	# _NET_VIRTUAL_ROOTS, WINDOW[]/32
 	# _NET_WORKAREA, x, y, width, height CARDINAL[][4]/32
 
 # - other root window messages
@@ -5211,7 +5335,7 @@ exit 0
 	## _NET_WM_ACTION_RESIZE, ATOM
 	## _NET_WM_ACTION_SHADE, ATOM
 	## _NET_WM_ACTION_STICK, ATOM
-## _NET_WM_BYPASS_COMPOSITOR, CARDINAL/32
+	## _NET_WM_BYPASS_COMPOSITOR, CARDINAL/32
 	## _NET_WM_DESKTOP desktop, CARDINAL/32
 ## _NET_WM_HANDLED_ICONS
 	## _NET_WM_ICON_GEOMETRY, x, y, width, height, CARDINAL[4]/32

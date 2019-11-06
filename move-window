@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# move-window v2019.11.05
+# move-window v2019.11.06
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -175,6 +175,101 @@
 #   (or if any _NET_WM_WINDOW_TYPE_NORMAL windows exist, they're minimized)
 # ^ is this behaviour specific to openbox? find out
 
+# TODO: (ASAP!)
+# - trace down & fix whatever's causing incorrect calculations with tint2
+#+
+# > $ move-window -id 0xe00008 -D -d -v -p -c same
+# > wmctrl command (move): "true -i -r 0xe00008 -e 0,-68,-1,-1,-1"
+# > $ move-window -id 0xe00008 -D -d -v -p -c bl
+# > wmctrl command (move): "true -i -r 0xe00008 -e 0,-68,1032,-1,-1"
+# > $ move-window -id 0xe00008 -D -d -v -p -c bc
+# > wmctrl command (move): "true -i -r 0xe00008 -e 0,-68,1032,-1,-1"
+# > $ move-window -id 0xe00008 -D -d -v -p -c br
+# > wmctrl command (move): "true -i -r 0xe00008 -e 0,-68,1032,-1,-1"
+#-
+#+
+# > $ move-window -id 0xe00008 -D -d -v -o -p -c same
+# > wmctrl command (move): "true -i -r 0xe00008 -e 0,-1,-1,-1,-1"
+# > $ move-window -id 0xe00008 -D -d -v -o -p -c bl
+# > wmctrl command (move): "true -i -r 0xe00008 -e 0,0,1056,-1,-1"
+# > $ move-window -id 0xe00008 -D -d -v -o -p -c bc
+# > wmctrl command (move): "true -i -r 0xe00008 -e 0,0,1056,-1,-1"
+# > $ move-window -id 0xe00008 -D -d -v -o -p -c br
+# > wmctrl command (move): "true -i -r 0xe00008 -e 0,0,1056,-1,-1"
+#-
+
+# 2019-11-06
+# - comment cleanup throughout the script
+# - "function _parse_parameters" removed the following lines:
+#  was: # - assign default value if unset
+#  was: # - ${parameter:=word}
+#  was: _OUTPUT_XPROP_ID=${_OUTPUT_XPROP_ID:=$(xprop -id $_OPTION_WINDOW_ID 2>&1)}
+# - "function _pass_fail_by_window_type" removed the following lines:
+#  was: _OUTPUT_XPROP_ID=$(xprop -id $_OPTION_WINDOW_ID 2>&1)
+#  was: # - "-n string" = true if the length of string is non-zero
+#  was: if [[ -n $_OUTPUT_XPROP_ID ]]
+#  was: then
+#  was: else
+#  was:   _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (does not exist) specified"
+#  was: fi
+# - "function _show_help" changed the following line:
+#  was: -id <Window ID>   Window ID (in hexadecimal format)
+#   is: -id <Window ID>   Window ID (in lowercase hexadecimal format)
+# - "function _pass_fail_by_window_id" changed the following lines:
+#  was: if [[ ! " $_NET_CLIENT_LIST_WINDOW " =~ " $_OPTION_WINDOW_ID " ]]
+#  was: then
+#  was:   _pass_fail_by_window_type
+#  was: fi
+#   is: # - 1st step: verify that it at least looks like a valid Window ID
+#   is: if [[ ! $_OPTION_WINDOW_ID =~ ^0x[0-9a-f]+$ ]]
+#   is: then
+#   is:   _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (invalid syntax) specified"
+#   is: fi
+#   is: # - 2nd step: brute force. using $_OPTION_WINDOW_ID (keeping the result),
+#   is: #   attempt to acquire _OUTPUT_XPROP_ID. directly test $_OUTPUT_XPROP_ID
+#   is: _OUTPUT_XPROP_ID=$(xprop -id $_OPTION_WINDOW_ID 2>/dev/null)
+#   is: # - "-z string" = true if the length of string is zero
+#   is: if [[ -z $_OUTPUT_XPROP_ID ]]
+#   is: then
+#   is:   _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (does not exist) specified"
+#   is: fi
+#   is: # - 3rd step: verify it by its type
+#   is: _pass_fail_by_window_type
+# - moved the following routine:
+#       # - this is absolutely required for the TigerVNC client
+#       # - this must be done after "function _coordinates_calculate" &
+#       #   "function _coordinates_validate", but before setting up _COMMAND
+#       #   in "function _set_window_position"
+#       if [[ $_COORDINATE_X != -1 ]] \
+#       && [[ $_COORDINATE_Y != -1 ]]
+#       then
+#         # - $((expression))
+#         _COORDINATE_X=$(( $_COORDINATE_X + $_KLUDGE_X ))
+#         _COORDINATE_Y=$(( $_COORDINATE_Y + $_KLUDGE_Y ))
+#       fi
+# > "function _parse_parameters" from here
+# > "function _coordinates_kludge" to here
+# - "function _parse_parameters" changed the calling order of some functions:
+#  was: # - succeeds: _get_net_wm_name_utf8_string
+#  was: # - succeeds: _get_net_workarea_cardinal
+#  was: _coordinates_kludge
+#  was: _coordinates_calculate
+#  was: _coordinates_validate
+#  was: _set_window_position
+#   is: _coordinates_calculate
+#   is: _coordinates_validate
+#   is: # - precedes: _set_window_position
+#   is: # - succeeds: _get_net_wm_name_utf8_string
+#   is: # - succeeds: _get_net_workarea_cardinal
+#   is: # - succeeds: _coordinates_calculate
+#   is: # - succeeds: _coordinates_validate
+#   is: _coordinates_kludge
+#   is: # - succeeds: _coordinates_kludge
+#   is: _set_window_position
+# - "function _get_window_undecorated_geometry" added $_WINDOW_BORDER_WIDTH
+#   (aka: "window border width") to the calculations
+# - "function _set_window_position" reordered the stdout & verbose reports to
+#   properly group window dimensions
 # 2019-11-05
 # - added the following functions even though their freedesktop definitions
 #   are quite vague. Sherlock Holmes to the rescue
@@ -189,9 +284,9 @@
 #   be thematic rather than random
 # 2019-11-04
 # - "function _set_window_position" added human-readable output for
-#   $_NET_WM_WINDOW_TYPE_ATOM: (aka: "window type:") to stdout mode
+#   $_NET_WM_WINDOW_TYPE_ATOM (aka: "window type") to stdout mode
 # - "function _set_window_position" added human-readable & raw output for
-#   $_NET_WM_STATE_ATOM: (aka: "window state:) to stdout & verbose modes
+#   $_NET_WM_STATE_ATOM (aka: "window state") to stdout & verbose modes
 # - "function _eko_ps" & "function _eko_ps_en" changed the following line:
 #  was: printf "%26s " "$1"
 #   is: printf "%29s " "$1"
@@ -442,8 +537,8 @@
 # - "function _binary_validate_setup" added for "sed", "wmctrl", "xprop",
 #   "xwininfo"
 # - "function _coordinates_user_specified" added some extra magic so "-1" is
-#   assumed if not specified. aka: "-c X," & "-c ,Y" are interpreted as
-#   "-c X,-1" & "-c -1,Y"
+#   assumed if not specified (aka: "-c X," & "-c ,Y" are interpreted as
+#   "-c X,-1" & "-c -1,Y")
 # - "function _parse_parameters" style changes & improvements
 # - changed how wmctrl detection/substitution is handled
 # - renamed option "-t, --test" to "-D, --dry-run" for uniformity
@@ -470,7 +565,7 @@
 # - somehow figure out how to get rid of the dependency on wmctrl
 # - add support to manipulate currently-in-focus (_NET_ACTIVE_WINDOW_WINDOW)
 #   window. (note to self: to do what with it, exactly?)
-# ^ have WM bindings to move the currently-in-focus window around the desktop?
+# ^ have WM bindings to manipulate the currently-in-focus window?
 
 # TODO:
 # - do something with this information? (specifically: 4294967295 handling)
@@ -1079,7 +1174,7 @@ function _coordinates_calculate()
       # - $((expression))
       _COORDINATE_Y=$((   $_NET_DESKTOP_GEOMETRY_H                        - $_WINDOW_DECORATED_Y - $_WORKAREA_BORDER_B       ))
     ;;
-    ( same ) # Same (unchanged) coordinates. aka: do not move
+    ( same ) # Same (unchanged) coordinates (aka: do not move)
       _COORDINATE_X=-1
       _COORDINATE_Y=-1
     ;;
@@ -1186,7 +1281,7 @@ function _coordinates_force()
       #_COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 0,0,0,-1,-1"
 
       # - on second thought, be slightly fancy
-      # - place window (using its raw X,Y dimensions. aka: ignore any
+      # - place window (using its raw X,Y dimensions - aka: ignore any
       #   decorations) with its top/left corner in overall desktop center (not
       #   workarea center). this way the titlebar can be grabbed, even
       #   oddballs like TigerVNC, with minimal calculations
@@ -1214,6 +1309,8 @@ function _coordinates_kludge()
   # _eko_iod
 
   # variables:
+  # _COORDINATE_X
+  # _COORDINATE_Y
   # _KLUDGE_X
   # _KLUDGE_Y
   # _NET_FRAME_EXTENTS_L
@@ -1230,8 +1327,9 @@ function _coordinates_kludge()
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function "
-  #   precedes: "function "
-  #   succeeds: "function "
+  # - succeeds: "function _coordinates_calculate"
+  # - succeeds: "function _coordinates_validate"
+  # - precedes: "function _set_window_position"
 
   # NET:
   # - _NET_WM_NAME, UTF8_STRING
@@ -1258,6 +1356,18 @@ function _coordinates_kludge()
     # - defaults
     _KLUDGE_X=0
     _KLUDGE_Y=0
+  fi
+
+  # - this is absolutely required for the TigerVNC client
+  # - this must be done after "function _coordinates_calculate" &
+  #   "function _coordinates_validate", but before setting up _COMMAND
+  #   in "function _set_window_position"
+  if [[ $_COORDINATE_X != -1 ]] \
+  && [[ $_COORDINATE_Y != -1 ]]
+  then
+    # - $((expression))
+    _COORDINATE_X=$(( $_COORDINATE_X + $_KLUDGE_X ))
+    _COORDINATE_Y=$(( $_COORDINATE_Y + $_KLUDGE_Y ))
   fi
 
   _eko_pv \$_KLUDGE_X: \""$_KLUDGE_X\""
@@ -1707,7 +1817,7 @@ function _get_net_active_window_window()
 
   # NOTE:
   # - do we need this? I don't think so. at least, not for now
-  # - or do we? when it comes time to move the window, use this window id if
+  # - or do we? when it comes time to move the window, use this Window ID if
   #   none was specified. result: currently focussed window will be processed
   # - interesting discovery: "_NET_ACTIVE_WINDOW(WINDOW): window id # 0x0" is
   #   returned in a desktop containing no _NET_WM_WINDOW_TYPE_NORMAL windows
@@ -3802,13 +3912,14 @@ function _get_window_undecorated_geometry()
   _eko_pv \$_WINDOW_UNDECORATED_Y: \""$_WINDOW_UNDECORATED_Y\""
   _eko_pv \$_WINDOW_BORDER_WIDTH: \""$_WINDOW_BORDER_WIDTH\""
 
-  # - calculate window's decorated geometry (undecorated + decorations)
+  # - calculate window's decorated geometry
+  # ^ (undecorated + L,R,T,B decorations + borders all around)
   # - doing so here is as good as anywhere else
 
   # - $((expression))
-  _WINDOW_DECORATED_X=$(( $_NET_FRAME_EXTENTS_L + $_WINDOW_UNDECORATED_X + $_NET_FRAME_EXTENTS_R ))
+  _WINDOW_DECORATED_X=$(( $_WINDOW_BORDER_WIDTH + $_NET_FRAME_EXTENTS_L + $_WINDOW_UNDECORATED_X + $_NET_FRAME_EXTENTS_R + $_WINDOW_BORDER_WIDTH ))
   # - $((expression))
-  _WINDOW_DECORATED_Y=$(( $_NET_FRAME_EXTENTS_T + $_WINDOW_UNDECORATED_Y + $_NET_FRAME_EXTENTS_B ))
+  _WINDOW_DECORATED_Y=$(( $_WINDOW_BORDER_WIDTH + $_NET_FRAME_EXTENTS_T + $_WINDOW_UNDECORATED_Y + $_NET_FRAME_EXTENTS_B + $_WINDOW_BORDER_WIDTH ))
 
   _eko_pv \$_WINDOW_DECORATED_X: \""$_WINDOW_DECORATED_X\""
   _eko_pv \$_WINDOW_DECORATED_Y: \""$_WINDOW_DECORATED_Y\""
@@ -4160,7 +4271,7 @@ function _parse_parameters()
   _get_net_client_list_window
 
   # NOTE:
-  # - "-f, --force" only needs the window id list. it does everything else on
+  # - "-f, --force" only needs the Window ID list. it does everything else on
   #   its own. crudely, but it doesn't need to be fancy
 
   if $_BOOLEAN_FORCE
@@ -4172,10 +4283,6 @@ function _parse_parameters()
     then
       # - validate Window ID if it was specified on the commandline
       _pass_fail_by_window_id
-
-      # - assign default value if unset
-      # - ${parameter:=word}
-      _OUTPUT_XPROP_ID=${_OUTPUT_XPROP_ID:=$(xprop -id $_OPTION_WINDOW_ID 2>&1)}
     else
       # - acquire Window ID via point'n'click
       # - requires no validation
@@ -4251,14 +4358,18 @@ function _parse_parameters()
       _get_net_wm_visible_name_utf8_string
     fi # $_BOOLEAN_UNUSED
 
-    # - succeeds: _get_net_wm_name_utf8_string
-    # - succeeds: _get_net_workarea_cardinal
-    _coordinates_kludge
-
     _coordinates_calculate
 
     _coordinates_validate
 
+    # - precedes: _set_window_position
+    # - succeeds: _get_net_wm_name_utf8_string
+    # - succeeds: _get_net_workarea_cardinal
+    # - succeeds: _coordinates_calculate
+    # - succeeds: _coordinates_validate
+    _coordinates_kludge
+
+    # - succeeds: _coordinates_kludge
     _set_window_position
   fi # $_BOOLEAN_FORCE
 
@@ -4278,6 +4389,7 @@ function _pass_fail_by_window_id()
   # variables:
   # _NET_CLIENT_LIST_WINDOW
   # _OPTION_WINDOW_ID
+  # _OUTPUT_XPROP_ID
 
   # binaries:
   # (none)
@@ -4307,10 +4419,24 @@ function _pass_fail_by_window_id()
   # - additional benefit of this approach is there's only one code path that
   #   would require future maintenance
 
-  if [[ ! " $_NET_CLIENT_LIST_WINDOW " =~ " $_OPTION_WINDOW_ID " ]]
+  # - 1st step: verify that it at least looks like a valid Window ID
+  if [[ ! $_OPTION_WINDOW_ID =~ ^0x[0-9a-f]+$ ]]
   then
-    _pass_fail_by_window_type
+    _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (invalid syntax) specified"
   fi
+
+  # - 2nd step: brute force. using $_OPTION_WINDOW_ID (keeping the result),
+  #   attempt to acquire _OUTPUT_XPROP_ID. directly test $_OUTPUT_XPROP_ID
+  _OUTPUT_XPROP_ID=$(xprop -id $_OPTION_WINDOW_ID 2>/dev/null)
+
+  # - "-z string" = true if the length of string is zero
+  if [[ -z $_OUTPUT_XPROP_ID ]]
+  then
+    _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (does not exist) specified"
+  fi
+
+  # - 3rd step: verify it by its type
+  _pass_fail_by_window_type
 
   _eko_iod "#- _pass_fail_by_window_id -#"
 }
@@ -4399,12 +4525,7 @@ function _pass_fail_by_window_type()
   # - the tests below are extremely verbose so future edits are simplified
   # - case in point: _NET_WM_WINDOW_TYPE_NORMAL
 
-  _OUTPUT_XPROP_ID=$(xprop -id $_OPTION_WINDOW_ID 2>&1)
-
-  # - "-n string" = true if the length of string is non-zero
-  if [[ -n $_OUTPUT_XPROP_ID ]]
-  then
-
+#+ marker edit +#
     # - "-n string" = true if the length of string is non-zero
     if [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d') ]]
     then
@@ -4486,10 +4607,7 @@ function _pass_fail_by_window_type()
       fi
 
     fi # $_BOOLEAN_PERMISSIVE
-
-  else
-    _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (does not exist) specified"
-  fi # $_OUTPUT_XPROP_ID
+#- marker edit -#
 
   _eko_iod "#- _pass_fail_by_window_type -#"
 }
@@ -4707,13 +4825,6 @@ function _set_window_position()
   # - experimented with "-b add,above". something's not going as expected so
   #   it's not used in $_COMMAND below. instead, do a second call to raise the
   #   window
-  if [[ $_COORDINATE_X != -1 ]] \
-  && [[ $_COORDINATE_Y != -1 ]]
-  then
-    # - $((expression))
-    _COORDINATE_X=$(( $_COORDINATE_X + $_KLUDGE_X ))
-    _COORDINATE_Y=$(( $_COORDINATE_Y + $_KLUDGE_Y ))
-  fi
   _COMMAND="$_BINARY_WMCTRL -i -r $_OPTION_WINDOW_ID -e 0,$_COORDINATE_X,$_COORDINATE_Y,-1,-1"
 
   _eko_ps "window id:" \""$_OPTION_WINDOW_ID\""
@@ -4728,10 +4839,10 @@ function _set_window_position()
   _eko_pv "window X,Y (undecorated):" \""$_WINDOW_UNDECORATED_X,$_WINDOW_UNDECORATED_Y\""
   _eko_ps "window decorations (L,R,T,B):" \""$_NET_FRAME_EXTENTS_L,$_NET_FRAME_EXTENTS_R,$_NET_FRAME_EXTENTS_T,$_NET_FRAME_EXTENTS_B\""
   _eko_pv "window decorations (L,R,T,B):" \""$_NET_FRAME_EXTENTS_L,$_NET_FRAME_EXTENTS_R,$_NET_FRAME_EXTENTS_T,$_NET_FRAME_EXTENTS_B\""
-  _eko_ps "window X,Y (decorated):" \""$_WINDOW_DECORATED_X,$_WINDOW_DECORATED_Y\""
-  _eko_pv "window X,Y (decorated):" \""$_WINDOW_DECORATED_X,$_WINDOW_DECORATED_Y\""
   _eko_ps "window border width:" \""$_WINDOW_BORDER_WIDTH\""
   _eko_pv "window border width:" \""$_WINDOW_BORDER_WIDTH\""
+  _eko_ps "window X,Y (decorated):" \""$_WINDOW_DECORATED_X,$_WINDOW_DECORATED_Y\""
+  _eko_pv "window X,Y (decorated):" \""$_WINDOW_DECORATED_X,$_WINDOW_DECORATED_Y\""
   _eko_ps "window maximized X,Y:" \""$_BOOLEAN_MAXIMIZED_X,$_BOOLEAN_MAXIMIZED_Y\""
   _eko_pv "window maximized X,Y:" \""$_BOOLEAN_MAXIMIZED_X,$_BOOLEAN_MAXIMIZED_Y\""
   if $_BOOLEAN_UNUSED
@@ -4844,7 +4955,7 @@ Mandatory parameter (Window Coordinates):
 Optional parameters:
   -D, --dry-run     Perform a trial run of the specified action
   -f, --force       Force windows to be least partially on the desktop
-  -id <Window ID>   Window ID (in hexadecimal format)
+  -id <Window ID>   Window ID (in lowercase hexadecimal format)
   -o, --overall     Use overall desktop X,Y for window placement calculations
   -p, --permissive  Permissive mode allows moving otherwise immovable windows
   -q, --quiet       Limit what's displayed to error messages & this help text
@@ -4898,7 +5009,7 @@ function _window_id_acquire()
   _eko_pv_en "select the window to move:" ""
 
   # - acquire Window ID via point'n'click
-  _OUTPUT_XWININFO_ID=$(xwininfo)
+  _OUTPUT_XWININFO_ID=$(xwininfo 2>&1)
 
   _eko_ps "" ""
   _eko_pv "" ""

@@ -4558,8 +4558,7 @@ function _set_window_position()
 
   # NOTE:
   # - pay close attention to the syntax used in the first case statement below
-  # - which form to use instead of ";;"? ";;&" or ";&"? they both seem to work
-  # - bash(1) is *extremely* cryptic on this subject
+  # - instead of ";;", use ";;&" below. do not use ";&"
 
   if $_BOOLEAN_STDOUT
   then

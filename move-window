@@ -199,12 +199,12 @@
 #-
 
 # 2019-11-07
-# - so apparently _NET_WM_STATE_STAYS_ON_TOP, ATOM exists (qt/kde specific?)
+# - so apparently _NET_WM_STATE_STAYS_ON_TOP, ATOM exists (qt specific)
 #   re: https://cep.xray.aps.anl.gov/software/qt4-x11-4.8.6-browser/d2/dfc/namespace_q_xcb_atom.html
 # - "function _get_net_wm_state_atom" added the following line:
-#  add: #   _NET_WM_STATE_STAYS_ON_TOP, ATOM (qt/kde specific?)
+#  add: #   _NET_WM_STATE_STAYS_ON_TOP, ATOM (qt specific)
 # - "function _set_window_position" added the following lines:
-#  add: #   _NET_WM_STATE_STAYS_ON_TOP, ATOM (qt/kde specific?)
+#  add: #   _NET_WM_STATE_STAYS_ON_TOP, ATOM (qt specific)
 #  add: ( *_NET_WM_STATE_STAYS_ON_TOP* )
 #  add:   _HUMAN_READABLE_WM_STATE_ATOM+=", stays on top"
 #  add: ;;&
@@ -3167,7 +3167,7 @@ function _get_net_wm_state_atom()
   #   _NET_WM_STATE_SHADED, ATOM
   #   _NET_WM_STATE_SKIP_PAGER, ATOM
   #   _NET_WM_STATE_SKIP_TASKBAR, ATOM
-  #   _NET_WM_STATE_STAYS_ON_TOP, ATOM (qt/kde specific?)
+  #   _NET_WM_STATE_STAYS_ON_TOP, ATOM (qt specific)
   #   _NET_WM_STATE_STICKY, ATOM
 
   _NET_WM_STATE_ATOM=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_STATE(ATOM) = /!d ; /\(.* = \|,\)/ s///g')
@@ -4698,7 +4698,7 @@ function _set_window_position()
     #   _NET_WM_STATE_SHADED, ATOM
     #   _NET_WM_STATE_SKIP_PAGER, ATOM
     #   _NET_WM_STATE_SKIP_TASKBAR, ATOM
-    #   _NET_WM_STATE_STAYS_ON_TOP, ATOM (qt/kde specific?)
+    #   _NET_WM_STATE_STAYS_ON_TOP, ATOM (qt specific)
     #   _NET_WM_STATE_STICKY, ATOM
 
     case $_NET_WM_STATE_ATOM in

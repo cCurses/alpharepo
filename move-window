@@ -173,7 +173,10 @@
 # - interesting discovery: "_NET_ACTIVE_WINDOW(WINDOW): window id # 0x0" is
 #   returned in a desktop containing no _NET_WM_WINDOW_TYPE_NORMAL windows
 #   (or if any _NET_WM_WINDOW_TYPE_NORMAL windows exist, they're minimized)
-# ^ is this behaviour specific to openbox? find out
+# > is this behaviour specific to openbox? find out
+# > regardless, the recent changes in "function _pass_fail_by_window_id"
+#   consider this as a "does not exist" error if "id 0x0" is specified on the
+#   commandline
 
 # TODO: (ASAP!)
 # - trace down & fix whatever's causing incorrect calculations with tint2
@@ -199,7 +202,10 @@
 #-
 
 # 2019-11-07
-# - so apparently _NET_WM_STATE_STAYS_ON_TOP, ATOM exists (qt specific)
+# - "function _pass_fail_by_window_type" converted the lengthy & complex
+#   if/then/elif/then/fi construct to a much simpler case/esac construct
+# - "function _pass_fail_by_window_type_old" retained as a reference
+# - so apparently "_NET_WM_STATE_STAYS_ON_TOP, ATOM" exists (qt specific)
 #   re: https://cep.xray.aps.anl.gov/software/qt4-x11-4.8.6-browser/d2/dfc/namespace_q_xcb_atom.html
 # - "function _get_net_wm_state_atom" added the following line:
 #  add: #   _NET_WM_STATE_STAYS_ON_TOP, ATOM (qt specific)
@@ -391,8 +397,8 @@
 # - "function _pass_fail_by_window_id" when a given window's id fails, call
 #   "function _pass_fail_by_window_type" to get a descriptive error message
 # - "function _pass_fail_by_window_type" improved tests for kdialog's 2
-#   seemingly random modes of creating popups. both modes are now properly
-#   trapped
+#   seemingly random modes of creating notification/utility popups. both modes
+#   are now properly trapped
 # - removed all comments in #+ marker sed syntax +# / #- marker sed syntax -#
 # 2019-10-20
 # - "function _eko_pv" & "function _eko_pv_en" changed the following line:
@@ -592,13 +598,13 @@
 #   "_NET_WM_DESKTOP(CARDINAL) = 5"
 #   "_NET_WM_DESKTOP(CARDINAL) = 6"
 #   "_NET_WM_DESKTOP(CARDINAL) = 7"
-# - gkrellm (not in the dock), kdialog (in its random "top/right of display"
+# - gkrellm (not in the dock), kdialog (in its random "upper/right of display"
 #   mode), notify-send, tint2, wmagnify (sticky), xfce4-panel
 #   "_NET_WM_DESKTOP(CARDINAL) = 4294967295"
 # - wmagnify (normal), xmessage
 #   "_NET_WM_DESKTOP(CARDINAL) = 0"
-# ^ kdialog (in its random "center of display" mode) has absolutely no mention
-#   of "_NET_WM_DESKTOP(CARDINAL)" in its report
+# ^ kdialog (in its random "middle/center of display" mode) has absolutely no
+#   mention of "_NET_WM_DESKTOP(CARDINAL)" in its report
 
 # NOTE:
 # - I would have expected to see "_NET_WM_STATE(ATOM) = _NET_WM_STATE_STICKY"
@@ -1832,7 +1838,10 @@ function _get_net_active_window_window()
   # - interesting discovery: "_NET_ACTIVE_WINDOW(WINDOW): window id # 0x0" is
   #   returned in a desktop containing no _NET_WM_WINDOW_TYPE_NORMAL windows
   #   (or if any _NET_WM_WINDOW_TYPE_NORMAL windows exist, they're minimized)
-  # ^ is this behaviour specific to openbox? find out
+  # > is this behaviour specific to openbox? find out
+  # > regardless, the recent changes in "function _pass_fail_by_window_id"
+  #   consider this as a "does not exist" error if "id 0x0" is specified on
+  #   the commandline
 
   _NET_ACTIVE_WINDOW_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_ACTIVE_WINDOW(WINDOW): window id # /!d ; /.* # / s///g')
 
@@ -4444,9 +4453,9 @@ function _pass_fail_by_window_id()
   _eko_iod "#- _pass_fail_by_window_id -#"
 }
 
-function _pass_fail_by_window_type()
+function _pass_fail_by_window_type_old()
 {
-  _eko_iod "#+ _pass_fail_by_window_type +#"
+  _eko_iod "#+ _pass_fail_by_window_type_old +#"
 
   # functions:
   # _eko_iod
@@ -4459,7 +4468,6 @@ function _pass_fail_by_window_type()
 
   # binaries:
   # sed
-  # xprop
 
   # builtins:
   # echo
@@ -4511,15 +4519,15 @@ function _pass_fail_by_window_type()
   #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_MENU.*"
   # - don't trap this one. it can be moved
   #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_NORMAL.*"
-  # - notify-send popup
-  # - kdialog popup (in its random "top/right of display" mode)
+  # - notify-send notification popup
+  # - kdialog notification popup (in its random "upper/right of display" mode)
   #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_NOTIFICATION.*"
   # - not (yet?) encountered in openbox
   #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_POPUP_MENU.*"
   #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_SPLASH.*"
   #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_TOOLBAR.*"
   #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_TOOLTIP.*"
-  # - kdialog popup (in its random "center of display" mode)
+  # - kdialog utility popup (in its random "middle/center of display" mode)
   #   "^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_UTILITY.*"
   # - xmessage popup
   # ^ untested here simply because it's a normal window
@@ -4527,6 +4535,9 @@ function _pass_fail_by_window_type()
   # NOTE:
   # - the tests below are extremely verbose so future edits are simplified
   # - case in point: _NET_WM_WINDOW_TYPE_NORMAL
+
+  # NOTE:
+  # - the root window is a special case. under no circumstances can it be moved
 
   # - "-n string" = true if the length of string is non-zero
   if [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d') ]]
@@ -4606,6 +4617,170 @@ function _pass_fail_by_window_type()
     elif [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = .*_NET_WM_WINDOW_TYPE_UTILITY.*/!d') ]]
     then
       _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (utility) specified"
+    fi
+
+  fi # $_BOOLEAN_PERMISSIVE
+
+  _eko_iod "#- _pass_fail_by_window_type_old -#"
+}
+
+function _pass_fail_by_window_type()
+{
+  _eko_iod "#+ _pass_fail_by_window_type +#"
+
+  # functions:
+  # _eko_iod
+  # _show_error
+
+  # variables:
+  # _BOOLEAN_PERMISSIVE
+  # _OPTION_WINDOW_ID
+  # _OUTPUT_XPROP_ID
+
+  # binaries:
+  # sed
+
+  # builtins:
+  # echo
+
+  # NOTE:
+  # - required
+  #     parent: "function _parse_parameters"
+  #     parent: "function _pass_fail_by_window_id"
+  #      child: "function "
+  #   precedes: "function "
+  #   succeeds: "function "
+
+  # NET:
+  # - _NET_WM_WINDOW_TYPE, ATOM[]/32
+
+  # (sorted listing from the original source)
+  #   _NET_WM_WINDOW_TYPE_COMBO, ATOM
+  #   _NET_WM_WINDOW_TYPE_DESKTOP, ATOM
+  #   _NET_WM_WINDOW_TYPE_DIALOG, ATOM
+  #   _NET_WM_WINDOW_TYPE_DND, ATOM
+  #   _NET_WM_WINDOW_TYPE_DOCK, ATOM
+  #   _NET_WM_WINDOW_TYPE_DROPDOWN_MENU, ATOM
+  #   _NET_WM_WINDOW_TYPE_MENU, ATOM
+  #   _NET_WM_WINDOW_TYPE_NORMAL, ATOM
+  #   _NET_WM_WINDOW_TYPE_NOTIFICATION, ATOM
+  #   _NET_WM_WINDOW_TYPE_POPUP_MENU, ATOM
+  #   _NET_WM_WINDOW_TYPE_SPLASH, ATOM
+  #   _NET_WM_WINDOW_TYPE_TOOLBAR, ATOM
+  #   _NET_WM_WINDOW_TYPE_TOOLTIP, ATOM
+  #   _NET_WM_WINDOW_TYPE_UTILITY, ATOM
+
+  # NOTE:
+  # - Openbox does not let windows change this hint after mapping.
+
+  # NOTE:
+  # - the root window itself
+  #   "^_NET_CLIENT_LIST(WINDOW): window id # "
+  # - not (yet?) encountered in openbox
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_COMBO*"
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_DESKTOP*"
+  # - quasselclient dialog windows
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_DIALOG*"
+  # - not (yet?) encountered in openbox
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_DND*"
+  # - blackbox/fluxbox/openbox dock, tint2 panel/taskbar, likely others
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_DOCK*"
+  # - not (yet?) encountered in openbox
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_DROPDOWN_MENU*"
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_MENU*"
+  # - don't trap this one. it can be moved
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_NORMAL*"
+  # - notify-send notification popup
+  # - kdialog notification popup (in its random "upper/right of display" mode)
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_NOTIFICATION*"
+  # - not (yet?) encountered in openbox
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_POPUP_MENU*"
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_SPLASH*"
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_TOOLBAR*"
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_TOOLTIP*"
+  # - kdialog utility popup (in its random "middle/center of display" mode)
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_UTILITY*"
+  # - xmessage popup
+  # ^ untested here simply because it's a normal window
+
+  # NOTE:
+  # - the root window is a special case. under no circumstances can it be moved
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d') ]]
+  then
+    _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (root window) specified"
+  fi
+
+  if ! $_BOOLEAN_PERMISSIVE
+  then
+
+    # NOTE:
+    # - pay close attention to the syntax used in the case statement below
+    # - instead of ";;", use ";;&" below. do not use ";&"
+
+    # NOTE:
+    # - any single match would be an error. continue through the list to match
+    #   any & all possibilities
+
+    # - be explicit for clarity
+    unset _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM
+
+    case $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = /!d ; /\(.* = \|,\)/ s///g') in
+      ( *_NET_WM_WINDOW_TYPE_COMBO* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", combo"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_DESKTOP* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", desktop"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_DIALOG* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", dialog"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_DND* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", dnd"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_DOCK* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", dock"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_DROPDOWN_MENU* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", dropdown menu"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_MENU* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", menu"
+      ;;&
+#      ( *_NET_WM_WINDOW_TYPE_NORMAL* )
+#        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", normal"
+#      ;;&
+      ( *_NET_WM_WINDOW_TYPE_NOTIFICATION* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", notification"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_POPUP_MENU* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", popup menu"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_SPLASH* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", splash"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_TOOLBAR* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", toolbar"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_TOOLTIP* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", tooltip"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_UTILITY* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", utility"
+      ;;&
+    esac
+
+    # - tidy up
+    if [[ ${_HUMAN_READABLE_WM_WINDOW_TYPE_ATOM:0:2} == ", " ]]
+    then
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=${_HUMAN_READABLE_WM_WINDOW_TYPE_ATOM:2}
+    fi
+
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $_HUMAN_READABLE_WM_WINDOW_TYPE_ATOM ]]
+    then
+      _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" ($_HUMAN_READABLE_WM_WINDOW_TYPE_ATOM) specified"
     fi
 
   fi # $_BOOLEAN_PERMISSIVE
@@ -4750,7 +4925,7 @@ function _set_window_position()
         then
           _HUMAN_READABLE_WM_STATE_ATOM=undefined
         fi
-      ;;
+      ;;&
     esac # $_NET_WM_STATE_ATOM
 
     # - tidy up
@@ -4827,7 +5002,7 @@ function _set_window_position()
         then
           _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=undefined
         fi
-      ;;
+      ;;&
     esac # $_NET_WM_WINDOW_TYPE_ATOM
 
     # - tidy up
@@ -5163,7 +5338,7 @@ exit 0
 # "_NET_WM_VISIBLE_NAME(UTF8_STRING) = "gkrellm""
 # "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NORMAL"
 
-# - kdialog (in its random "center of display" mode)
+# - kdialog (in its random "middle/center of display" mode)
 # "_NET_STARTUP_ID(UTF8_STRING) = "0""
 # "_NET_WM_ICON(CARDINAL) = 	Icon (16 x 16):"
 # "_NET_WM_PID(CARDINAL) = 17149"
@@ -5171,7 +5346,7 @@ exit 0
 # "_NET_WM_SYNC_REQUEST_COUNTER(CARDINAL) = 88080407"
 # "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_UTILITY, _KDE_NET_WM_WINDOW_TYPE_OVERRIDE, _NET_WM_WINDOW_TYPE_NORMAL"
 
-# - kdialog (in its random "top/right of display" mode)
+# - kdialog (in its random "upper/right of display" mode)
 # "_NET_WM_DESKTOP(CARDINAL) = 4294967295"
 # "_NET_WM_ICON_NAME(UTF8_STRING) = "xfce4-notifyd""
 # "_NET_WM_NAME(UTF8_STRING) = "xfce4-notifyd""
@@ -5306,10 +5481,10 @@ exit 0
 # - gkrellm (not in the dock)
 # "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NORMAL"
 
-# - kdialog (in its random "center of display" mode)
+# - kdialog (in its random "middle/center of display" mode)
 # "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_UTILITY, _KDE_NET_WM_WINDOW_TYPE_OVERRIDE, _NET_WM_WINDOW_TYPE_NORMAL"
 
-# - kdialog (in its random "top/right of display" mode)
+# - kdialog (in its random "upper/right of display" mode)
 # "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NOTIFICATION"
 
 # - notify-send

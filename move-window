@@ -202,6 +202,9 @@
 #-
 
 # 2019-11-07
+# - "function _pass_fail_by_window_id" deleted the following lines:
+#  del: # - 3rd step: verify it by its type
+#  del: _pass_fail_by_window_type
 # - "function _pass_fail_by_window_type" converted the lengthy & complex
 #   if/then/elif/then/fi construct to a much simpler case/esac construct
 # - "function _pass_fail_by_window_type_old" retained as a reference
@@ -237,6 +240,8 @@
 #  was:   _pass_fail_by_window_type
 #  was: fi
 #   is: # - 1st step: verify that it at least looks like a valid Window ID
+#   is: # - this is technically unnecessary as the test below catches everything
+#   is: #   (it doesn't hurt to provide some extra information, though)
 #   is: if [[ ! $_OPTION_WINDOW_ID =~ ^0x[0-9a-f]+$ ]]
 #   is: then
 #   is:   _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (invalid syntax) specified"
@@ -336,8 +341,8 @@
 #  add:   _NET_FRAME_EXTENTS_CARDINAL="0 0 0 0"
 #  add: fi
 # - "function _pass_fail_by_window_type" added $_BOOLEAN_PERMISSIVE test
-# - added "-p, --permissive" option to allow moving otherwise unmoveable
-#   windows
+# - added "-p, --permissive" option to allow moving (or at least viewing)
+#   otherwise unmoveable windows
 # - rearranged calls to the following functions to be displayed only when
 #   "-u, --unused" is specified:
 #   "function _get_net_active_window_window"
@@ -4432,6 +4437,8 @@ function _pass_fail_by_window_id()
   #   would require future maintenance
 
   # - 1st step: verify that it at least looks like a valid Window ID
+  # - this is technically unnecessary as the test below catches everything
+  #   (it doesn't hurt to provide some extra information, though)
   if [[ ! $_OPTION_WINDOW_ID =~ ^0x[0-9a-f]+$ ]]
   then
     _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (invalid syntax) specified"
@@ -4446,9 +4453,6 @@ function _pass_fail_by_window_id()
   then
     _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (does not exist) specified"
   fi
-
-  # - 3rd step: verify it by its type
-  _pass_fail_by_window_type
 
   _eko_iod "#- _pass_fail_by_window_id -#"
 }
@@ -4634,6 +4638,7 @@ function _pass_fail_by_window_type()
 
   # variables:
   # _BOOLEAN_PERMISSIVE
+  # _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM
   # _OPTION_WINDOW_ID
   # _OUTPUT_XPROP_ID
 

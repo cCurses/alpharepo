@@ -892,7 +892,7 @@ function _binary_validate_setup()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -1049,7 +1049,7 @@ function _builtin_validate_setup()
   # echo
   # read
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -1120,7 +1120,7 @@ function _coordinates_calculate()
   # builtins:
   # (none)
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function _coordinates_user_specified"
@@ -1236,7 +1236,7 @@ function _coordinates_force()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function _get_net_desktop_geometry_cardinal"
@@ -1344,7 +1344,7 @@ function _coordinates_kludge()
   # builtins:
   # (none)
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -1416,7 +1416,7 @@ function _coordinates_user_specified()
   # builtins:
   # (none)
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -1470,7 +1470,7 @@ function _coordinates_validate()
   # builtins:
   # (none)
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -1598,7 +1598,7 @@ function _eko_iod()
   # echo
   # printf
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function "
   #      child: "function "
@@ -1640,7 +1640,7 @@ function _eko_ps()
   # echo
   # printf
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function "
   #      child: "function "
@@ -1686,7 +1686,7 @@ function _eko_ps_en()
   # echo
   # printf
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function "
   #      child: "function "
@@ -1732,7 +1732,7 @@ function _eko_pv()
   # echo
   # printf
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function "
   #      child: "function "
@@ -1778,7 +1778,7 @@ function _eko_pv_en()
   # echo
   # printf
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function "
   #      child: "function "
@@ -1823,7 +1823,7 @@ function _get_net_active_window_window()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -1880,7 +1880,7 @@ function _get_net_client_list_stacking_window()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -1927,7 +1927,7 @@ function _get_net_client_list_window()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -1974,7 +1974,7 @@ function _get_net_current_desktop_cardinal()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -2029,7 +2029,7 @@ function _get_net_desktop_geometry_cardinal()
   # echo
   # read
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _coordinates_force"
   #      child: "function "
@@ -2094,7 +2094,7 @@ function _get_net_desktop_layout_cardinal()
   # echo
   # read
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -2161,7 +2161,7 @@ function _get_net_desktop_names_utf8_string()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -2290,7 +2290,7 @@ function _get_net_desktop_viewport_cardinal()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function _sub_function"
@@ -2412,7 +2412,7 @@ function _get_net_frame_extents_cardinal()
   # echo
   # read
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -2480,7 +2480,7 @@ function _get_net_number_of_desktops_cardinal()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -2528,7 +2528,7 @@ function _get_net_showing_desktop_cardinal()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -2573,7 +2573,7 @@ function _get_net_supported_atom()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -2620,7 +2620,7 @@ function _get_net_supporting_wm_check_window()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -2665,8 +2665,8 @@ function _get_net_virtual_roots_window()
   # builtins:
   # echo
 
-  # NOTE:
-  # - required
+  # ORDER:
+  # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
   #   precedes: "function "
@@ -2714,7 +2714,7 @@ function _get_net_wm_allowed_actions_atom()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -2787,7 +2787,7 @@ function _get_net_wm_bypass_compositor_cardinal()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -2833,7 +2833,7 @@ function _get_net_wm_desktop_cardinal()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -2887,7 +2887,7 @@ function _get_net_wm_icon_geometry_cardinal()
   # echo
   # read
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -2948,7 +2948,7 @@ function _get_net_wm_icon_name_utf8_string()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -2993,7 +2993,7 @@ function _get_net_wm_name_utf8_string()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -3047,7 +3047,7 @@ function _get_net_wm_opaque_region_cardinal()
   # echo
   # read
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -3108,7 +3108,7 @@ function _get_net_wm_pid_cardinal()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -3158,7 +3158,7 @@ function _get_net_wm_state_atom()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -3242,7 +3242,7 @@ function _get_net_wm_strut_cardinal()
   # echo
   # read
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -3317,7 +3317,7 @@ function _get_net_wm_strut_partial_cardinal()
   # echo
   # read
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -3407,7 +3407,7 @@ function _get_net_wm_sync_request_counter_cardinal()
   # echo
   # read
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -3454,7 +3454,7 @@ function _get_net_wm_user_time_cardinal()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -3499,7 +3499,7 @@ function _get_net_wm_user_time_window_window()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -3544,7 +3544,7 @@ function _get_net_wm_visible_icon_name_utf8_string()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -3589,7 +3589,7 @@ function _get_net_wm_visible_name_utf8_string()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - unused
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -3634,7 +3634,7 @@ function _get_net_wm_window_type_atom()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - required
   # ^ "required" is a bit of a misnomer. this particular *function* is not
   #   required, but the the *information* itself is required. the tests in
@@ -3642,7 +3642,7 @@ function _get_net_wm_window_type_atom()
   #   information
   #     parent: "function _parse_parameters"
   #      child: "function "
-  #   precedes: "function "
+  #   precedes: "function _pass_fail_by_window_type"
   #   succeeds: "function "
 
   # NET:
@@ -3702,7 +3702,7 @@ function _get_net_workarea_cardinal()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function _sub_function"
@@ -3897,7 +3897,7 @@ function _get_window_undecorated_geometry()
   # echo
   # read
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -4030,7 +4030,7 @@ function _parse_parameters()
   # builtins:
   # (none)
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "commandline"
   #      child: "everything"
@@ -4307,10 +4307,12 @@ function _parse_parameters()
     if [[ -n $_OPTION_WINDOW_ID ]]
     then
       # - validate Window ID if it was specified on the commandline
+      # - precedes: _pass_fail_by_window_type
       _pass_fail_by_window_id
     else
       # - acquire Window ID via point'n'click
       # - requires no validation
+      # - precedes: _pass_fail_by_window_type
       _window_id_acquire
     fi
 
@@ -4322,6 +4324,7 @@ function _parse_parameters()
     _get_net_wm_window_type_atom
 
     # - pass/fail by window type
+    # - succeeds: _pass_fail_by_window_id
     _pass_fail_by_window_type
 
     # - precedes: _get_net_desktop_names_utf8_string
@@ -4409,7 +4412,6 @@ function _pass_fail_by_window_id()
 
   # functions:
   # _eko_iod
-  # _pass_fail_by_window_type
   # _show_error
 
   # variables:
@@ -4422,12 +4424,12 @@ function _pass_fail_by_window_id()
   # builtins:
   # (none)
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
-  #      child: "function _pass_fail_by_window_type"
-  #   precedes: "function "
-  #   succeeds: "function "
+  #      child: "function "
+  #   precedes: "function _pass_fail_by_window_type"
+  #   succeeds: "function _get_net_client_list_window"
 
   # NOTE:
   # - "function _pass_fail_by_window_type" already does the heavy lifting in
@@ -4476,13 +4478,12 @@ function _pass_fail_by_window_type_old()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
-  #     parent: "function _pass_fail_by_window_id"
   #      child: "function "
   #   precedes: "function "
-  #   succeeds: "function "
+  #   succeeds: "function _pass_fail_by_window_id"
 
   # NET:
   # - _NET_WM_WINDOW_TYPE, ATOM[]/32
@@ -4648,13 +4649,12 @@ function _pass_fail_by_window_type()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
-  #     parent: "function _pass_fail_by_window_id"
   #      child: "function "
   #   precedes: "function "
-  #   succeeds: "function "
+  #   succeeds: "function _pass_fail_by_window_id"
 
   # NET:
   # - _NET_WM_WINDOW_TYPE, ATOM[]/32
@@ -4844,7 +4844,7 @@ function _set_window_position()
   # builtins:
   # (none)
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function "
@@ -5097,7 +5097,7 @@ function _show_error()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _binary_validate_setup"
   #     parent: "function _builtin_validate_setup"
@@ -5133,7 +5133,7 @@ function _show_help()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _coordinates_calculate"
   #     parent: "function _parse_parameters"
@@ -5196,7 +5196,7 @@ function _window_id_acquire()
   # builtins:
   # echo
 
-  # NOTE:
+  # ORDER:
   # - required
   #     parent: "function _parse_parameters"
   #      child: "function "

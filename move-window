@@ -156,13 +156,14 @@
 #   order is bottom-to-top. this will gradually be fixed when time permits
 
 # (done)
-# - tagged various functions as:
-#   "#   unused"
-#   "#   required"
-#   "#     parent: "function <function name>""
-#   "#      child: "function <function name>""
-#   "#   succeeds: "function <function name>""
-#   "#   precedes: "function <function name>""
+# - tagged all functions with:
+#   "# precedence:"
+#   "# unused"
+#   "# required"
+#   "#   parent: "function <function name>""
+#   "#    child: "function <function name>""
+#   "# succeeds: "function <function name>""
+#   "# precedes: "function <function name>""
 # ^ I may quietly remove these at some point. they've been added simply to
 #   help me figure out precisely what is unused &/or required & in what order
 
@@ -272,21 +273,21 @@
 # > "function _parse_parameters" from here
 # > "function _coordinates_kludge" to here
 # - "function _parse_parameters" changed the calling order of some functions:
-#  was: #   succeeds: _get_net_wm_name_utf8_string
-#  was: #   succeeds: _get_net_workarea_cardinal
+#  was: # succeeds: _get_net_wm_name_utf8_string
+#  was: # succeeds: _get_net_workarea_cardinal
 #  was: _coordinates_kludge
 #  was: _coordinates_calculate
 #  was: _coordinates_validate
 #  was: _set_window_position
 #   is: _coordinates_calculate
 #   is: _coordinates_validate
-#   is: #   precedes: _set_window_position
-#   is: #   succeeds: _get_net_wm_name_utf8_string
-#   is: #   succeeds: _get_net_workarea_cardinal
-#   is: #   succeeds: _coordinates_calculate
-#   is: #   succeeds: _coordinates_validate
+#   is: # precedes: _set_window_position
+#   is: # succeeds: _get_net_wm_name_utf8_string
+#   is: # succeeds: _get_net_workarea_cardinal
+#   is: # succeeds: _coordinates_calculate
+#   is: # succeeds: _coordinates_validate
 #   is: _coordinates_kludge
-#   is: #   succeeds: _coordinates_kludge
+#   is: # succeeds: _coordinates_kludge
 #   is: _set_window_position
 # - "function _get_window_undecorated_geometry" added $_WINDOW_BORDER_WIDTH
 #   (aka: "window border width") to the calculations
@@ -893,11 +894,11 @@ function _binary_validate_setup()
   # echo
 
   # precedence:
-  #   required
-  #    - child: "function _show_error"
-  #   precedes: "function _coordinates_force"
-  #   precedes: "function _parse_parameters"
-  #   precedes: "function _set_window_position"
+  # required
+  #    child: "function _show_error"
+  # precedes: "function _coordinates_force"
+  # precedes: "function _parse_parameters"
+  # precedes: "function _set_window_position"
 
   # NOTE:
   # - rather than test a given binary's version in hopes of figuring out which
@@ -1050,18 +1051,18 @@ function _builtin_validate_setup()
   # read
 
   # precedence:
-  #   required
-  #    - child: "function _show_error"
-  #   precedes: "function _get_net_desktop_geometry_cardinal"
-  #   precedes: "function _get_net_desktop_layout_cardinal"
-  #   precedes: "function _get_net_desktop_viewport_cardinal"
-  #   precedes: "function _get_net_frame_extents_cardinal"
-  #   precedes: "function _get_net_wm_icon_geometry_cardinal"
-  #   precedes: "function _get_net_wm_opaque_region_cardinal"
-  #   precedes: "function _get_net_wm_strut_cardinal"
-  #   precedes: "function _get_net_wm_strut_partial_cardinal"
-  #   precedes: "function _get_net_workarea_cardinal"
-  #   precedes: "function _get_window_undecorated_geometry"
+  # required
+  #    child: "function _show_error"
+  # precedes: "function _get_net_desktop_geometry_cardinal"
+  # precedes: "function _get_net_desktop_layout_cardinal"
+  # precedes: "function _get_net_desktop_viewport_cardinal"
+  # precedes: "function _get_net_frame_extents_cardinal"
+  # precedes: "function _get_net_wm_icon_geometry_cardinal"
+  # precedes: "function _get_net_wm_opaque_region_cardinal"
+  # precedes: "function _get_net_wm_strut_cardinal"
+  # precedes: "function _get_net_wm_strut_partial_cardinal"
+  # precedes: "function _get_net_workarea_cardinal"
+  # precedes: "function _get_window_undecorated_geometry"
 
   # NOTE:
   # - rather than test a given builtin's version (or more accurately, test a
@@ -1128,11 +1129,11 @@ function _coordinates_calculate()
   # (none)
 
   # precedence:
-  #   required
-  #      child: "function _coordinates_user_specified"
-  #      child: "function _show_help"
-  #   succeeds: "function _get_window_undecorated_geometry"
-  #   precedes: "function _coordinates_validate"
+  # required
+  #    child: "function _coordinates_user_specified"
+  #    child: "function _show_help"
+  # succeeds: "function _get_window_undecorated_geometry"
+  # precedes: "function _coordinates_validate"
 
   # NET:
   # - _NET_DESKTOP_GEOMETRY width, height, CARDINAL[2]/32
@@ -1245,9 +1246,9 @@ function _coordinates_force()
   # echo
 
   # precedence:
-  #   required
-#1#      child: "function _get_net_client_list_window" (only used here)
-#1#      child: "function _get_net_desktop_geometry_cardinal"
+  # required
+#1#    child: "function _get_net_client_list_window" (only used here)
+#1#    child: "function _get_net_desktop_geometry_cardinal"
 
   # NET:
   # - _NET_CLIENT_LIST, WINDOW[]/32
@@ -1352,10 +1353,10 @@ function _coordinates_kludge()
   # (none)
 
   # precedence:
-  #   required
-  #   succeeds: "function _coordinates_validate"
-#4#   succeeds: "function _get_net_wm_name_utf8_string"
-  #   precedes: "function _set_window_position"
+  # required
+  # succeeds: "function _coordinates_validate"
+#4# succeeds: "function _get_net_wm_name_utf8_string"
+  # precedes: "function _set_window_position"
 
   # NET:
   # - _NET_WM_NAME, UTF8_STRING
@@ -1421,8 +1422,8 @@ function _coordinates_user_specified()
   # (none)
 
   # precedence:
-  #   required
-  #     parent: "function _coordinates_calculate"
+  # required
+  #   parent: "function _coordinates_calculate"
 
   # - ${parameter/pattern/string}
   _COORDINATE_X=${_OPTION_WINDOW_COORDINATES/,*/}
@@ -1472,10 +1473,10 @@ function _coordinates_validate()
   # (none)
 
   # precedence:
-  #   required
-  #      child: "function _show_error"
-  #   succeeds: "function _coordinates_calculate"
-  #   precedes: "function _coordinates_kludge"
+  # required
+  #    child: "function _show_error"
+  # succeeds: "function _coordinates_calculate"
+  # precedes: "function _coordinates_kludge"
 
   # NET:
   # - _NET_DESKTOP_GEOMETRY width, height, CARDINAL[2]/32
@@ -1599,7 +1600,7 @@ function _eko_iod()
   # printf
 
   # precedence:
-  #   required
+  # required
 
   # NOTE:
   # - why "$(( ${#FUNCNAME[@]} - 3 ))"? to account for main, parent, current
@@ -1637,7 +1638,7 @@ function _eko_ps()
   # printf
 
   # precedence:
-  #   required
+  # required
 
   # NOTE:
   # - why "%29s "? to simplify setting column width in stdout reports. a
@@ -1679,7 +1680,7 @@ function _eko_ps_en()
   # printf
 
   # precedence:
-  #   required
+  # required
 
   # NOTE:
   # - why "%29s "? to simplify setting column width in stdout reports. a
@@ -1721,7 +1722,7 @@ function _eko_pv()
   # printf
 
   # precedence:
-  #   required
+  # required
 
   # NOTE:
   # - why "%39s "? to simplify setting column width in verbose reports. a
@@ -1763,7 +1764,7 @@ function _eko_pv_en()
   # printf
 
   # precedence:
-  #   required
+  # required
 
   # NOTE:
   # - why "%39s "? to simplify setting column width in verbose reports. a
@@ -1804,7 +1805,7 @@ function _get_net_active_window_window()
   # echo
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_ACTIVE_WINDOW, WINDOW/32
@@ -1857,7 +1858,7 @@ function _get_net_client_list_stacking_window()
   # echo
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_CLIENT_LIST_STACKING, WINDOW[]/32
@@ -1900,8 +1901,8 @@ function _get_net_client_list_window()
   # echo
 
   # precedence:
-  #   required
-  #     parent: "function _coordinates_force"
+  # required
+  #   parent: "function _coordinates_force"
 
   # NET:
   # - _NET_CLIENT_LIST, WINDOW[]/32
@@ -1944,12 +1945,12 @@ function _get_net_current_desktop_cardinal()
   # echo
 
   # precedence:
-  #   required
-  #   succeeds: "function _pass_fail_by_window_type"
-#2#   precedes: "function _get_net_desktop_geometry_cardinal" (required)
-  #   precedes: "function _get_net_desktop_names_utf8_string" (unused)
-  #   precedes: "function _get_net_desktop_viewport_cardinal" (unused)
-#2#   precedes: "function _get_net_workarea_cardinal" (required)
+  # required
+  # succeeds: "function _pass_fail_by_window_type"
+#2# precedes: "function _get_net_desktop_geometry_cardinal" (required)
+  # precedes: "function _get_net_desktop_names_utf8_string" (unused)
+  # precedes: "function _get_net_desktop_viewport_cardinal" (unused)
+#2# precedes: "function _get_net_workarea_cardinal" (required)
 
   # NET:
   # - _NET_CURRENT_DESKTOP desktop, CARDINAL/32
@@ -1998,10 +1999,10 @@ function _get_net_desktop_geometry_cardinal()
   # read
 
   # precedence:
-  #   required
-#1#     parent: "function _coordinates_force"
-#2#   succeeds: "function _get_net_current_desktop_cardinal"
-#2#   precedes: "function _get_net_workarea_cardinal"
+  # required
+#1#   parent: "function _coordinates_force"
+#2# succeeds: "function _get_net_current_desktop_cardinal"
+#2# precedes: "function _get_net_workarea_cardinal"
 
   # NET:
   # - _NET_DESKTOP_GEOMETRY width, height, CARDINAL[2]/32
@@ -2062,7 +2063,7 @@ function _get_net_desktop_layout_cardinal()
   # read
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_DESKTOP_LAYOUT, orientation, columns, rows, starting_corner CARDINAL[4]/32
@@ -2125,8 +2126,8 @@ function _get_net_desktop_names_utf8_string()
   # echo
 
   # precedence:
-  #   unused
-  #   succeeds: "function _get_net_current_desktop_cardinal"
+  # unused
+  # succeeds: "function _get_net_current_desktop_cardinal"
 
   # NET:
   # - _NET_DESKTOP_NAMES, UTF8_STRING[]
@@ -2251,9 +2252,9 @@ function _get_net_desktop_viewport_cardinal()
   # echo
 
   # precedence:
-  #   unused
-  #      child: "function _sub_function"
-  #   succeeds: "function _get_net_current_desktop_cardinal"
+  # unused
+  #    child: "function _sub_function"
+  # succeeds: "function _get_net_current_desktop_cardinal"
 
   # NET:
   # - _NET_DESKTOP_VIEWPORT x, y, CARDINAL[][2]/32
@@ -2306,8 +2307,8 @@ function _get_net_desktop_viewport_cardinal()
     # read
 
     # precedence:
-    #   unused
-    #     parent: "function _get_net_desktop_viewport_cardinal"
+    # unused
+    #   parent: "function _get_net_desktop_viewport_cardinal"
 
     # NET:
     # - _NET_CURRENT_DESKTOP desktop, CARDINAL/32
@@ -2375,10 +2376,10 @@ function _get_net_frame_extents_cardinal()
   # read
 
   # precedence:
-  #   required
-  #   succeeds: "function _get_net_workarea_cardinal"
-  #   precedes: "function _get_net_wm_state_atom"
-  #   precedes: "function _get_window_undecorated_geometry"
+  # required
+  # succeeds: "function _get_net_workarea_cardinal"
+  # precedes: "function _get_net_wm_state_atom"
+  # precedes: "function _get_window_undecorated_geometry"
 
   # NET:
   # - _NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32
@@ -2442,7 +2443,7 @@ function _get_net_number_of_desktops_cardinal()
   # echo
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_NUMBER_OF_DESKTOPS, CARDINAL/32
@@ -2486,7 +2487,7 @@ function _get_net_showing_desktop_cardinal()
   # echo
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_SHOWING_DESKTOP desktop, CARDINAL/32
@@ -2527,7 +2528,7 @@ function _get_net_supported_atom()
   # echo
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_SUPPORTED, ATOM[]/32
@@ -2570,7 +2571,7 @@ function _get_net_supporting_wm_check_window()
   # echo
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_SUPPORTING_WM_CHECK, WINDOW/32
@@ -2611,7 +2612,7 @@ function _get_net_virtual_roots_window()
   # echo
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_VIRTUAL_ROOTS, WINDOW[]/32
@@ -2656,7 +2657,7 @@ function _get_net_wm_allowed_actions_atom()
   # echo
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_WM_ALLOWED_ACTIONS, ATOM[]
@@ -2725,7 +2726,7 @@ function _get_net_wm_bypass_compositor_cardinal()
   # echo
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_WM_BYPASS_COMPOSITOR, CARDINAL/32
@@ -2767,7 +2768,7 @@ function _get_net_wm_desktop_cardinal()
   # echo
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_WM_DESKTOP, CARDINAL/32
@@ -2820,7 +2821,7 @@ function _get_net_wm_icon_geometry_cardinal()
   # read
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_WM_ICON_GEOMETRY, x, y, width, height, CARDINAL[4]/32
@@ -2877,7 +2878,7 @@ function _get_net_wm_icon_name_utf8_string()
   # echo
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_WM_ICON_NAME, UTF8_STRING
@@ -2918,10 +2919,10 @@ function _get_net_wm_name_utf8_string()
   # echo
 
   # precedence:
-  #   required
-#3#   succeeds: "function _get_net_wm_state_atom"
-  #   precedes: "function _get_window_undecorated_geometry"
-#4#   precedes: "function _coordinates_kludge"
+  # required
+#3# succeeds: "function _get_net_wm_state_atom"
+  # precedes: "function _get_window_undecorated_geometry"
+#4# precedes: "function _coordinates_kludge"
 
   # NET:
   # - _NET_WM_NAME, UTF8_STRING
@@ -2971,7 +2972,7 @@ function _get_net_wm_opaque_region_cardinal()
   # read
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_WM_ICON_GEOMETRY, x, y, width, height, CARDINAL[4]/32
@@ -3028,7 +3029,7 @@ function _get_net_wm_pid_cardinal()
   # echo
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_WM_PID, CARDINAL/32
@@ -3074,9 +3075,9 @@ function _get_net_wm_state_atom()
   # echo
 
   # precedence:
-  #   required
-  #   succeeds: "function _get_net_frame_extents_cardinal"
-#3#   precedes: "function _get_net_wm_name_utf8_string"
+  # required
+  # succeeds: "function _get_net_frame_extents_cardinal"
+#3# precedes: "function _get_net_wm_name_utf8_string"
 
   # NET:
   # - _NET_WM_STATE, ATOM[]
@@ -3156,7 +3157,7 @@ function _get_net_wm_strut_cardinal()
   # read
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   #  - _NET_WM_STRUT, left, right, top, bottom, CARDINAL[4]/32
@@ -3227,7 +3228,7 @@ function _get_net_wm_strut_partial_cardinal()
   # read
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   #  - _NET_WM_STRUT_PARTIAL, left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x, CARDINAL[12]/32
@@ -3312,7 +3313,7 @@ function _get_net_wm_sync_request_counter_cardinal()
   # read
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_WM_SYNC_REQUEST_COUNTER, ?, ?, CARDINAL[]/32
@@ -3354,7 +3355,7 @@ function _get_net_wm_user_time_cardinal()
   # echo
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_WM_USER_TIME CARDINAL/32
@@ -3395,7 +3396,7 @@ function _get_net_wm_user_time_window_window()
   # echo
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_WM_USER_TIME CARDINAL/32
@@ -3436,7 +3437,7 @@ function _get_net_wm_visible_icon_name_utf8_string()
   # echo
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_WM_VISIBLE_ICON_NAME, UTF8_STRING
@@ -3477,7 +3478,7 @@ function _get_net_wm_visible_name_utf8_string()
   # echo
 
   # precedence:
-  #   unused
+  # unused
 
   # NET:
   # - _NET_WM_VISIBLE_NAME, UTF8_STRING
@@ -3518,7 +3519,7 @@ function _get_net_wm_window_type_atom()
   # echo
 
   # precedence:
-  #   unused
+  # unused
   # ^ "unused" is a bit of a misnomer. this particular *function* is unused,
   #   but the the *information* itself is required. the tests in
   #   "function _pass_fail_by_window_type" directly acquire & use this
@@ -3582,11 +3583,11 @@ function _get_net_workarea_cardinal()
   # echo
 
   # precedence:
-  #   required
-  #      child: "function _sub_function"
-#2#   succeeds: "function _get_net_current_desktop_cardinal"
-#2#   succeeds: "function _get_net_desktop_geometry_cardinal"
-  #   precedes: "function _get_net_frame_extents_cardinal" (loosely)
+  # required
+  #    child: "function _sub_function"
+#2# succeeds: "function _get_net_current_desktop_cardinal"
+#2# succeeds: "function _get_net_desktop_geometry_cardinal"
+  # precedes: "function _get_net_frame_extents_cardinal" (loosely)
 
   # NET:
   # - _NET_WORKAREA, x, y, width, height CARDINAL[][4]/32
@@ -3646,8 +3647,8 @@ function _get_net_workarea_cardinal()
     # read
 
     # precedence:
-    #   required
-    #     parent: "function _get_net_workarea_cardinal"
+    # required
+    #   parent: "function _get_net_workarea_cardinal"
 
     # NET:
     # - _NET_CURRENT_DESKTOP desktop, CARDINAL/32
@@ -3780,9 +3781,9 @@ function _get_window_undecorated_geometry()
   # read
 
   # precedence:
-  #   required
-  #   succeeds: "function _get_net_wm_name_utf8_string"
-  #   precedes: "function _coordinates_calculate"
+  # required
+  # succeeds: "function _get_net_wm_name_utf8_string"
+  # precedes: "function _coordinates_calculate"
 
   # NET:
   # - _NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32
@@ -3911,7 +3912,7 @@ function _parse_parameters()
   # (none)
 
   # precedence:
-  #   required
+  # required
 
   # NOTE:
   # - boolean variables are proper toggles
@@ -4113,25 +4114,25 @@ function _parse_parameters()
 
   # - validate the existence & required options of system builtins
   # - while we're at it, set up the options for the various builtins if needed
-  #   required
-  #   precedes: "function _get_net_desktop_geometry_cardinal"
-  #   precedes: "function _get_net_desktop_layout_cardinal"
-  #   precedes: "function _get_net_desktop_viewport_cardinal"
-  #   precedes: "function _get_net_frame_extents_cardinal"
-  #   precedes: "function _get_net_wm_icon_geometry_cardinal"
-  #   precedes: "function _get_net_wm_opaque_region_cardinal"
-  #   precedes: "function _get_net_wm_strut_cardinal"
-  #   precedes: "function _get_net_wm_strut_partial_cardinal"
-  #   precedes: "function _get_net_workarea_cardinal"
-  #   precedes: "function _get_window_undecorated_geometry"
+  # required
+  # precedes: "function _get_net_desktop_geometry_cardinal"
+  # precedes: "function _get_net_desktop_layout_cardinal"
+  # precedes: "function _get_net_desktop_viewport_cardinal"
+  # precedes: "function _get_net_frame_extents_cardinal"
+  # precedes: "function _get_net_wm_icon_geometry_cardinal"
+  # precedes: "function _get_net_wm_opaque_region_cardinal"
+  # precedes: "function _get_net_wm_strut_cardinal"
+  # precedes: "function _get_net_wm_strut_partial_cardinal"
+  # precedes: "function _get_net_workarea_cardinal"
+  # precedes: "function _get_window_undecorated_geometry"
   _builtin_validate_setup
 
   # - validate the existence & required options of system binaries
   # - while we're at it, set up the options for the various binaries if needed
-  #   required
-  #   precedes: "function _coordinates_force"
-  #   precedes: "function _parse_parameters"
-  #   precedes: "function _set_window_position"
+  # required
+  # precedes: "function _coordinates_force"
+  # precedes: "function _parse_parameters"
+  # precedes: "function _set_window_position"
   _binary_validate_setup
 
   #+ parameter settings (in (mostly) proper order of operation) +#
@@ -4196,23 +4197,23 @@ function _parse_parameters()
 
   if $_BOOLEAN_FORCE
   then
-    #   required
-  #1#      child: "function _get_net_client_list_window" (only used here)
-  #1#      child: "function _get_net_desktop_geometry_cardinal"
+    # required
+  #1#    child: "function _get_net_client_list_window" (only used here)
+  #1#    child: "function _get_net_desktop_geometry_cardinal"
     _coordinates_force
   else
     # - "-n string" = true if the length of string is non-zero
     if [[ -n $_OPTION_WINDOW_ID ]]
     then
       # - validate Window ID if it was specified on the commandline
-      #   required
-      #      child: "function _show_error"
-      #   precedes: "function _pass_fail_by_window_type"
+      # required
+      #    child: "function _show_error"
+      # precedes: "function _pass_fail_by_window_type"
       _pass_fail_by_window_id
     else
       # - acquire Window ID via point'n'click - requires no validation
-      #   required
-      #   precedes: "function _pass_fail_by_window_type"
+      # required
+      # precedes: "function _pass_fail_by_window_type"
       _window_id_acquire
     fi
 
@@ -4222,54 +4223,54 @@ function _parse_parameters()
     #   _get_net_* functions). just grab everything once
 
     # - pass/fail by window type
-    #   required
-    #      child: "function _show_error"
-    #   succeeds: "function _pass_fail_by_window_id"
-    #   succeeds: "function _window_id_acquire"
-    #   precedes: "function _get_net_current_desktop_cardinal"
+    # required
+    #    child: "function _show_error"
+    # succeeds: "function _pass_fail_by_window_id"
+    # succeeds: "function _window_id_acquire"
+    # precedes: "function _get_net_current_desktop_cardinal"
     _pass_fail_by_window_type
 
-    #   required
-    #   succeeds: "function _pass_fail_by_window_type"
-  #2#   precedes: "function _get_net_desktop_geometry_cardinal" (required)
-    #   precedes: "function _get_net_desktop_names_utf8_string" (unused)
-    #   precedes: "function _get_net_desktop_viewport_cardinal" (unused)
-  #2#   precedes: "function _get_net_workarea_cardinal" (required)
+    # required
+    # succeeds: "function _pass_fail_by_window_type"
+  #2# precedes: "function _get_net_desktop_geometry_cardinal" (required)
+    # precedes: "function _get_net_desktop_names_utf8_string" (unused)
+    # precedes: "function _get_net_desktop_viewport_cardinal" (unused)
+  #2# precedes: "function _get_net_workarea_cardinal" (required)
     _get_net_current_desktop_cardinal
 
-    #   required
-  #1#     parent: "function _coordinates_force"
-  #2#   succeeds: "function _get_net_current_desktop_cardinal"
-  #2#   precedes: "function _get_net_workarea_cardinal"
+    # required
+  #1#   parent: "function _coordinates_force"
+  #2# succeeds: "function _get_net_current_desktop_cardinal"
+  #2# precedes: "function _get_net_workarea_cardinal"
     _get_net_desktop_geometry_cardinal
 
-    #   required
-    #      child: "function _sub_function"
-  #2#   succeeds: "function _get_net_current_desktop_cardinal"
-  #2#   succeeds: "function _get_net_desktop_geometry_cardinal"
-    #   precedes: "function _get_net_frame_extents_cardinal" (loosely)
+    # required
+    #    child: "function _sub_function"
+  #2# succeeds: "function _get_net_current_desktop_cardinal"
+  #2# succeeds: "function _get_net_desktop_geometry_cardinal"
+    # precedes: "function _get_net_frame_extents_cardinal" (loosely)
     _get_net_workarea_cardinal
 
-    #   required
-    #   succeeds: "function _get_net_workarea_cardinal"
-    #   precedes: "function _get_net_wm_state_atom"
-    #   precedes: "function _get_window_undecorated_geometry"
+    # required
+    # succeeds: "function _get_net_workarea_cardinal"
+    # precedes: "function _get_net_wm_state_atom"
+    # precedes: "function _get_window_undecorated_geometry"
     _get_net_frame_extents_cardinal
 
-    #   required
-    #   succeeds: "function _get_net_frame_extents_cardinal"
-  #3#   precedes: "function _get_net_wm_name_utf8_string"
+    # required
+    # succeeds: "function _get_net_frame_extents_cardinal"
+  #3# precedes: "function _get_net_wm_name_utf8_string"
     _get_net_wm_state_atom
 
-    #   required
-  #3#   succeeds: "function _get_net_wm_state_atom"
-    #   precedes: "function _get_window_undecorated_geometry"
-  #4#   precedes: "function _coordinates_kludge"
+    # required
+  #3# succeeds: "function _get_net_wm_state_atom"
+    # precedes: "function _get_window_undecorated_geometry"
+  #4# precedes: "function _coordinates_kludge"
     _get_net_wm_name_utf8_string
 
-    #   required
-    #   succeeds: "function _get_net_wm_name_utf8_string"
-    #   precedes: "function _coordinates_calculate"
+    # required
+    # succeeds: "function _get_net_wm_name_utf8_string"
+    # precedes: "function _coordinates_calculate"
     _get_window_undecorated_geometry
 
     # - put all currently unused functions here. simpler to find & deal with
@@ -4280,10 +4281,10 @@ function _parse_parameters()
       _get_net_active_window_window
       _get_net_client_list_stacking_window
       _get_net_desktop_layout_cardinal
-      #   succeeds: "function _get_net_current_desktop_cardinal"
+      # succeeds: "function _get_net_current_desktop_cardinal"
       _get_net_desktop_names_utf8_string
-      #      child: "function _sub_function"
-      #   succeeds: "function _get_net_current_desktop_cardinal"
+      #    child: "function _sub_function"
+      # succeeds: "function _get_net_current_desktop_cardinal"
       _get_net_desktop_viewport_cardinal
       _get_net_number_of_desktops_cardinal
       _get_net_showing_desktop_cardinal
@@ -4309,27 +4310,27 @@ function _parse_parameters()
       _get_net_wm_window_type_atom
     fi # $_BOOLEAN_UNUSED
 
-    #   required
-    #      child: "function _coordinates_user_specified"
-    #      child: "function _show_help"
-    #   succeeds: "function _get_window_undecorated_geometry"
-    #   precedes: "function _coordinates_validate"
+    # required
+    #    child: "function _coordinates_user_specified"
+    #    child: "function _show_help"
+    # succeeds: "function _get_window_undecorated_geometry"
+    # precedes: "function _coordinates_validate"
     _coordinates_calculate
 
-    #   required
-    #      child: "function _show_error"
-    #   succeeds: "function _coordinates_calculate"
-    #   precedes: "function _coordinates_kludge"
+    # required
+    #    child: "function _show_error"
+    # succeeds: "function _coordinates_calculate"
+    # precedes: "function _coordinates_kludge"
     _coordinates_validate
 
-    #   required
-    #   succeeds: "function _coordinates_validate"
-  #4#   succeeds: "function _get_net_wm_name_utf8_string"
-    #   precedes: "function _set_window_position"
+    # required
+    # succeeds: "function _coordinates_validate"
+  #4# succeeds: "function _get_net_wm_name_utf8_string"
+    # precedes: "function _set_window_position"
     _coordinates_kludge
 
-    #   required
-    #   succeeds: "function _coordinates_kludge"
+    # required
+    # succeeds: "function _coordinates_kludge"
     _set_window_position
   fi # $_BOOLEAN_FORCE
 
@@ -4357,9 +4358,9 @@ function _pass_fail_by_window_id()
   # (none)
 
   # precedence:
-  #   required
-  #      child: "function _show_error"
-  #   precedes: "function _pass_fail_by_window_type"
+  # required
+  #    child: "function _show_error"
+  # precedes: "function _pass_fail_by_window_type"
 
   # NOTE:
   # - "function _pass_fail_by_window_type" already does the heavy lifting in
@@ -4409,11 +4410,11 @@ function _pass_fail_by_window_type_old()
   # echo
 
   # precedence:
-  #   required
-  #      child: "function _show_error"
-  #   succeeds: "function _pass_fail_by_window_id"
-  #   succeeds: "function _window_id_acquire"
-  #   precedes: "function _get_net_current_desktop_cardinal"
+  # required
+  #    child: "function _show_error"
+  # succeeds: "function _pass_fail_by_window_id"
+  # succeeds: "function _window_id_acquire"
+  # precedes: "function _get_net_current_desktop_cardinal"
 
   # NET:
   # - _NET_WM_WINDOW_TYPE, ATOM[]/32
@@ -4580,11 +4581,11 @@ function _pass_fail_by_window_type()
   # echo
 
   # precedence:
-  #   required
-  #      child: "function _show_error"
-  #   succeeds: "function _pass_fail_by_window_id"
-  #   succeeds: "function _window_id_acquire"
-  #   precedes: "function _get_net_current_desktop_cardinal"
+  # required
+  #    child: "function _show_error"
+  # succeeds: "function _pass_fail_by_window_id"
+  # succeeds: "function _window_id_acquire"
+  # precedes: "function _get_net_current_desktop_cardinal"
 
   # NET:
   # - _NET_WM_WINDOW_TYPE, ATOM[]/32
@@ -4775,8 +4776,8 @@ function _set_window_position()
   # (none)
 
   # precedence:
-  #   required
-  #   succeeds: "function _coordinates_kludge"
+  # required
+  # succeeds: "function _coordinates_kludge"
 
   # NET:
   # - several described elsewhere throughout the script, so no need to repeat
@@ -5025,12 +5026,12 @@ function _show_error()
   # echo
 
   # precedence:
-  #   required
-  #     parent: "function _binary_validate_setup"
-  #     parent: "function _builtin_validate_setup"
-  #     parent: "function _coordinates_validate"
-  #     parent: "function _parse_parameters"
-  #     parent: "function _pass_fail_by_window_type"
+  # required
+  #   parent: "function _binary_validate_setup"
+  #   parent: "function _builtin_validate_setup"
+  #   parent: "function _coordinates_validate"
+  #   parent: "function _parse_parameters"
+  #   parent: "function _pass_fail_by_window_type"
 
   # - output to stderr, not stdout
   # - be explicit for clarity
@@ -5058,9 +5059,9 @@ function _show_help()
   # echo
 
   # precedence:
-  #   required
-  #     parent: "function _coordinates_calculate"
-  #     parent: "function _parse_parameters"
+  # required
+  #   parent: "function _coordinates_calculate"
+  #   parent: "function _parse_parameters"
 
   echo "Provide at least 1 parameter: <Window Coordinates> [OPTION] [[OPTION]]
 
@@ -5118,8 +5119,8 @@ function _window_id_acquire()
   # echo
 
   # precedence:
-  #   required
-  #   precedes: "function _pass_fail_by_window_type"
+  # required
+  # precedes: "function _pass_fail_by_window_type"
 
   _eko_ps_en "Select the window to move:" ""
   _eko_pv_en "select the window to move:" ""
@@ -5164,7 +5165,7 @@ function _window_id_acquire()
 # echo
 
 # precedence:
-#   required
+# required
 
 _parse_parameters "$@"
 

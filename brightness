@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# brightness v2019.10.13
+# brightness v2019.11.11
 
 # Copyright (C) 2017 - 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -21,18 +21,22 @@
 # _NEW_BRIGHTNESS=$(( ( $MAX_BRIGHTNESS * $_PARAMETER_NUMERIC + 50 ) / 100 ))
 # _NEW_BRIGHTNESS=$(( $BRIGHTNESS $_PARAMETER_PLUSMINUS ( $MAX_BRIGHTNESS * $_PARAMETER_NUMERIC + 50 ) / 100 ))
 
-# TODO:
-# - add more "-w" tests to all functions that attempt to modify
-#   /sys/class/backlight/*/brightness because right now failures are not
-#   reported & failures do not abort the script
-
 # OOPS:
-# - changelog order is unpredictable. some series of entries per date are 
+# - changelog order is unpredictable. some series of entries per date are
 #   chronologically top-to-bottom while others are bottom-to-top. preferred
 #   order is bottom-to-top. this will gradually be fixed when time permits
 
+# 2019-11-11
+# - "function _backlight_type_test" changed the following lines:
+#  was: _eko_ps "Test progress:" "none. no permission"
+#  was: _eko_pv "test progress:" "none. no permission"
+#   is: _show_error "no permission"
+# - "function _backlight_value_set" added/deleted the following lines:
+#  add: else
+#  add:   _show_error "no permission"
+#  del: && [[ $_NEW_BRIGHTNESS -ne $BRIGHTNESS ]] \
 # 2019-10-13
-# -  renamed functions globally:
+# -  renamed the following functions globally:
 #  was: _eko_pS
 #  was: _eko_pS_en
 #   is: _eko_ps
@@ -100,7 +104,7 @@
 # 2019-08-27
 # - "function _process_numeric" unified this function between this script &
 #   "volume" to simplify maintenance
-# -  renamed variables globally:
+# -  renamed the following variables globally:
 #  was: _BRIGHTNESS_NUMERIC
 #  was: _BRIGHTNESS_PERCENT
 #  was: _BRIGHTNESS_PLUSMINUS
@@ -354,6 +358,7 @@ function _backlight_type_test()
   # _eko_ps_en
   # _eko_pv
   # _eko_pv_en
+  # _show_error
 
   # variables:
   # BRIGHTNESS        (read-write)
@@ -424,8 +429,7 @@ function _backlight_type_test()
     # - restore state
     echo $_BRIGHTNESS_HOLD >/sys/class/backlight/$_ONE_BACKLIGHT_TYPE/brightness
   else
-   _eko_ps "Test progress:" "none. no permission"
-   _eko_pv "test progress:" "none. no permission"
+    _show_error "no permission"
   fi
 
   _eko_iod "#- _backlight_type_test -#"
@@ -748,6 +752,7 @@ function _backlight_value_set()
   # _backlight_values_get
   # _eko_iod
   # _eko_pv
+  # _show_error
 
   # variables:
   # BRIGHTNESS        (read-write)
@@ -1011,13 +1016,14 @@ function _backlight_value_set()
   # - "-w file" = true if file exists & is writable
   if [[ -n $_ONE_BACKLIGHT_TYPE ]] \
   && [[ -n $_NEW_BRIGHTNESS ]] \
-  && [[ $_NEW_BRIGHTNESS -ne $BRIGHTNESS ]] \
   && [[ -w /sys/class/backlight/$_ONE_BACKLIGHT_TYPE/brightness ]]
   then
     echo $_NEW_BRIGHTNESS >/sys/class/backlight/$_ONE_BACKLIGHT_TYPE/brightness
 
     # - get new settings
     _backlight_values_get
+  else
+    _show_error "no permission"
   fi
 
   _eko_iod "#- _backlight_value_set -#"

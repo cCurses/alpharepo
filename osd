@@ -745,7 +745,7 @@ function _display_xauthority_acquire()
   #   the environment (think: /etc/acpi/acpi_handler.sh)
   # - this routine will fail in a big way if either $DISPLAY or $XAUTHORITY
   #   contain spaces
-  # ^ if this happens to you, please inform me of the X environment involved  
+  # ^ if this happens to you, please inform me of the X environment involved
   while read $_OPTIONS_READ -- \
   _OUTPUT_PS_GREP
   do

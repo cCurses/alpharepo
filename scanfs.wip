@@ -325,7 +325,7 @@ _BOOLEAN_TESTING_01=true # enabled
 #   routines
 # - NOTE: (to self) refer to the 2019-09-14 savepoint for the "before" version
 # 2019-09-14
-# - "function _binary_validate_setup" & "function _builtin_validate_setup" 
+# - "function _binary_validate_setup" & "function _builtin_validate_setup"
 #   added calls to "function _eko_v" for variables that are explicitly assigned
 # - explicitly unset specific key variables in "setup" that are later set in
 #   "function _binary_validate_setup", "function _builtin_validate_setup", &

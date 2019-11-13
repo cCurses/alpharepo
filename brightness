@@ -505,7 +505,7 @@ function _backlight_types_discover()
   # builtins:
   # echo
 
-  # - could be a custom kernel completely lacking /sys/class/backlight/
+  # - it could be a custom kernel completely lacking /sys/class/backlight/
   # - "-d file" = true if file exists & is a directory
   if [[ -d /sys/class/backlight/ ]]
   then

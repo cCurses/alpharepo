@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# osd v2019.10.25
+# osd v2019.11.18
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -18,6 +18,8 @@
 #   chronologically top-to-bottom while others are bottom-to-top. preferred
 #   order is bottom-to-top. this will gradually be fixed when time permits
 
+# 2019-11-18
+# - comment cleanup
 # 2019-10-25
 # - "function _binary_validate_setup" converted "ps", & "sed" testing from
 #    nested to sequential
@@ -954,8 +956,8 @@ function _eko_pv()
   # NOTE:
   # - why "%20s "? to simplify setting column width in verbose reports. a
   #   single change here affects the output globally
-  # - unformatted (non-columnized) output is now supported. simply pass "" as
-  #   the first parameter
+  # - unformatted (non-columnized) output is supported. simply pass "" as the
+  #   first parameter
 
   if $_BOOLEAN_VERBOSE
   then
@@ -1121,12 +1123,8 @@ function _parse_parameters()
 
   #- parameter settings (in (mostly) proper order of operation) -#
 
-  # - and so it begins
   # - a simple chain reaction
-
   _display_xauthority_acquire
-
-  # - and so it ends (so far)
 
   _eko_iod "#- _parse_parameters -#"
 }

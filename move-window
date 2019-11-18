@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# move-window v2019.11.09
+# move-window v2019.11.18
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -30,181 +30,15 @@
 # - xwininfo's "-geometry" cannot be used. it reports characters not pixels
 #   for rxvt
 
-# $ xwininfo -id 0x80010c # gkrellm & wmnd in the dock
-# Absolute upper-left X:  1852
-# Absolute upper-left Y:  0
-# Relative upper-left X:  1852
-# Relative upper-left Y:  0
-# Width: 66
-# Height: 379
-# Border width: 1
-# Corners:  +1852+0  -0+0  -0-699  +1852-699
-
-# $ xwininfo -id 0x1200004 # xfce4-panel
-# Absolute upper-left X:  1852
-# Absolute upper-left Y:  380
-# Relative upper-left X:  0
-# Relative upper-left Y:  0
-# Width: 68
-# Height: 407
-# Border width: 0
-# Corners:  +1852+380  -0+380  -0-293  +1852-293
-
-# $ xwininfo -id 0xe00008 # tint2
-# Absolute upper-left X:  0
-# Absolute upper-left Y:  1056
-# Relative upper-left X:  0
-# Relative upper-left Y:  0
-# Width: 1920
-# Height: 24
-# Border width: 0
-# Corners:  +0+1056  -0+1056  -0-0  +0-0
-
-# wmctrl -i -r 0xe00008 -e 0,0,1056,-1,-1 # bl (overall)
-# wmctrl -i -r 0xe00008 -e 0,-68,-1,-1,-1 # same (wups)
-
-# wmctrl -i -r 0xe00008 -e 0,-68,1032,-1,-1 # bc (wups)
-# wmctrl -i -r 0xe00008 -e 0,0,1056,-1,-1 # bc (overall)
-
-#+
-# #+ _coordinates_validate +#
-#                        $_COORDINATE_X: "-68"
-#                        $_COORDINATE_Y: "-1"
-# #- _coordinates_validate -#
-#-
-
-# $ xwininfo -id 0x3400011 # quassel
-# Absolute upper-left X:  1
-# Absolute upper-left Y:  22
-# Relative upper-left X:  1
-# Relative upper-left Y:  22
-# Width: 1000
-# Height: 630
-# Border width: 0
-# Corners:  +1+22  -919+22  -919-428  +1-428
-
-# wmctrl -i -r 0x3400011 -e 0,  0,  0,-1,-1 # ul
-# wmctrl -i -r 0x3400011 -e 0,850,  0,-1,-1 # ur
-# wmctrl -i -r 0x3400011 -e 0,  0,398,-1,-1 # bl
-# wmctrl -i -r 0x3400011 -e 0,850,398,-1,-1 # br
-# wmctrl -i -r 0x3400011 -e 0,123,123,-1,-1 # 123,123
-
-# $ xwininfo -id 0xa0004d # rxvt # ur
-
-# Absolute upper-left X:  1    # ul
-# Absolute upper-left Y:  22   # ul
-# Relative upper-left X:  1    # ul
-# Relative upper-left Y:  22   # ul
-
-# Absolute upper-left X:  634  # uc
-# Absolute upper-left Y:  22   # uc
-# Relative upper-left X:  1    # uc
-# Relative upper-left Y:  22   # uc
-
-# Absolute upper-left X:  1268 # ur
-# Absolute upper-left Y:  22   # ur
-# Relative upper-left X:  1    # ur
-# Relative upper-left Y:  22   # ur
-
-# Absolute upper-left X:  1    # ml
-# Absolute upper-left Y:  366  # ml
-# Relative upper-left X:  1    # ml
-# Relative upper-left Y:  22   # ml
-
-# Absolute upper-left X:  634  # mc
-# Absolute upper-left Y:  366  # mc
-# Relative upper-left X:  1    # mc
-# Relative upper-left Y:  22   # mc
-
-# Absolute upper-left X:  1268 # mr
-# Absolute upper-left Y:  366  # mr
-# Relative upper-left X:  1    # mr
-# Relative upper-left Y:  22   # mr
-
-# Absolute upper-left X:  1    # bl
-# Absolute upper-left Y:  710  # bl
-# Relative upper-left X:  1    # bl
-# Relative upper-left Y:  22   # bl
-
-# Absolute upper-left X:  634  # bc
-# Absolute upper-left Y:  710  # bc
-# Relative upper-left X:  1    # bc
-# Relative upper-left Y:  22   # bc
-
-# Absolute upper-left X:  1268 # br
-# Absolute upper-left Y:  710  # br
-# Relative upper-left X:  1    # br
-# Relative upper-left Y:  22   # br
-
-# Width: 583
-# Height: 340
-# Border width: 0
-
-# Corners:     +1+22   -1336+22   -1336-718     +1-718 # ul
-# Corners:   +634+22    -703+22    -703-718   +634-718 # uc
-# Corners:  +1268+22     -69+22     -69-718  +1268-718 # ur
-# Corners:     +1+366  -1336+366  -1336-374     +1-374 # ml
-# Corners:   +634+366   -703+366   -703-374   +634-374 # mc
-# Corners:  +1268+366    -69+366    -69-374  +1268-374 # mr
-# Corners:     +1+710  -1336+710   -1336-30     +1-30  # bl
-# Corners:   +634+710   -703+710    -703-30   +634-30  # bc
-# Corners:  +1268+710    -69+710     -69-30  +1268-30  # br
-
 # OOPS:
 # - changelog order is unpredictable. some series of entries per date are
 #   chronologically top-to-bottom while others are bottom-to-top. preferred
 #   order is bottom-to-top. this will gradually be fixed when time permits
 
-# (done)
-# - tagged all functions with:
-#   "# precedence:"
-#   "# unused"
-#   "# required"
-#   "#   parent: "function <function name>""
-#   "#     self: "function <function name>""
-#   "#    child: "function <function name>""
-#   "# succeeds: "function <function name>""
-#   "# precedes: "function <function name>""
-# ^ I may quietly remove these at some point. they've been added simply to
-#   help me figure out precisely what is unused &/or required & in what order
-
-#+ marker edit +#
-# (pending)
-# - do something special with _NET_ACTIVE_WINDOW_WINDOW from
-#   "function _get_net_active_window_window"
-# - interesting discovery: "_NET_ACTIVE_WINDOW(WINDOW): window id # 0x0" is
-#   returned in a desktop containing no _NET_WM_WINDOW_TYPE_NORMAL windows
-#   (or if any _NET_WM_WINDOW_TYPE_NORMAL windows exist, they're minimized)
-# > is this behaviour specific to openbox? find out
-# > regardless, the recent changes in "function _pass_fail_by_window_id"
-#   consider this as a "does not exist" error if "id 0x0" is specified on the
-#   commandline
-
-# TODO: (ASAP!)
-# - trace down & fix whatever's causing incorrect calculations with tint2
-#+
-# > $ move-window -id 0xe00008 -D -d -v -p -c same
-# > wmctrl command (move): "true -i -r 0xe00008 -e 0,-68,-1,-1,-1"
-# > $ move-window -id 0xe00008 -D -d -v -p -c bl
-# > wmctrl command (move): "true -i -r 0xe00008 -e 0,-68,1032,-1,-1"
-# > $ move-window -id 0xe00008 -D -d -v -p -c bc
-# > wmctrl command (move): "true -i -r 0xe00008 -e 0,-68,1032,-1,-1"
-# > $ move-window -id 0xe00008 -D -d -v -p -c br
-# > wmctrl command (move): "true -i -r 0xe00008 -e 0,-68,1032,-1,-1"
-#-
-#+
-# > $ move-window -id 0xe00008 -D -d -v -o -p -c same
-# > wmctrl command (move): "true -i -r 0xe00008 -e 0,-1,-1,-1,-1"
-# > $ move-window -id 0xe00008 -D -d -v -o -p -c bl
-# > wmctrl command (move): "true -i -r 0xe00008 -e 0,0,1056,-1,-1"
-# > $ move-window -id 0xe00008 -D -d -v -o -p -c bc
-# > wmctrl command (move): "true -i -r 0xe00008 -e 0,0,1056,-1,-1"
-# > $ move-window -id 0xe00008 -D -d -v -o -p -c br
-# > wmctrl command (move): "true -i -r 0xe00008 -e 0,0,1056,-1,-1"
-#-
-
-# 2019-11-09
-# - "parent:/self:/child:/succeeds:/precedes:" listings added to each function
+# 2019-11-18
+# - comment cleanup
+# - moved another large block of assorted notes to the very end of the script
+#   for future reference
 # 2019-11-07
 # - "function _pass_fail_by_window_id" deleted the following lines:
 #  del: # - 3rd step: verify it by its type
@@ -274,21 +108,13 @@
 # > "function _parse_parameters" from here
 # > "function _coordinates_kludge" to here
 # - "function _parse_parameters" changed the calling order of some functions:
-#  was: # succeeds: _get_net_wm_name_utf8_string
-#  was: # succeeds: _get_net_workarea_cardinal
 #  was: _coordinates_kludge
 #  was: _coordinates_calculate
 #  was: _coordinates_validate
 #  was: _set_window_position
 #   is: _coordinates_calculate
 #   is: _coordinates_validate
-#   is: # precedes: _set_window_position
-#   is: # succeeds: _get_net_wm_name_utf8_string
-#   is: # succeeds: _get_net_workarea_cardinal
-#   is: # succeeds: _coordinates_calculate
-#   is: # succeeds: _coordinates_validate
 #   is: _coordinates_kludge
-#   is: # succeeds: _coordinates_kludge
 #   is: _set_window_position
 # - "function _get_window_undecorated_geometry" added $_WINDOW_BORDER_WIDTH
 #   (aka: "window border width") to the calculations
@@ -867,7 +693,7 @@ unset _OPTIONS_READ
 
 #+ function definitions here +#
 
-# precedence:
+# ORDER:
 # - before calling _parse_parameters, but otherwise alphabetical
 
 function _binary_validate_setup()
@@ -893,14 +719,6 @@ function _binary_validate_setup()
 
   # builtins:
   # echo
-
-  # precedence:
-  # required
-  #     self: "function _binary_validate_setup"
-  #    child: "function _show_error"
-  # precedes: "function _coordinates_force"
-  # precedes: "function _parse_parameters"
-  # precedes: "function _set_window_position"
 
   # NOTE:
   # - rather than test a given binary's version in hopes of figuring out which
@@ -1052,21 +870,6 @@ function _builtin_validate_setup()
   # echo
   # read
 
-  # precedence:
-  # required
-  #     self: "function _builtin_validate_setup"
-  #    child: "function _show_error"
-  # precedes: "function _get_net_desktop_geometry_cardinal"
-  # precedes: "function _get_net_desktop_layout_cardinal"
-  # precedes: "function _get_net_desktop_viewport_cardinal"
-  # precedes: "function _get_net_frame_extents_cardinal"
-  # precedes: "function _get_net_wm_icon_geometry_cardinal"
-  # precedes: "function _get_net_wm_opaque_region_cardinal"
-  # precedes: "function _get_net_wm_strut_cardinal"
-  # precedes: "function _get_net_wm_strut_partial_cardinal"
-  # precedes: "function _get_net_workarea_cardinal"
-  # precedes: "function _get_window_undecorated_geometry"
-
   # NOTE:
   # - rather than test a given builtin's version (or more accurately, test a
   #   given version of bash itself) in hopes of figuring out which features it
@@ -1130,14 +933,6 @@ function _coordinates_calculate()
 
   # builtins:
   # (none)
-
-  # precedence:
-  # required
-  #     self: "function _coordinates_calculate"
-  #    child: "function _coordinates_user_specified"
-  #    child: "function _show_help"
-  # succeeds: "function _get_window_undecorated_geometry"
-  # precedes: "function _coordinates_validate"
 
   # NET:
   # - _NET_DESKTOP_GEOMETRY width, height, CARDINAL[2]/32
@@ -1249,12 +1044,6 @@ function _coordinates_force()
   # builtins:
   # echo
 
-  # precedence:
-  # required
-  #     self: "function _coordinates_force"
-#1#    child: "function _get_net_client_list_window" (only used here)
-#1#    child: "function _get_net_desktop_geometry_cardinal"
-
   # NET:
   # - _NET_CLIENT_LIST, WINDOW[]/32
 
@@ -1357,13 +1146,6 @@ function _coordinates_kludge()
   # builtins:
   # (none)
 
-  # precedence:
-  # required
-  #     self: "function _coordinates_kludge"
-  # succeeds: "function _coordinates_validate"
-#4# succeeds: "function _get_net_wm_name_utf8_string"
-  # precedes: "function _set_window_position"
-
   # NET:
   # - _NET_WM_NAME, UTF8_STRING
 
@@ -1427,11 +1209,6 @@ function _coordinates_user_specified()
   # builtins:
   # (none)
 
-  # precedence:
-  # required
-  #   parent: "function _coordinates_calculate"
-  #     self: "function _coordinates_user_specified"
-
   # - ${parameter/pattern/string}
   _COORDINATE_X=${_OPTION_WINDOW_COORDINATES/,*/}
   # - ${parameter/pattern/string}
@@ -1478,13 +1255,6 @@ function _coordinates_validate()
 
   # builtins:
   # (none)
-
-  # precedence:
-  # required
-  #     self: "function _coordinates_validate"
-  #    child: "function _show_error"
-  # succeeds: "function _coordinates_calculate"
-  # precedes: "function _coordinates_kludge"
 
   # NET:
   # - _NET_DESKTOP_GEOMETRY width, height, CARDINAL[2]/32
@@ -1607,10 +1377,6 @@ function _eko_iod()
   # echo
   # printf
 
-  # precedence:
-  # required
-  #     self: "function _eko_iod"
-
   # NOTE:
   # - why "$(( ${#FUNCNAME[@]} - 3 ))"? to account for main, parent, current
   # - pay special attention to the "*" in "%*s". it's part of the magic
@@ -1646,15 +1412,11 @@ function _eko_ps()
   # echo
   # printf
 
-  # precedence:
-  # required
-  #     self: "function _eko_ps"
-
   # NOTE:
   # - why "%29s "? to simplify setting column width in stdout reports. a
   #   single change here affects the output globally
-  # - unformatted (non-columnized) output is now supported. simply pass "" as
-  #   the first parameter
+  # - unformatted (non-columnized) output is supported. simply pass "" as the
+  #   first parameter
 
   if $_BOOLEAN_STDOUT
   then
@@ -1689,15 +1451,11 @@ function _eko_ps_en()
   # echo
   # printf
 
-  # precedence:
-  # required
-  #     self: "function _eko_ps_en"
-
   # NOTE:
   # - why "%29s "? to simplify setting column width in stdout reports. a
   #   single change here affects the output globally
-  # - unformatted (non-columnized) output is now supported. simply pass "" as
-  #   the first parameter
+  # - unformatted (non-columnized) output is supported. simply pass "" as the
+  #   first parameter
 
   if $_BOOLEAN_STDOUT
   then
@@ -1732,15 +1490,11 @@ function _eko_pv()
   # echo
   # printf
 
-  # precedence:
-  # required
-  #     self: "function _eko_pv"
-
   # NOTE:
   # - why "%39s "? to simplify setting column width in verbose reports. a
   #   single change here affects the output globally
-  # - unformatted (non-columnized) output is now supported. simply pass "" as
-  #   the first parameter
+  # - unformatted (non-columnized) output is supported. simply pass "" as the
+  #   first parameter
 
   if $_BOOLEAN_VERBOSE
   then
@@ -1775,15 +1529,11 @@ function _eko_pv_en()
   # echo
   # printf
 
-  # precedence:
-  # required
-  #     self: "function _eko_pv_en"
-
   # NOTE:
   # - why "%39s "? to simplify setting column width in verbose reports. a
   #   single change here affects the output globally
-  # - unformatted (non-columnized) output is now supported. simply pass "" as
-  #   the first parameter
+  # - unformatted (non-columnized) output is supported. simply pass "" as the
+  #   first parameter
 
   if $_BOOLEAN_VERBOSE
   then
@@ -1816,10 +1566,6 @@ function _get_net_active_window_window()
 
   # builtins:
   # echo
-
-  # precedence:
-  # unused
-  #     self: "function _get_net_active_window_window"
 
   # NET:
   # - _NET_ACTIVE_WINDOW, WINDOW/32
@@ -1871,10 +1617,6 @@ function _get_net_client_list_stacking_window()
   # builtins:
   # echo
 
-  # precedence:
-  # unused
-  #     self: "function _get_net_client_list_stacking_window"
-
   # NET:
   # - _NET_CLIENT_LIST_STACKING, WINDOW[]/32
 
@@ -1915,11 +1657,6 @@ function _get_net_client_list_window()
   # builtins:
   # echo
 
-  # precedence:
-  # required
-  #   parent: "function _coordinates_force"
-  #     self: "function _get_net_client_list_window"
-
   # NET:
   # - _NET_CLIENT_LIST, WINDOW[]/32
 
@@ -1959,15 +1696,6 @@ function _get_net_current_desktop_cardinal()
 
   # builtins:
   # echo
-
-  # precedence:
-  # required
-  #     self: "function _get_net_current_desktop_cardinal"
-  # succeeds: "function _pass_fail_by_window_type"
-#2# precedes: "function _get_net_desktop_geometry_cardinal" (required)
-  # precedes: "function _get_net_desktop_names_utf8_string" (unused)
-  # precedes: "function _get_net_desktop_viewport_cardinal" (unused)
-#2# precedes: "function _get_net_workarea_cardinal" (required)
 
   # NET:
   # - _NET_CURRENT_DESKTOP desktop, CARDINAL/32
@@ -2014,13 +1742,6 @@ function _get_net_desktop_geometry_cardinal()
   # builtins:
   # echo
   # read
-
-  # precedence:
-  # required
-#1#   parent: "function _coordinates_force"
-  #     self: "function _get_net_desktop_geometry_cardinal"
-#2# succeeds: "function _get_net_current_desktop_cardinal"
-#2# precedes: "function _get_net_workarea_cardinal"
 
   # NET:
   # - _NET_DESKTOP_GEOMETRY width, height, CARDINAL[2]/32
@@ -2079,10 +1800,6 @@ function _get_net_desktop_layout_cardinal()
   # builtins:
   # echo
   # read
-
-  # precedence:
-  # unused
-  #     self: "function _get_net_desktop_layout_cardinal"
 
   # NET:
   # - _NET_DESKTOP_LAYOUT, orientation, columns, rows, starting_corner CARDINAL[4]/32
@@ -2143,11 +1860,6 @@ function _get_net_desktop_names_utf8_string()
 
   # builtins:
   # echo
-
-  # precedence:
-  # unused
-  #     self: "function _get_net_desktop_names_utf8_string"
-  # succeeds: "function _get_net_current_desktop_cardinal"
 
   # NET:
   # - _NET_DESKTOP_NAMES, UTF8_STRING[]
@@ -2271,12 +1983,6 @@ function _get_net_desktop_viewport_cardinal()
   # builtins:
   # echo
 
-  # precedence:
-  # unused
-  #     self: "function _get_net_desktop_viewport_cardinal"
-  #    child: "function _sub_function"
-  # succeeds: "function _get_net_current_desktop_cardinal"
-
   # NET:
   # - _NET_DESKTOP_VIEWPORT x, y, CARDINAL[][2]/32
 
@@ -2326,11 +2032,6 @@ function _get_net_desktop_viewport_cardinal()
     # builtins:
     # (none)
     # read
-
-    # precedence:
-    # unused
-    #   parent: "function _get_net_desktop_viewport_cardinal"
-    #     self: "function _sub_function"
 
     # NET:
     # - _NET_CURRENT_DESKTOP desktop, CARDINAL/32
@@ -2397,13 +2098,6 @@ function _get_net_frame_extents_cardinal()
   # echo
   # read
 
-  # precedence:
-  # required
-  #     self: "function _get_net_frame_extents_cardinal"
-  # succeeds: "function _get_net_workarea_cardinal"
-  # precedes: "function _get_net_wm_state_atom"
-  # precedes: "function _get_window_undecorated_geometry"
-
   # NET:
   # - _NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32
 
@@ -2465,10 +2159,6 @@ function _get_net_number_of_desktops_cardinal()
   # builtins:
   # echo
 
-  # precedence:
-  # unused
-  #     self: "function _get_net_number_of_desktops_cardinal"
-
   # NET:
   # - _NET_NUMBER_OF_DESKTOPS, CARDINAL/32
 
@@ -2510,10 +2200,6 @@ function _get_net_showing_desktop_cardinal()
   # builtins:
   # echo
 
-  # precedence:
-  # unused
-  #     self: "function _get_net_showing_desktop_cardinal"
-
   # NET:
   # - _NET_SHOWING_DESKTOP desktop, CARDINAL/32
 
@@ -2551,10 +2237,6 @@ function _get_net_supported_atom()
 
   # builtins:
   # echo
-
-  # precedence:
-  # unused
-  #     self: "function _get_net_supported_atom"
 
   # NET:
   # - _NET_SUPPORTED, ATOM[]/32
@@ -2596,10 +2278,6 @@ function _get_net_supporting_wm_check_window()
   # builtins:
   # echo
 
-  # precedence:
-  # unused
-  #     self: "function _get_net_supporting_wm_check_window"
-
   # NET:
   # - _NET_SUPPORTING_WM_CHECK, WINDOW/32
 
@@ -2637,10 +2315,6 @@ function _get_net_virtual_roots_window()
 
   # builtins:
   # echo
-
-  # precedence:
-  # unused
-  #     self: "function _get_net_virtual_roots_window"
 
   # NET:
   # - _NET_VIRTUAL_ROOTS, WINDOW[]/32
@@ -2683,10 +2357,6 @@ function _get_net_wm_allowed_actions_atom()
 
   # builtins:
   # echo
-
-  # precedence:
-  # unused
-  #     self: "function _get_net_wm_allowed_actions_atom"
 
   # NET:
   # - _NET_WM_ALLOWED_ACTIONS, ATOM[]
@@ -2754,10 +2424,6 @@ function _get_net_wm_bypass_compositor_cardinal()
   # builtins:
   # echo
 
-  # precedence:
-  # unused
-  #     self: "function _get_net_wm_bypass_compositor_cardinal"
-
   # NET:
   # - _NET_WM_BYPASS_COMPOSITOR, CARDINAL/32
 
@@ -2796,10 +2462,6 @@ function _get_net_wm_desktop_cardinal()
 
   # builtins:
   # echo
-
-  # precedence:
-  # unused
-  #     self: "function _get_net_wm_desktop_cardinal"
 
   # NET:
   # - _NET_WM_DESKTOP, CARDINAL/32
@@ -2850,10 +2512,6 @@ function _get_net_wm_icon_geometry_cardinal()
   # builtins:
   # echo
   # read
-
-  # precedence:
-  # unused
-  #     self: "function _get_net_wm_icon_geometry_cardinal"
 
   # NET:
   # - _NET_WM_ICON_GEOMETRY, x, y, width, height, CARDINAL[4]/32
@@ -2909,10 +2567,6 @@ function _get_net_wm_icon_name_utf8_string()
   # builtins:
   # echo
 
-  # precedence:
-  # unused
-  #     self: "function _get_net_wm_icon_name_utf8_string"
-
   # NET:
   # - _NET_WM_ICON_NAME, UTF8_STRING
 
@@ -2950,13 +2604,6 @@ function _get_net_wm_name_utf8_string()
 
   # builtins:
   # echo
-
-  # precedence:
-  # required
-  #     self: "function _get_net_wm_name_utf8_string"
-#3# succeeds: "function _get_net_wm_state_atom"
-  # precedes: "function _get_window_undecorated_geometry"
-#4# precedes: "function _coordinates_kludge"
 
   # NET:
   # - _NET_WM_NAME, UTF8_STRING
@@ -3004,10 +2651,6 @@ function _get_net_wm_opaque_region_cardinal()
   # builtins:
   # echo
   # read
-
-  # precedence:
-  # unused
-  #     self: "function _get_net_wm_opaque_region_cardinal"
 
   # NET:
   # - _NET_WM_ICON_GEOMETRY, x, y, width, height, CARDINAL[4]/32
@@ -3063,10 +2706,6 @@ function _get_net_wm_pid_cardinal()
   # builtins:
   # echo
 
-  # precedence:
-  # unused
-  #     self: "function _get_net_wm_pid_cardinal"
-
   # NET:
   # - _NET_WM_PID, CARDINAL/32
 
@@ -3109,12 +2748,6 @@ function _get_net_wm_state_atom()
 
   # builtins:
   # echo
-
-  # precedence:
-  # required
-  #     self: "function _get_net_wm_state_atom"
-  # succeeds: "function _get_net_frame_extents_cardinal"
-#3# precedes: "function _get_net_wm_name_utf8_string"
 
   # NET:
   # - _NET_WM_STATE, ATOM[]
@@ -3193,10 +2826,6 @@ function _get_net_wm_strut_cardinal()
   # echo
   # read
 
-  # precedence:
-  # unused
-  #     self: "function _get_net_wm_strut_cardinal"
-
   # NET:
   #  - _NET_WM_STRUT, left, right, top, bottom, CARDINAL[4]/32
 
@@ -3264,10 +2893,6 @@ function _get_net_wm_strut_partial_cardinal()
   # builtins:
   # echo
   # read
-
-  # precedence:
-  # unused
-  #     self: "function _get_net_wm_strut_partial_cardinal"
 
   # NET:
   #  - _NET_WM_STRUT_PARTIAL, left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x, CARDINAL[12]/32
@@ -3351,10 +2976,6 @@ function _get_net_wm_sync_request_counter_cardinal()
   # echo
   # read
 
-  # precedence:
-  # unused
-  #     self: "function _get_net_wm_sync_request_counter_cardinal"
-
   # NET:
   # - _NET_WM_SYNC_REQUEST_COUNTER, ?, ?, CARDINAL[]/32
 
@@ -3394,10 +3015,6 @@ function _get_net_wm_user_time_cardinal()
   # builtins:
   # echo
 
-  # precedence:
-  # unused
-  #     self: "function _get_net_wm_user_time_cardinal"
-
   # NET:
   # - _NET_WM_USER_TIME CARDINAL/32
 
@@ -3435,10 +3052,6 @@ function _get_net_wm_user_time_window_window()
 
   # builtins:
   # echo
-
-  # precedence:
-  # unused
-  #     self: "function _get_net_wm_user_time_window_window"
 
   # NET:
   # - _NET_WM_USER_TIME CARDINAL/32
@@ -3478,10 +3091,6 @@ function _get_net_wm_visible_icon_name_utf8_string()
   # builtins:
   # echo
 
-  # precedence:
-  # unused
-  #     self: "function _get_net_wm_visible_icon_name_utf8_string"
-
   # NET:
   # - _NET_WM_VISIBLE_ICON_NAME, UTF8_STRING
 
@@ -3520,10 +3129,6 @@ function _get_net_wm_visible_name_utf8_string()
   # builtins:
   # echo
 
-  # precedence:
-  # unused
-  #     self: "function _get_net_wm_visible_name_utf8_string"
-
   # NET:
   # - _NET_WM_VISIBLE_NAME, UTF8_STRING
 
@@ -3561,14 +3166,6 @@ function _get_net_wm_window_type_atom()
 
   # builtins:
   # echo
-
-  # precedence:
-  # unused
-  #     self: "function _get_net_wm_window_type_atom"
-  # ^ "unused" is a bit of a misnomer. this particular *function* is unused,
-  #   but the the *information* itself is required. the tests in
-  #   "function _pass_fail_by_window_type" directly acquire & use this
-  #   information
 
   # NET:
   # - _NET_WM_WINDOW_TYPE, ATOM[]/32
@@ -3627,14 +3224,6 @@ function _get_net_workarea_cardinal()
   # builtins:
   # echo
 
-  # precedence:
-  # required
-  #     self: "function _get_net_workarea_cardinal"
-  #    child: "function _sub_function"
-#2# succeeds: "function _get_net_current_desktop_cardinal"
-#2# succeeds: "function _get_net_desktop_geometry_cardinal"
-  # precedes: "function _get_net_frame_extents_cardinal" (loosely)
-
   # NET:
   # - _NET_WORKAREA, x, y, width, height CARDINAL[][4]/32
 
@@ -3691,11 +3280,6 @@ function _get_net_workarea_cardinal()
     # builtins:
     # (none)
     # read
-
-    # precedence:
-    # required
-    #   parent: "function _get_net_workarea_cardinal"
-    #     self: "function _sub_function"
 
     # NET:
     # - _NET_CURRENT_DESKTOP desktop, CARDINAL/32
@@ -3827,12 +3411,6 @@ function _get_window_undecorated_geometry()
   # echo
   # read
 
-  # precedence:
-  # required
-  #     self: "function _get_window_undecorated_geometry"
-  # succeeds: "function _get_net_wm_name_utf8_string"
-  # precedes: "function _coordinates_calculate"
-
   # NET:
   # - _NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32
 
@@ -3958,10 +3536,6 @@ function _parse_parameters()
 
   # builtins:
   # (none)
-
-  # precedence:
-  # required
-  #     self: "function _parse_parameters"
 
   # NOTE:
   # - boolean variables are proper toggles
@@ -4163,25 +3737,10 @@ function _parse_parameters()
 
   # - validate the existence & required options of system builtins
   # - while we're at it, set up the options for the various builtins if needed
-  # required
-  # precedes: "function _get_net_desktop_geometry_cardinal"
-  # precedes: "function _get_net_desktop_layout_cardinal"
-  # precedes: "function _get_net_desktop_viewport_cardinal"
-  # precedes: "function _get_net_frame_extents_cardinal"
-  # precedes: "function _get_net_wm_icon_geometry_cardinal"
-  # precedes: "function _get_net_wm_opaque_region_cardinal"
-  # precedes: "function _get_net_wm_strut_cardinal"
-  # precedes: "function _get_net_wm_strut_partial_cardinal"
-  # precedes: "function _get_net_workarea_cardinal"
-  # precedes: "function _get_window_undecorated_geometry"
   _builtin_validate_setup
 
   # - validate the existence & required options of system binaries
   # - while we're at it, set up the options for the various binaries if needed
-  # required
-  # precedes: "function _coordinates_force"
-  # precedes: "function _parse_parameters"
-  # precedes: "function _set_window_position"
   _binary_validate_setup
 
   #+ parameter settings (in (mostly) proper order of operation) +#
@@ -4228,8 +3787,6 @@ function _parse_parameters()
 
   #- parameter settings (in (mostly) proper order of operation) -#
 
-  # - and so it begins
-
   # - we'll be using this information for a lot of things (several of the
   #   _get_net_* functions). just grab everything once
   _OUTPUT_XPROP_ROOT=$(xprop -root 2>&1)
@@ -4246,23 +3803,15 @@ function _parse_parameters()
 
   if $_BOOLEAN_FORCE
   then
-    # required
-  #1#    child: "function _get_net_client_list_window" (only used here)
-  #1#    child: "function _get_net_desktop_geometry_cardinal"
     _coordinates_force
   else
     # - "-n string" = true if the length of string is non-zero
     if [[ -n $_OPTION_WINDOW_ID ]]
     then
       # - validate Window ID if it was specified on the commandline
-      # required
-      #    child: "function _show_error"
-      # precedes: "function _pass_fail_by_window_type"
       _pass_fail_by_window_id
     else
       # - acquire Window ID via point'n'click - requires no validation
-      # required
-      # precedes: "function _pass_fail_by_window_type"
       _window_id_acquire
     fi
 
@@ -4272,54 +3821,20 @@ function _parse_parameters()
     #   _get_net_* functions). just grab everything once
 
     # - pass/fail by window type
-    # required
-    #    child: "function _show_error"
-    # succeeds: "function _pass_fail_by_window_id"
-    # succeeds: "function _window_id_acquire"
-    # precedes: "function _get_net_current_desktop_cardinal"
     _pass_fail_by_window_type
 
-    # required
-    # succeeds: "function _pass_fail_by_window_type"
-  #2# precedes: "function _get_net_desktop_geometry_cardinal" (required)
-    # precedes: "function _get_net_desktop_names_utf8_string" (unused)
-    # precedes: "function _get_net_desktop_viewport_cardinal" (unused)
-  #2# precedes: "function _get_net_workarea_cardinal" (required)
     _get_net_current_desktop_cardinal
 
-    # required
-  #1#   parent: "function _coordinates_force"
-  #2# succeeds: "function _get_net_current_desktop_cardinal"
-  #2# precedes: "function _get_net_workarea_cardinal"
     _get_net_desktop_geometry_cardinal
 
-    # required
-    #    child: "function _sub_function"
-  #2# succeeds: "function _get_net_current_desktop_cardinal"
-  #2# succeeds: "function _get_net_desktop_geometry_cardinal"
-    # precedes: "function _get_net_frame_extents_cardinal" (loosely)
     _get_net_workarea_cardinal
 
-    # required
-    # succeeds: "function _get_net_workarea_cardinal"
-    # precedes: "function _get_net_wm_state_atom"
-    # precedes: "function _get_window_undecorated_geometry"
     _get_net_frame_extents_cardinal
 
-    # required
-    # succeeds: "function _get_net_frame_extents_cardinal"
-  #3# precedes: "function _get_net_wm_name_utf8_string"
     _get_net_wm_state_atom
 
-    # required
-  #3# succeeds: "function _get_net_wm_state_atom"
-    # precedes: "function _get_window_undecorated_geometry"
-  #4# precedes: "function _coordinates_kludge"
     _get_net_wm_name_utf8_string
 
-    # required
-    # succeeds: "function _get_net_wm_name_utf8_string"
-    # precedes: "function _coordinates_calculate"
     _get_window_undecorated_geometry
 
     # - put all currently unused functions here. simpler to find & deal with
@@ -4359,31 +3874,14 @@ function _parse_parameters()
       _get_net_wm_window_type_atom
     fi # $_BOOLEAN_UNUSED
 
-    # required
-    #    child: "function _coordinates_user_specified"
-    #    child: "function _show_help"
-    # succeeds: "function _get_window_undecorated_geometry"
-    # precedes: "function _coordinates_validate"
     _coordinates_calculate
 
-    # required
-    #    child: "function _show_error"
-    # succeeds: "function _coordinates_calculate"
-    # precedes: "function _coordinates_kludge"
     _coordinates_validate
 
-    # required
-    # succeeds: "function _coordinates_validate"
-  #4# succeeds: "function _get_net_wm_name_utf8_string"
-    # precedes: "function _set_window_position"
     _coordinates_kludge
 
-    # required
-    # succeeds: "function _coordinates_kludge"
     _set_window_position
   fi # $_BOOLEAN_FORCE
-
-  # - and so it ends (so far)
 
   _eko_iod "#- _parse_parameters -#"
 }
@@ -4405,12 +3903,6 @@ function _pass_fail_by_window_id()
 
   # builtins:
   # (none)
-
-  # precedence:
-  # required
-  #     self: "function _pass_fail_by_window_id"
-  #    child: "function _show_error"
-  # precedes: "function _pass_fail_by_window_type"
 
   # NOTE:
   # - "function _pass_fail_by_window_type" already does the heavy lifting in
@@ -4440,6 +3932,163 @@ function _pass_fail_by_window_id()
   _eko_iod "#- _pass_fail_by_window_id -#"
 }
 
+function _pass_fail_by_window_type()
+{
+  _eko_iod "#+ _pass_fail_by_window_type +#"
+
+  # functions:
+  # _eko_iod
+  # _show_error
+
+  # variables:
+  # _BOOLEAN_PERMISSIVE
+  # _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM
+  # _OPTION_WINDOW_ID
+  # _OUTPUT_XPROP_ID
+
+  # binaries:
+  # sed
+
+  # builtins:
+  # echo
+
+  # NET:
+  # - _NET_WM_WINDOW_TYPE, ATOM[]/32
+
+  # (sorted listing from the original source)
+  #   _NET_WM_WINDOW_TYPE_COMBO, ATOM
+  #   _NET_WM_WINDOW_TYPE_DESKTOP, ATOM
+  #   _NET_WM_WINDOW_TYPE_DIALOG, ATOM
+  #   _NET_WM_WINDOW_TYPE_DND, ATOM
+  #   _NET_WM_WINDOW_TYPE_DOCK, ATOM
+  #   _NET_WM_WINDOW_TYPE_DROPDOWN_MENU, ATOM
+  #   _NET_WM_WINDOW_TYPE_MENU, ATOM
+  #   _NET_WM_WINDOW_TYPE_NORMAL, ATOM
+  #   _NET_WM_WINDOW_TYPE_NOTIFICATION, ATOM
+  #   _NET_WM_WINDOW_TYPE_POPUP_MENU, ATOM
+  #   _NET_WM_WINDOW_TYPE_SPLASH, ATOM
+  #   _NET_WM_WINDOW_TYPE_TOOLBAR, ATOM
+  #   _NET_WM_WINDOW_TYPE_TOOLTIP, ATOM
+  #   _NET_WM_WINDOW_TYPE_UTILITY, ATOM
+
+  # NOTE:
+  # - Openbox does not let windows change this hint after mapping.
+
+  # NOTE:
+  # - the root window itself
+  #   "^_NET_CLIENT_LIST(WINDOW): window id # "
+  # - not (yet?) encountered in openbox
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_COMBO*"
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_DESKTOP*"
+  # - quasselclient dialog windows
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_DIALOG*"
+  # - not (yet?) encountered in openbox
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_DND*"
+  # - blackbox/fluxbox/openbox dock, tint2 panel/taskbar, likely others
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_DOCK*"
+  # - not (yet?) encountered in openbox
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_DROPDOWN_MENU*"
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_MENU*"
+  # - don't trap this one. it can be moved
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_NORMAL*"
+  # - notify-send notification popup
+  # - kdialog notification popup (in its random "upper/right of display" mode)
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_NOTIFICATION*"
+  # - not (yet?) encountered in openbox
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_POPUP_MENU*"
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_SPLASH*"
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_TOOLBAR*"
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_TOOLTIP*"
+  # - kdialog utility popup (in its random "middle/center of display" mode)
+  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_UTILITY*"
+  # - xmessage popup
+  # ^ untested here simply because it's a normal window
+
+  # NOTE:
+  # - the root window is a special case. under no circumstances can it be moved
+
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d') ]]
+  then
+    _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (root window) specified"
+  fi
+
+  if ! $_BOOLEAN_PERMISSIVE
+  then
+
+    # NOTE:
+    # - pay close attention to the syntax used in the case statement below
+    # - instead of ";;", use ";;&" below. do not use ";&"
+
+    # NOTE:
+    # - any single match would be an error. continue through the list to match
+    #   any & all possibilities
+
+    # - be explicit for clarity
+    unset _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM
+
+    case $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = /!d ; /\(.* = \|,\)/ s///g') in
+      ( *_NET_WM_WINDOW_TYPE_COMBO* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", combo"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_DESKTOP* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", desktop"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_DIALOG* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", dialog"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_DND* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", dnd"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_DOCK* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", dock"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_DROPDOWN_MENU* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", dropdown menu"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_MENU* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", menu"
+      ;;&
+#      ( *_NET_WM_WINDOW_TYPE_NORMAL* )
+#        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", normal"
+#      ;;&
+      ( *_NET_WM_WINDOW_TYPE_NOTIFICATION* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", notification"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_POPUP_MENU* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", popup menu"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_SPLASH* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", splash"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_TOOLBAR* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", toolbar"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_TOOLTIP* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", tooltip"
+      ;;&
+      ( *_NET_WM_WINDOW_TYPE_UTILITY* )
+        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", utility"
+      ;;&
+    esac
+
+    # - tidy up
+    if [[ ${_HUMAN_READABLE_WM_WINDOW_TYPE_ATOM:0:2} == ", " ]]
+    then
+      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=${_HUMAN_READABLE_WM_WINDOW_TYPE_ATOM:2}
+    fi
+
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $_HUMAN_READABLE_WM_WINDOW_TYPE_ATOM ]]
+    then
+      _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" ($_HUMAN_READABLE_WM_WINDOW_TYPE_ATOM) specified"
+    fi
+
+  fi # $_BOOLEAN_PERMISSIVE
+
+  _eko_iod "#- _pass_fail_by_window_type -#"
+}
+
 function _pass_fail_by_window_type_old()
 {
   _eko_iod "#+ _pass_fail_by_window_type_old +#"
@@ -4458,14 +4107,6 @@ function _pass_fail_by_window_type_old()
 
   # builtins:
   # echo
-
-  # precedence:
-  # required
-  #     self: "function _pass_fail_by_window_type_old"
-  #    child: "function _show_error"
-  # succeeds: "function _pass_fail_by_window_id"
-  # succeeds: "function _window_id_acquire"
-  # precedes: "function _get_net_current_desktop_cardinal"
 
   # NET:
   # - _NET_WM_WINDOW_TYPE, ATOM[]/32
@@ -4611,171 +4252,6 @@ function _pass_fail_by_window_type_old()
   _eko_iod "#- _pass_fail_by_window_type_old -#"
 }
 
-function _pass_fail_by_window_type()
-{
-  _eko_iod "#+ _pass_fail_by_window_type +#"
-
-  # functions:
-  # _eko_iod
-  # _show_error
-
-  # variables:
-  # _BOOLEAN_PERMISSIVE
-  # _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM
-  # _OPTION_WINDOW_ID
-  # _OUTPUT_XPROP_ID
-
-  # binaries:
-  # sed
-
-  # builtins:
-  # echo
-
-  # precedence:
-  # required
-  #     self: "function _pass_fail_by_window_type"
-  #    child: "function _show_error"
-  # succeeds: "function _pass_fail_by_window_id"
-  # succeeds: "function _window_id_acquire"
-  # precedes: "function _get_net_current_desktop_cardinal"
-
-  # NET:
-  # - _NET_WM_WINDOW_TYPE, ATOM[]/32
-
-  # (sorted listing from the original source)
-  #   _NET_WM_WINDOW_TYPE_COMBO, ATOM
-  #   _NET_WM_WINDOW_TYPE_DESKTOP, ATOM
-  #   _NET_WM_WINDOW_TYPE_DIALOG, ATOM
-  #   _NET_WM_WINDOW_TYPE_DND, ATOM
-  #   _NET_WM_WINDOW_TYPE_DOCK, ATOM
-  #   _NET_WM_WINDOW_TYPE_DROPDOWN_MENU, ATOM
-  #   _NET_WM_WINDOW_TYPE_MENU, ATOM
-  #   _NET_WM_WINDOW_TYPE_NORMAL, ATOM
-  #   _NET_WM_WINDOW_TYPE_NOTIFICATION, ATOM
-  #   _NET_WM_WINDOW_TYPE_POPUP_MENU, ATOM
-  #   _NET_WM_WINDOW_TYPE_SPLASH, ATOM
-  #   _NET_WM_WINDOW_TYPE_TOOLBAR, ATOM
-  #   _NET_WM_WINDOW_TYPE_TOOLTIP, ATOM
-  #   _NET_WM_WINDOW_TYPE_UTILITY, ATOM
-
-  # NOTE:
-  # - Openbox does not let windows change this hint after mapping.
-
-  # NOTE:
-  # - the root window itself
-  #   "^_NET_CLIENT_LIST(WINDOW): window id # "
-  # - not (yet?) encountered in openbox
-  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_COMBO*"
-  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_DESKTOP*"
-  # - quasselclient dialog windows
-  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_DIALOG*"
-  # - not (yet?) encountered in openbox
-  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_DND*"
-  # - blackbox/fluxbox/openbox dock, tint2 panel/taskbar, likely others
-  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_DOCK*"
-  # - not (yet?) encountered in openbox
-  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_DROPDOWN_MENU*"
-  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_MENU*"
-  # - don't trap this one. it can be moved
-  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_NORMAL*"
-  # - notify-send notification popup
-  # - kdialog notification popup (in its random "upper/right of display" mode)
-  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_NOTIFICATION*"
-  # - not (yet?) encountered in openbox
-  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_POPUP_MENU*"
-  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_SPLASH*"
-  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_TOOLBAR*"
-  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_TOOLTIP*"
-  # - kdialog utility popup (in its random "middle/center of display" mode)
-  #   "^_NET_WM_WINDOW_TYPE(ATOM) = *_NET_WM_WINDOW_TYPE_UTILITY*"
-  # - xmessage popup
-  # ^ untested here simply because it's a normal window
-
-  # NOTE:
-  # - the root window is a special case. under no circumstances can it be moved
-
-  # - "-n string" = true if the length of string is non-zero
-  if [[ -n $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d') ]]
-  then
-    _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" (root window) specified"
-  fi
-
-  if ! $_BOOLEAN_PERMISSIVE
-  then
-
-    # NOTE:
-    # - pay close attention to the syntax used in the case statement below
-    # - instead of ";;", use ";;&" below. do not use ";&"
-
-    # NOTE:
-    # - any single match would be an error. continue through the list to match
-    #   any & all possibilities
-
-    # - be explicit for clarity
-    unset _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM
-
-    case $(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = /!d ; /\(.* = \|,\)/ s///g') in
-      ( *_NET_WM_WINDOW_TYPE_COMBO* )
-        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", combo"
-      ;;&
-      ( *_NET_WM_WINDOW_TYPE_DESKTOP* )
-        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", desktop"
-      ;;&
-      ( *_NET_WM_WINDOW_TYPE_DIALOG* )
-        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", dialog"
-      ;;&
-      ( *_NET_WM_WINDOW_TYPE_DND* )
-        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", dnd"
-      ;;&
-      ( *_NET_WM_WINDOW_TYPE_DOCK* )
-        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", dock"
-      ;;&
-      ( *_NET_WM_WINDOW_TYPE_DROPDOWN_MENU* )
-        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", dropdown menu"
-      ;;&
-      ( *_NET_WM_WINDOW_TYPE_MENU* )
-        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", menu"
-      ;;&
-#      ( *_NET_WM_WINDOW_TYPE_NORMAL* )
-#        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", normal"
-#      ;;&
-      ( *_NET_WM_WINDOW_TYPE_NOTIFICATION* )
-        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", notification"
-      ;;&
-      ( *_NET_WM_WINDOW_TYPE_POPUP_MENU* )
-        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", popup menu"
-      ;;&
-      ( *_NET_WM_WINDOW_TYPE_SPLASH* )
-        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", splash"
-      ;;&
-      ( *_NET_WM_WINDOW_TYPE_TOOLBAR* )
-        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", toolbar"
-      ;;&
-      ( *_NET_WM_WINDOW_TYPE_TOOLTIP* )
-        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", tooltip"
-      ;;&
-      ( *_NET_WM_WINDOW_TYPE_UTILITY* )
-        _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM+=", utility"
-      ;;&
-    esac
-
-    # - tidy up
-    if [[ ${_HUMAN_READABLE_WM_WINDOW_TYPE_ATOM:0:2} == ", " ]]
-    then
-      _HUMAN_READABLE_WM_WINDOW_TYPE_ATOM=${_HUMAN_READABLE_WM_WINDOW_TYPE_ATOM:2}
-    fi
-
-    # - "-n string" = true if the length of string is non-zero
-    if [[ -n $_HUMAN_READABLE_WM_WINDOW_TYPE_ATOM ]]
-    then
-      _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" ($_HUMAN_READABLE_WM_WINDOW_TYPE_ATOM) specified"
-    fi
-
-  fi # $_BOOLEAN_PERMISSIVE
-
-  _eko_iod "#- _pass_fail_by_window_type -#"
-}
-
 function _set_window_position()
 {
   _eko_iod "#+ _set_window_position +#"
@@ -4826,11 +4302,6 @@ function _set_window_position()
 
   # builtins:
   # (none)
-
-  # precedence:
-  # required
-  #     self: "function _set_window_position"
-  # succeeds: "function _coordinates_kludge"
 
   # NET:
   # - several described elsewhere throughout the script, so no need to repeat
@@ -5078,15 +4549,6 @@ function _show_error()
   # builtins:
   # echo
 
-  # precedence:
-  # required
-  #   parent: "function _binary_validate_setup"
-  #   parent: "function _builtin_validate_setup"
-  #   parent: "function _coordinates_validate"
-  #   parent: "function _parse_parameters"
-  #   parent: "function _pass_fail_by_window_type"
-  #     self: "function _show_error"
-
   # - output to stderr, not stdout
   # - be explicit for clarity
   echo "Error: $@" 1>&2
@@ -5111,12 +4573,6 @@ function _show_help()
 
   # builtins:
   # echo
-
-  # precedence:
-  # required
-  #   parent: "function _coordinates_calculate"
-  #   parent: "function _parse_parameters"
-  #     self: "function _show_help"
 
   echo "Provide at least 1 parameter: <Window Coordinates> [OPTION] [[OPTION]]
 
@@ -5173,11 +4629,6 @@ function _window_id_acquire()
   # builtins:
   # echo
 
-  # precedence:
-  # required
-  #     self: "function _window_id_acquire"
-  # precedes: "function _pass_fail_by_window_type"
-
   _eko_ps_en "Select the window to move:" ""
   _eko_pv_en "select the window to move:" ""
 
@@ -5219,9 +4670,6 @@ function _window_id_acquire()
 
 # builtins:
 # echo
-
-# precedence:
-# required
 
 _parse_parameters "$@"
 
@@ -5663,3 +5111,161 @@ exit 0
 ## _NET_WM_ICON CARDINAL[][2+n]/32 (deliberately skipping this one)
 
 ###---
+
+####++++
+
+# $ xwininfo -id 0x80010c # gkrellm & wmnd in the dock
+# Absolute upper-left X:  1852
+# Absolute upper-left Y:  0
+# Relative upper-left X:  1852
+# Relative upper-left Y:  0
+# Width: 66
+# Height: 379
+# Border width: 1
+# Corners:  +1852+0  -0+0  -0-699  +1852-699
+
+# $ xwininfo -id 0x1200004 # xfce4-panel
+# Absolute upper-left X:  1852
+# Absolute upper-left Y:  380
+# Relative upper-left X:  0
+# Relative upper-left Y:  0
+# Width: 68
+# Height: 407
+# Border width: 0
+# Corners:  +1852+380  -0+380  -0-293  +1852-293
+
+# $ xwininfo -id 0xe00008 # tint2
+# Absolute upper-left X:  0
+# Absolute upper-left Y:  1056
+# Relative upper-left X:  0
+# Relative upper-left Y:  0
+# Width: 1920
+# Height: 24
+# Border width: 0
+# Corners:  +0+1056  -0+1056  -0-0  +0-0
+
+# wmctrl -i -r 0xe00008 -e 0,0,1056,-1,-1 # bl (overall)
+# wmctrl -i -r 0xe00008 -e 0,-68,-1,-1,-1 # same (wups)
+
+# wmctrl -i -r 0xe00008 -e 0,-68,1032,-1,-1 # bc (wups)
+# wmctrl -i -r 0xe00008 -e 0,0,1056,-1,-1 # bc (overall)
+
+#+
+# #+ _coordinates_validate +#
+#                        $_COORDINATE_X: "-68"
+#                        $_COORDINATE_Y: "-1"
+# #- _coordinates_validate -#
+#-
+
+# $ xwininfo -id 0x3400011 # quassel
+# Absolute upper-left X:  1
+# Absolute upper-left Y:  22
+# Relative upper-left X:  1
+# Relative upper-left Y:  22
+# Width: 1000
+# Height: 630
+# Border width: 0
+# Corners:  +1+22  -919+22  -919-428  +1-428
+
+# wmctrl -i -r 0x3400011 -e 0,  0,  0,-1,-1 # ul
+# wmctrl -i -r 0x3400011 -e 0,850,  0,-1,-1 # ur
+# wmctrl -i -r 0x3400011 -e 0,  0,398,-1,-1 # bl
+# wmctrl -i -r 0x3400011 -e 0,850,398,-1,-1 # br
+# wmctrl -i -r 0x3400011 -e 0,123,123,-1,-1 # 123,123
+
+# $ xwininfo -id 0xa0004d # rxvt # ur
+
+# Absolute upper-left X:  1    # ul
+# Absolute upper-left Y:  22   # ul
+# Relative upper-left X:  1    # ul
+# Relative upper-left Y:  22   # ul
+
+# Absolute upper-left X:  634  # uc
+# Absolute upper-left Y:  22   # uc
+# Relative upper-left X:  1    # uc
+# Relative upper-left Y:  22   # uc
+
+# Absolute upper-left X:  1268 # ur
+# Absolute upper-left Y:  22   # ur
+# Relative upper-left X:  1    # ur
+# Relative upper-left Y:  22   # ur
+
+# Absolute upper-left X:  1    # ml
+# Absolute upper-left Y:  366  # ml
+# Relative upper-left X:  1    # ml
+# Relative upper-left Y:  22   # ml
+
+# Absolute upper-left X:  634  # mc
+# Absolute upper-left Y:  366  # mc
+# Relative upper-left X:  1    # mc
+# Relative upper-left Y:  22   # mc
+
+# Absolute upper-left X:  1268 # mr
+# Absolute upper-left Y:  366  # mr
+# Relative upper-left X:  1    # mr
+# Relative upper-left Y:  22   # mr
+
+# Absolute upper-left X:  1    # bl
+# Absolute upper-left Y:  710  # bl
+# Relative upper-left X:  1    # bl
+# Relative upper-left Y:  22   # bl
+
+# Absolute upper-left X:  634  # bc
+# Absolute upper-left Y:  710  # bc
+# Relative upper-left X:  1    # bc
+# Relative upper-left Y:  22   # bc
+
+# Absolute upper-left X:  1268 # br
+# Absolute upper-left Y:  710  # br
+# Relative upper-left X:  1    # br
+# Relative upper-left Y:  22   # br
+
+# Width: 583
+# Height: 340
+# Border width: 0
+
+# Corners:     +1+22   -1336+22   -1336-718     +1-718 # ul
+# Corners:   +634+22    -703+22    -703-718   +634-718 # uc
+# Corners:  +1268+22     -69+22     -69-718  +1268-718 # ur
+# Corners:     +1+366  -1336+366  -1336-374     +1-374 # ml
+# Corners:   +634+366   -703+366   -703-374   +634-374 # mc
+# Corners:  +1268+366    -69+366    -69-374  +1268-374 # mr
+# Corners:     +1+710  -1336+710   -1336-30     +1-30  # bl
+# Corners:   +634+710   -703+710    -703-30   +634-30  # bc
+# Corners:  +1268+710    -69+710     -69-30  +1268-30  # br
+
+# (pending)
+# - do something special with _NET_ACTIVE_WINDOW_WINDOW from
+#   "function _get_net_active_window_window"
+# - interesting discovery: "_NET_ACTIVE_WINDOW(WINDOW): window id # 0x0" is
+#   returned in a desktop containing no _NET_WM_WINDOW_TYPE_NORMAL windows
+#   (or if any _NET_WM_WINDOW_TYPE_NORMAL windows exist, they're minimized)
+# > is this behaviour specific to openbox? find out
+# > regardless, the recent changes in "function _pass_fail_by_window_id"
+#   consider this as a "does not exist" error if "id 0x0" is specified on the
+#   commandline
+
+# TODO: (ASAP!)
+# - trace down & fix whatever's causing incorrect calculations with tint2
+#+
+# > $ move-window -id 0xe00008 -D -d -v -p -c same
+# > wmctrl command (move): "true -i -r 0xe00008 -e 0,-68,-1,-1,-1"
+# > $ move-window -id 0xe00008 -D -d -v -p -c bl
+# > wmctrl command (move): "true -i -r 0xe00008 -e 0,-68,1032,-1,-1"
+# > $ move-window -id 0xe00008 -D -d -v -p -c bc
+# > wmctrl command (move): "true -i -r 0xe00008 -e 0,-68,1032,-1,-1"
+# > $ move-window -id 0xe00008 -D -d -v -p -c br
+# > wmctrl command (move): "true -i -r 0xe00008 -e 0,-68,1032,-1,-1"
+#-
+#+
+# > $ move-window -id 0xe00008 -D -d -v -o -p -c same
+# > wmctrl command (move): "true -i -r 0xe00008 -e 0,-1,-1,-1,-1"
+# > $ move-window -id 0xe00008 -D -d -v -o -p -c bl
+# > wmctrl command (move): "true -i -r 0xe00008 -e 0,0,1056,-1,-1"
+# > $ move-window -id 0xe00008 -D -d -v -o -p -c bc
+# > wmctrl command (move): "true -i -r 0xe00008 -e 0,0,1056,-1,-1"
+# > $ move-window -id 0xe00008 -D -d -v -o -p -c br
+# > wmctrl command (move): "true -i -r 0xe00008 -e 0,0,1056,-1,-1"
+#-
+
+####----

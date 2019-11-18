@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# brightness v2019.11.11
+# brightness v2019.11.18
 
 # Copyright (C) 2017 - 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -26,6 +26,10 @@
 #   chronologically top-to-bottom while others are bottom-to-top. preferred
 #   order is bottom-to-top. this will gradually be fixed when time permits
 
+# 2019-11-18
+# - comment cleanup
+# - moved the block of 4 functions from the end of "main" to the end of
+#   "function _parse_parameters" where it/they belong(s)
 # 2019-11-11
 # - "function _backlight_type_test" changed the following lines:
 #  was: _eko_ps "Test progress:" "none. no permission"
@@ -1141,8 +1145,8 @@ function _eko_ps()
   # NOTE:
   # - why "%26s "? to simplify setting column width in stdout reports. a
   #   single change here affects the output globally
-  # - unformatted (non-columnized) output is now supported. simply pass "" as
-  #   the first parameter
+  # - unformatted (non-columnized) output is supported. simply pass "" as the
+  #   first parameter
 
   if $_BOOLEAN_STDOUT
   then
@@ -1180,8 +1184,8 @@ function _eko_ps_en()
   # NOTE:
   # - why "%26s "? to simplify setting column width in stdout reports. a
   #   single change here affects the output globally
-  # - unformatted (non-columnized) output is now supported. simply pass "" as
-  #   the first parameter
+  # - unformatted (non-columnized) output is supported. simply pass "" as the
+  #   first parameter
 
   if $_BOOLEAN_STDOUT
   then
@@ -1219,8 +1223,8 @@ function _eko_pv()
   # NOTE:
   # - why "%24s "? to simplify setting column width in verbose reports. a
   #   single change here affects the output globally
-  # - unformatted (non-columnized) output is now supported. simply pass "" as
-  #   the first parameter
+  # - unformatted (non-columnized) output is supported. simply pass "" as the
+  #   first parameter
 
   if $_BOOLEAN_VERBOSE
   then
@@ -1258,8 +1262,8 @@ function _eko_pv_en()
   # NOTE:
   # - why "%24s "? to simplify setting column width in verbose reports. a
   #   single change here affects the output globally
-  # - unformatted (non-columnized) output is now supported. simply pass "" as
-  #   the first parameter
+  # - unformatted (non-columnized) output is supported. simply pass "" as the
+  #   first parameter
 
   if $_BOOLEAN_VERBOSE
   then
@@ -1281,7 +1285,11 @@ function _parse_parameters()
 
   # functions:
   # _backlight_type_select
+  # _backlight_types_blacklist
+  # _backlight_types_discover
+  # _backlight_types_display
   # _backlight_types_list
+  # _backlight_types_prioritise
   # _eko_iod
   # _eko_pv
   # _process_numeric
@@ -1490,6 +1498,22 @@ function _parse_parameters()
     _process_numeric
   fi
 
+# NOTE:
+# - this block (immediately above & below) may need cleaning up
+
+# - if a backlight override wasn't specified, discover what's available
+# - "-z string" = true if the length of string is zero
+if [[ -z $_THIS_BACKLIGHT_TYPE ]]
+then
+  _backlight_types_discover
+
+  _backlight_types_blacklist
+
+  _backlight_types_prioritise
+fi
+
+_backlight_types_display
+
   #- parameter settings (in (mostly) proper order of operation) -#
 
   _eko_iod "#- _parse_parameters -#"
@@ -1539,7 +1563,7 @@ function _process_numeric()
 
   _eko_pv \$_PARAMETER_NUMERIC: \""$_PARAMETER_NUMERIC\" (raw)"
 
-  # - trim all non-numerics from both ends, starting with the left
+  # - trim all non-numerics from both ends. left side
 
   # - single character from the left
 #  _eko_pv "" ${_PARAMETER_NUMERIC:0:1}
@@ -1554,18 +1578,22 @@ function _process_numeric()
   done
   _eko_pv \$_PARAMETER_NUMERIC: \""$_PARAMETER_NUMERIC\" (trim left)"
 
-  # - trim all non-numerics from both ends, & then the right
+  # - trim all non-numerics from both ends. right side
 
   # - single character from the right
-#  _eko_pv "" ${_PARAMETER_NUMERIC: -1:1} # (the space *must* be present)
+  # - ${parameter:offset:length}
+#  _eko_pv "" ${_PARAMETER_NUMERIC: -1:1}
   # - what remains
-#  _eko_pv "" ${_PARAMETER_NUMERIC:0: -1} # (the space *must* be present)
+  # - ${parameter:offset:length}
+#  _eko_pv "" ${_PARAMETER_NUMERIC:0: -1}
 
   # - ${parameter:offset:length}
-  while [[ ${_PARAMETER_NUMERIC: -1:1} != [0-9] ]] # (the space *must* be present)
+  #   (the space must be present in "offset")
+  while [[ ${_PARAMETER_NUMERIC: -1:1} != [0-9] ]]
   do
     # - ${parameter:offset:length}
-    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0: -1} # (the space *must* be present)
+    #   (the space must be present in "length")
+    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0: -1}
   done
   _eko_pv \$_PARAMETER_NUMERIC: \""$_PARAMETER_NUMERIC\" (trim right)"
 
@@ -1696,15 +1724,10 @@ Note:
 #+ start here +#
 
 # functions:
-# _backlight_types_blacklist
-# _backlight_types_discover
-# _backlight_types_display
-# _backlight_types_prioritise
 # _parse_parameters
 
 # variables:
 # @
-# _THIS_BACKLIGHT_TYPE
 
 # binaries:
 # (none)
@@ -1713,19 +1736,6 @@ Note:
 # (none)
 
 _parse_parameters "$@"
-
-# - if a backlight override wasn't specified, discover what's available
-# - "-z string" = true if the length of string is zero
-if [[ -z $_THIS_BACKLIGHT_TYPE ]]
-then
-  _backlight_types_discover
-
-  _backlight_types_blacklist
-
-  _backlight_types_prioritise
-fi
-
-_backlight_types_display
 
 #- start here -#
 

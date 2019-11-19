@@ -2815,13 +2815,6 @@ function _parse_parameters()
     shift
   done
 
-  # - why? "-D, --dry-run" means exactly that. do as little as possible
-  if $_BOOLEAN_DRYRUN \
-  && $_BOOLEAN_SUM
-  then
-    _BOOLEAN_SUM=false
-  fi
-
   #- _parse_parameters -#
 
   # - technically in the wrong spot, but it's a chicken or egg scenario
@@ -2833,6 +2826,14 @@ function _parse_parameters()
   # > 1st: "function _pathname_transform_cd_pwd"
   # > 2nd: "function _pathname_transform_realpath"
   # > 3rd: "function _pathname_transform_bruteforce"
+
+  # - why? "-D, --dry-run" means exactly that. do as little as possible
+  # - there's no need to test the *sum variants if they will not be used
+  if $_BOOLEAN_DRYRUN \
+  && $_BOOLEAN_SUM
+  then
+    _BOOLEAN_SUM=false
+  fi
 
   # - validate the existence & required options of system builtins
   # - while we're at it, set up the options for the various builtins if needed

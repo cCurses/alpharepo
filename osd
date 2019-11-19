@@ -252,7 +252,9 @@ function _attempt_osd()
   # _OPTION_TIMEOUT
 
   # binaries:
-  # (none)
+  # (kdialog indirectly)
+  # (notify-send indirectly)
+  # (xmessage indirectly)
 
   # builtins:
   # (none)
@@ -1000,7 +1002,9 @@ function _parse_parameters()
   # _OPTION_TIMEOUT
 
   # binaries:
-  # (none)
+  # (kdialog indirectly)
+  # (notify-send indirectly)
+  # (xmessage indirectly)
 
   # builtins:
   # (none)
@@ -1089,6 +1093,8 @@ function _parse_parameters()
   # - technically in the wrong spot, but it's a chicken or egg scenario
   _eko_iod "#+ _parse_parameters +#"
 
+  # - a simple chain reaction
+
   # NOTE:
   # - order of operations of the following 2 functions is unimportant
 
@@ -1123,7 +1129,6 @@ function _parse_parameters()
 
   #- parameter settings (in (mostly) proper order of operation) -#
 
-  # - a simple chain reaction
   _display_xauthority_acquire
 
   _eko_iod "#- _parse_parameters -#"

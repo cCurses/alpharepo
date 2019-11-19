@@ -4298,7 +4298,7 @@ function _set_window_position()
   # _WORKAREA_BORDER_T
 
   # binaries:
-  # (none)
+  # (wmctrl indirectly)
 
   # builtins:
   # (none)
@@ -4666,7 +4666,7 @@ function _window_id_acquire()
 # _BINARY_WMCTRL
 
 # binaries:
-# (none)
+# (wmctrl indirectly)
 
 # builtins:
 # echo

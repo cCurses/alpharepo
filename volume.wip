@@ -1453,11 +1453,13 @@ function _process_numeric()
 
   _eko_pv \$_PARAMETER_NUMERIC: \""$_PARAMETER_NUMERIC\" (raw)"
 
-  # - trim all non-numerics from both ends, starting with the left
+  # - trim all non-numerics from both ends. left side
 
   # - single character from the left
+  # - ${parameter:offset:length}
 #  _eko_pv "" ${_PARAMETER_NUMERIC:0:1}
   # - what remains
+  # - ${parameter:offset}
 #  _eko_pv "" ${_PARAMETER_NUMERIC:1}
 
   # - ${parameter:offset:length}
@@ -1468,18 +1470,24 @@ function _process_numeric()
   done
   _eko_pv \$_PARAMETER_NUMERIC: \""$_PARAMETER_NUMERIC\" (trim left)"
 
-  # - trim all non-numerics from both ends, & then the right
+  # - trim all non-numerics from both ends. right side
 
   # - single character from the right
-#  _eko_pv "" ${_PARAMETER_NUMERIC: -1:1} # (the space *must* be present)
+  # - ${parameter:offset:length}
+  #   (the space must be present in "offset")
+#  _eko_pv "" ${_PARAMETER_NUMERIC: -1:1}
   # - what remains
-#  _eko_pv "" ${_PARAMETER_NUMERIC:0: -1} # (the space *must* be present)
+  # - ${parameter:offset:length}
+  #   (the space must be present in "length")
+#  _eko_pv "" ${_PARAMETER_NUMERIC:0: -1}
 
   # - ${parameter:offset:length}
-  while [[ ${_PARAMETER_NUMERIC: -1:1} != [0-9] ]] # (the space *must* be present)
+  #   (the space must be present in "offset")
+  while [[ ${_PARAMETER_NUMERIC: -1:1} != [0-9] ]]
   do
     # - ${parameter:offset:length}
-    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0: -1} # (the space *must* be present)
+    #   (the space must be present in "length")
+    _PARAMETER_NUMERIC=${_PARAMETER_NUMERIC:0: -1}
   done
   _eko_pv \$_PARAMETER_NUMERIC: \""$_PARAMETER_NUMERIC\" (trim right)"
 

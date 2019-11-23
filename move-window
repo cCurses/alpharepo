@@ -1,7 +1,7 @@
 #!/bin/bash
 #+ marker sof +#
 
-# move-window v2019.11.18
+# move-window v20XX.YY.ZZ
 
 # Copyright (C) 2019
 # Erik Jan Tromp <alphageek@slackware.com>
@@ -10,9 +10,30 @@
 # concept:
 # - move selected window to desired position on desktop
 
+# known bugs:
+# - attempting to move the openbox dock in permissive mode causes the script
+#   to crash. initial attempts to fix &/or work around this have met with
+#   failure
+# > current solution: don't do that
+# - attempting to move tint2 in permissive mode succeeds (sort of), but when
+#   specifying "-c same", the taskbar is truncated to whatever reserved space
+#   is calculated from the combination of $_NET_DESKTOP_GEOMETRY_CARDINAL &
+#   $_NET_WORKAREA_CARDINAL
+# > current solutions:
+# 1 don't do that
+# 2 use tint2's "reload config" option to put things back as they were
+# 3 assuming you run tint2 the full width of the display, use move-window's
+#   "-c" option appropriately (ie: if the taskbar is on the bottom of the
+#   display, use any of "-c bl", "-c bc", or "-c br") along with "-o" & "-p"
+
+# NOTE: (to self)
+# - these might be useful to fix/prevent the problem dealing with tint2
+#   detailed above:
+# $_NET_WM_STATE_ATOM: "_NET_WM_STATE_SKIP_TASKBAR _NET_WM_STATE_SKIP_PAGER _NET_WM_STATE_ABOVE"
+
 # NOTE:
 # - additional information acquired from:
-#   https://standards.freedesktop.org/wm-spec/wm-spec-latest.html
+#   https://specifications.freedesktop.org/wm-spec/wm-spec-latest.html
 
 # TODO:
 # - there are a small number of _NET_* properties mentioned in the freedesktop
@@ -34,6 +55,30 @@
 # - changelog order is unpredictable. some series of entries per date are
 #   chronologically top-to-bottom while others are bottom-to-top. preferred
 #   order is bottom-to-top. this will gradually be fixed when time permits
+
+# IDEA:
+# - "-l, --list" to list all windows that can be moved. or possibly list all,
+#   but have unmovable windows flagged in some fashion. ie: (unmovable)
+# - _BOOLEAN_LIST (new)
+# - _NET_CLIENT_LIST_WINDOW (already exists)
+# - interesting discovery: the openbox dock does not show up in the window list
+
+# - "-n <Window Name>, --window-name <Window Name>" for an alternate method of
+#   identifying a window
+# - "-id <Window ID>, --window-id <Window ID>" is currently the only method
+#   available for identifying a window
+# - _OPTION_WINDOW_NAME (new)
+# - _NET_WM_NAME_UTF8_STRING (already exists)
+
+# 20XX-YY-ZZ
+# (pending)
+
+# (done?)
+# - "function _parse_parameters" added "-l, --list" option
+# - "function _get_window_list" added
+
+# - too many changes to document. I'm not in the mood to write a novel
+#   (possibly put brief notes of the major changes to have mercy on future-me)
 
 # 2019-11-18
 # - comment cleanup
@@ -170,8 +215,8 @@
 #  add:   _NET_FRAME_EXTENTS_CARDINAL="0 0 0 0"
 #  add: fi
 # - "function _pass_fail_by_window_type" added $_BOOLEAN_PERMISSIVE test
-# - added "-p, --permissive" option to allow moving (or at least viewing)
-#   otherwise unmoveable windows
+# - "function _parse_parameters" added "-p, --permissive" option to allow
+#   moving (or at least viewing) otherwise unmoveable windows
 # - rearranged calls to the following functions to be displayed only when
 #   "-u, --unused" is specified:
 #   "function _get_net_active_window_window"
@@ -468,7 +513,11 @@
 # - 0 spaces, hash, builtin/binary/variable/function name = in main
 # NOTE: (system builtin use & abuse - excluding echo/printf)
     # read
+    # shift
+  # false
   # read
+  # shift
+  # true
 # NOTE: (system binary use & abuse)
   # sed
   # wmctrl
@@ -490,12 +539,11 @@
 # - ephemeral variables. here today, gone tomorrow (keeping track for myself)
 # - better to have too many than too few
     # _BOOLEAN_OVERALL
-    # _NET_CURRENT_DESKTOP_CARDINAL
     # _NET_DESKTOP_GEOMETRY_H
     # _NET_DESKTOP_GEOMETRY_W
     # _NET_DESKTOP_VIEWPORT_X
     # _NET_DESKTOP_VIEWPORT_Y
-    # _NET_WORKAREA_CARDINAL
+    # _NET_WM_DESKTOP_CARDINAL
     # _NET_WORKAREA_H
     # _NET_WORKAREA_W
     # _NET_WORKAREA_X
@@ -513,6 +561,7 @@
   # _BOOLEAN_DEBUG
   # _BOOLEAN_DRYRUN
   # _BOOLEAN_FORCE
+  # _BOOLEAN_LIST
   # _BOOLEAN_MAXIMIZED_X (window state. not script option)
   # _BOOLEAN_MAXIMIZED_Y (window state. not script option)
   # _BOOLEAN_OVERALL
@@ -606,6 +655,7 @@
   # _OPTIONS_READ (read options, not script options)
   # _OPTION_WINDOW_COORDINATES
   # _OPTION_WINDOW_ID
+  # _OPTION_WINDOW_NAME
   # _OUTPUT_XPROP_ID
   # _OUTPUT_XPROP_ROOT
   # _OUTPUT_XWININFO_ID
@@ -671,6 +721,7 @@
   # _get_net_wm_visible_name_utf8_string
   # _get_net_wm_window_type_atom
   # _get_net_workarea_cardinal
+  # _get_window_list
   # _get_window_undecorated_geometry
   # _pass_fail_by_window_id
   # _pass_fail_by_window_type
@@ -719,6 +770,7 @@ function _binary_validate_setup()
 
   # builtins:
   # echo
+  # false (wmctrl substitute)
 
   # NOTE:
   # - rather than test a given binary's version in hopes of figuring out which
@@ -1040,6 +1092,7 @@ function _coordinates_force()
   # binaries:
   # sed
   # xwininfo
+  # (wmctrl indirectly)
 
   # builtins:
   # echo
@@ -1176,8 +1229,9 @@ function _coordinates_kludge()
   # - this is absolutely required for the TigerVNC client
   # - this must be done after "function _coordinates_validate", but before
   #   setting up _COMMAND in "function _set_window_position"
-  if [[ $_COORDINATE_X != -1 ]] \
-  && [[ $_COORDINATE_Y != -1 ]]
+  # - "arg1 -ne arg2" = returns true if arg1 is not equal to arg2
+  if [[ $_COORDINATE_X -ne -1 ]] \
+  && [[ $_COORDINATE_Y -ne -1 ]]
   then
     # - $((expression))
     _COORDINATE_X=$(( $_COORDINATE_X + $_KLUDGE_X ))
@@ -1296,6 +1350,8 @@ function _coordinates_validate()
   # - (1/4)
   # - force X coordinate to fit within usable or overall desktop X
   # - left (special case: -1)
+  # - "arg1 -lt arg2" = returns true if arg1 is less than arg2
+  # - "arg1 -ne arg2" = returns true if arg1 is not equal to arg2
   if [[ $_COORDINATE_X -lt $_WORKAREA_BORDER_L ]] \
   && [[ $_COORDINATE_X -ne -1 ]]
   then
@@ -1306,6 +1362,7 @@ function _coordinates_validate()
   # - force X coordinate to fit within usable or overall desktop X
   # - right
   # - $((expression))
+  # - "arg1 -gt arg2" = returns true if arg1 is greater than arg2
   if [[ $(( $_COORDINATE_X + $_WINDOW_DECORATED_X + $_WORKAREA_BORDER_R )) -gt $_NET_DESKTOP_GEOMETRY_W ]]
   then
     # - $((expression))
@@ -1315,6 +1372,8 @@ function _coordinates_validate()
   # - (3/4)
   # - force Y coordinate to fit within usable or overall desktop Y
   # - top (special case: -1)
+  # - "arg1 -lt arg2" = returns true if arg1 is less than arg2
+  # - "arg1 -ne arg2" = returns true if arg1 is not equal to arg2
   if [[ $_COORDINATE_Y -lt $_WORKAREA_BORDER_T ]] \
   && [[ $_COORDINATE_Y -ne -1 ]]
   then
@@ -1325,6 +1384,7 @@ function _coordinates_validate()
   # - force Y coordinate to fit within usable or overall desktop Y
   # - bottom
   # - $((expression))
+  # - "arg1 -gt arg2" = returns true if arg1 is greater than arg2
   if [[ $(( $_COORDINATE_Y + $_WINDOW_DECORATED_Y + $_WORKAREA_BORDER_B )) -gt $_NET_DESKTOP_GEOMETRY_H ]]
   then
     # - $((expression))
@@ -1411,6 +1471,7 @@ function _eko_ps()
   # builtins:
   # echo
   # printf
+  # shift
 
   # NOTE:
   # - why "%29s "? to simplify setting column width in stdout reports. a
@@ -1450,6 +1511,7 @@ function _eko_ps_en()
   # builtins:
   # echo
   # printf
+  # shift
 
   # NOTE:
   # - why "%29s "? to simplify setting column width in stdout reports. a
@@ -1489,6 +1551,7 @@ function _eko_pv()
   # builtins:
   # echo
   # printf
+  # shift
 
   # NOTE:
   # - why "%39s "? to simplify setting column width in verbose reports. a
@@ -1528,6 +1591,7 @@ function _eko_pv_en()
   # builtins:
   # echo
   # printf
+  # shift
 
   # NOTE:
   # - why "%39s "? to simplify setting column width in verbose reports. a
@@ -1563,6 +1627,7 @@ function _get_net_active_window_window()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -1613,6 +1678,7 @@ function _get_net_client_list_stacking_window()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -1653,6 +1719,7 @@ function _get_net_client_list_window()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -1693,6 +1760,7 @@ function _get_net_current_desktop_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -1716,7 +1784,7 @@ function _get_net_current_desktop_cardinal()
 #  _NET_CURRENT_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CURRENT_DESKTOP(CARDINAL) = /!d ; /.* = / s///g')
 #- marker sed syntax -#
 
-  _eko_pv \$_NET_CURRENT_DESKTOP_CARDINAL: \""$_NET_CURRENT_DESKTOP_CARDINAL\""
+  _eko_pv \$_NET_CURRENT_DESKTOP_CARDINAL: \""$_NET_CURRENT_DESKTOP_CARDINAL\" (unused)"
 
   _eko_iod "#- _get_net_current_desktop_cardinal -#"
 }
@@ -1738,6 +1806,7 @@ function _get_net_desktop_geometry_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -1796,6 +1865,7 @@ function _get_net_desktop_layout_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -1847,9 +1917,9 @@ function _get_net_desktop_names_utf8_string()
 
   # variables:
   # _COUNTER
-  # _NET_CURRENT_DESKTOP_CARDINAL
   # _NET_DESKTOP_NAMES_UTF8_STRING
   # _NET_DESKTOP_NAME_UTF8_STRING
+  # _NET_WM_DESKTOP_CARDINAL
   # _OUTPUT_XPROP_ROOT
   # _POSITION_CURRENT
   # _POSITION_FINISH
@@ -1857,6 +1927,7 @@ function _get_net_desktop_names_utf8_string()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -1875,10 +1946,6 @@ function _get_net_desktop_names_utf8_string()
   # ""VIII""
 
   # NOTE:
-  # - do we need this? I don't think so
-  # - keep it anyway. it's a good reference
-
-  # NOTE:
   # - unlike cardinal types, utf-8 requires special handling
   # - after quite a bit of experimenting, the following brute force method
   #   appears to work well enough for this particular case. if it's *not*
@@ -1895,7 +1962,7 @@ function _get_net_desktop_names_utf8_string()
 #  _NET_DESKTOP_NAMES_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_NAMES(UTF8_STRING) = /!d ; /\(.* = \|,\)/ s///g')
 #- marker sed syntax -#
 
-  _eko_pv \$_NET_DESKTOP_NAMES_UTF8_STRING: \""$_NET_DESKTOP_NAMES_UTF8_STRING\" (unused)"
+  _eko_pv \$_NET_DESKTOP_NAMES_UTF8_STRING: \""$_NET_DESKTOP_NAMES_UTF8_STRING\""
 
   # IDEA:
   # - don't modify the original string
@@ -1904,62 +1971,71 @@ function _get_net_desktop_names_utf8_string()
   # - note the position of each type of match
   # - set $_NET_DESKTOP_NAME_UTF8_STRING from the appropriate segment of
   #   $_NET_DESKTOP_NAMES_UTF8_STRING
-  # - requires $_NET_CURRENT_DESKTOP_CARDINAL
+  # - requires $_NET_WM_DESKTOP_CARDINAL for the correct offset
 
-  # - be explicit for clarity
-  _COUNTER=0
-  _POSITION_CURRENT=0
-  unset _POSITION_FINISH
-  unset _POSITION_START
+  # - 4294967295 = 0xFFFFFFFF = sticky = all desktops
+  # - "arg1 -ne arg2" = returns true if arg1 is not equal to arg2
+  if [[ $_NET_WM_DESKTOP_CARDINAL -ne 4294967295 ]]
+  then
+    # - be explicit for clarity
+    _COUNTER=0
+    _POSITION_CURRENT=0
+    unset _POSITION_FINISH
+    unset _POSITION_START
 
-  # - ${#parameter}
-  while [[ $_POSITION_CURRENT -lt ${#_NET_DESKTOP_NAMES_UTF8_STRING} ]] \
-  && [[ $_COUNTER -le $_NET_CURRENT_DESKTOP_CARDINAL ]]
-  do
+    # - ${#parameter}
+    # - "arg1 -lt arg2" = returns true if arg1 is less than arg2
+    # - "arg1 -le arg2" = returns true if arg1 is less than or equal to arg2
+    while [[ $_POSITION_CURRENT -lt ${#_NET_DESKTOP_NAMES_UTF8_STRING} ]] \
+    && [[ $_COUNTER -le $_NET_WM_DESKTOP_CARDINAL ]]
+    do
 
-    # - ${parameter:offset:length}
-    if [[ ${_NET_DESKTOP_NAMES_UTF8_STRING:$_POSITION_CURRENT:1} == \" ]]
-    then
       # - ${parameter:offset:length}
-      if [[ ${_NET_DESKTOP_NAMES_UTF8_STRING:$_POSITION_CURRENT:3} == \"\ \" ]]
+      if [[ ${_NET_DESKTOP_NAMES_UTF8_STRING:$_POSITION_CURRENT:1} == \" ]]
       then
-        _POSITION_FINISH=$_POSITION_CURRENT
-      else
-        # - $((expression))
-        # - ${#parameter}
-        if [[ $_POSITION_CURRENT -eq $(( ${#_NET_DESKTOP_NAMES_UTF8_STRING} - 1 )) ]]
+        # - ${parameter:offset:length}
+        if [[ ${_NET_DESKTOP_NAMES_UTF8_STRING:$_POSITION_CURRENT:3} == \"\ \" ]]
         then
           _POSITION_FINISH=$_POSITION_CURRENT
         else
-          _POSITION_START=$_POSITION_CURRENT
+          # - "arg1 -eq arg2" = returns true if arg1 is equal to arg2
+          # - $((expression))
+          # - ${#parameter}
+          if [[ $_POSITION_CURRENT -eq $(( ${#_NET_DESKTOP_NAMES_UTF8_STRING} - 1 )) ]]
+          then
+            _POSITION_FINISH=$_POSITION_CURRENT
+          else
+            _POSITION_START=$_POSITION_CURRENT
+          fi
         fi
       fi
-    fi
 
-    # - "-n string" = true if the length of string is non-zero
-    if [[ -n $_POSITION_FINISH ]] \
-    && [[ -n $_POSITION_START ]]
-    then
-      if [[ $_COUNTER -eq $_NET_CURRENT_DESKTOP_CARDINAL ]]
+      # - "-n string" = true if the length of string is non-zero
+      if [[ -n $_POSITION_FINISH ]] \
+      && [[ -n $_POSITION_START ]]
       then
-        # - ${parameter:offset:length}
-        # - $((expression))
-        _NET_DESKTOP_NAME_UTF8_STRING=${_NET_DESKTOP_NAMES_UTF8_STRING:$_POSITION_START:$(( $_POSITION_FINISH - $_POSITION_START + 1 ))}
+        # - "arg1 -eq arg2" = returns true if arg1 is equal to arg2
+        if [[ $_COUNTER -eq $_NET_WM_DESKTOP_CARDINAL ]]
+        then
+          # - ${parameter:offset:length}
+          # - $((expression))
+          _NET_DESKTOP_NAME_UTF8_STRING=${_NET_DESKTOP_NAMES_UTF8_STRING:$_POSITION_START:$(( $_POSITION_FINISH - $_POSITION_START + 1 ))}
+        fi
+
+        unset _POSITION_FINISH
+        unset _POSITION_START
+        # - ((expression))
+        # - id++ = variable post-increment
+        ((_COUNTER++))
       fi
 
-      unset _POSITION_FINISH
-      unset _POSITION_START
       # - ((expression))
       # - id++ = variable post-increment
-      ((_COUNTER++))
-    fi
+      ((_POSITION_CURRENT++))
+    done
 
-    # - ((expression))
-    # - id++ = variable post-increment
-    ((_POSITION_CURRENT++))
-  done
-
-  _eko_pv \$_NET_DESKTOP_NAME_UTF8_STRING: \""$_NET_DESKTOP_NAME_UTF8_STRING\""
+    _eko_pv \$_NET_DESKTOP_NAME_UTF8_STRING: \""$_NET_DESKTOP_NAME_UTF8_STRING\""
+  fi
 
   _eko_iod "#- _get_net_desktop_names_utf8_string -#"
 }
@@ -1979,6 +2055,7 @@ function _get_net_desktop_viewport_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2008,7 +2085,7 @@ function _get_net_desktop_viewport_cardinal()
 #  _NET_DESKTOP_VIEWPORT_CARDINAL=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_DESKTOP_VIEWPORT(CARDINAL) = /!d ; /\(.* = \|,\)/ s///g')
 #- marker sed syntax -#
 
-  _eko_pv \$_NET_DESKTOP_VIEWPORT_CARDINAL: \""$_NET_DESKTOP_VIEWPORT_CARDINAL\" (unused)"
+  _eko_pv \$_NET_DESKTOP_VIEWPORT_CARDINAL: \""$_NET_DESKTOP_VIEWPORT_CARDINAL\""
 
   function _sub_function()
   {
@@ -2019,10 +2096,10 @@ function _get_net_desktop_viewport_cardinal()
     # _eko_pv
 
     # variables:
-    # @
-    # _NET_CURRENT_DESKTOP_CARDINAL
+    # @ (_NET_DESKTOP_VIEWPORT_CARDINAL)
     # _NET_DESKTOP_VIEWPORT_X
     # _NET_DESKTOP_VIEWPORT_Y
+    # _NET_WM_DESKTOP_CARDINAL
     # _OPTIONS_READ (read options, not script options)
     # _XX0
 
@@ -2032,6 +2109,7 @@ function _get_net_desktop_viewport_cardinal()
     # builtins:
     # (none)
     # read
+    # shift
 
     # NET:
     # - _NET_CURRENT_DESKTOP desktop, CARDINAL/32
@@ -2054,7 +2132,7 @@ function _get_net_desktop_viewport_cardinal()
 
     # - there are 2 fields for each desktop
     # - $((expression))
-    shift $(( $_NET_CURRENT_DESKTOP_CARDINAL * 2 ))
+    shift $(( $_NET_WM_DESKTOP_CARDINAL * 2 ))
 
     read $_OPTIONS_READ -- \
     _NET_DESKTOP_VIEWPORT_X \
@@ -2093,6 +2171,7 @@ function _get_net_frame_extents_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2155,6 +2234,7 @@ function _get_net_number_of_desktops_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2196,6 +2276,7 @@ function _get_net_showing_desktop_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2234,6 +2315,7 @@ function _get_net_supported_atom()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2274,6 +2356,7 @@ function _get_net_supporting_wm_check_window()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2312,6 +2395,7 @@ function _get_net_virtual_roots_window()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2354,6 +2438,7 @@ function _get_net_wm_allowed_actions_atom()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2372,8 +2457,7 @@ function _get_net_wm_allowed_actions_atom()
   # "_NET_WM_ACTION_MAXIMIZE_HORZ, "
   # "_NET_WM_ACTION_MAXIMIZE_VERT, "
   # "_NET_WM_ACTION_ABOVE, "
-  # "_NET_WM_ACTION_BELOW, "
-  # "_OB_WM_ACTION_UNDECORATE"
+  # "_NET_WM_ACTION_BELOW"
 
   # (sorted listing from the original source)
   #   _NET_WM_ACTION_ABOVE, ATOM
@@ -2420,6 +2504,7 @@ function _get_net_wm_bypass_compositor_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2459,6 +2544,7 @@ function _get_net_wm_desktop_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2484,7 +2570,7 @@ function _get_net_wm_desktop_cardinal()
 #  _NET_WM_DESKTOP_CARDINAL=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_DESKTOP(CARDINAL) = /!d ; /.* = / s///g')
 #- marker sed syntax -#
 
-  _eko_pv \$_NET_WM_DESKTOP_CARDINAL: \""$_NET_WM_DESKTOP_CARDINAL\" (unused)"
+  _eko_pv \$_NET_WM_DESKTOP_CARDINAL: \""$_NET_WM_DESKTOP_CARDINAL\""
 
   _eko_iod "#- _get_net_wm_desktop_cardinal -#"
 }
@@ -2508,6 +2594,7 @@ function _get_net_wm_icon_geometry_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2563,6 +2650,7 @@ function _get_net_wm_icon_name_utf8_string()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2601,6 +2689,7 @@ function _get_net_wm_name_utf8_string()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2647,6 +2736,7 @@ function _get_net_wm_opaque_region_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2702,6 +2792,7 @@ function _get_net_wm_pid_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2745,9 +2836,12 @@ function _get_net_wm_state_atom()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
+  # false (_BOOLEAN_MAXIMIZED_X _BOOLEAN_MAXIMIZED_Y)
+  # true  (_BOOLEAN_MAXIMIZED_X _BOOLEAN_MAXIMIZED_Y)
 
   # NET:
   # - _NET_WM_STATE, ATOM[]
@@ -2821,6 +2915,7 @@ function _get_net_wm_strut_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2889,6 +2984,7 @@ function _get_net_wm_strut_partial_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -2971,10 +3067,10 @@ function _get_net_wm_sync_request_counter_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
-  # read
 
   # NET:
   # - _NET_WM_SYNC_REQUEST_COUNTER, ?, ?, CARDINAL[]/32
@@ -3011,6 +3107,7 @@ function _get_net_wm_user_time_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -3049,6 +3146,7 @@ function _get_net_wm_user_time_window_window()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -3087,6 +3185,7 @@ function _get_net_wm_visible_icon_name_utf8_string()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -3125,6 +3224,7 @@ function _get_net_wm_visible_name_utf8_string()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -3163,6 +3263,7 @@ function _get_net_wm_window_type_atom()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -3220,6 +3321,7 @@ function _get_net_workarea_cardinal()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -3257,12 +3359,11 @@ function _get_net_workarea_cardinal()
     # _eko_pv
 
     # variables:
-    # @
+    # @ (_NET_WORKAREA_CARDINAL)
     # _BOOLEAN_OVERALL
-    # _NET_CURRENT_DESKTOP_CARDINAL
     # _NET_DESKTOP_GEOMETRY_H
     # _NET_DESKTOP_GEOMETRY_W
-    # _NET_WORKAREA_CARDINAL
+    # _NET_WM_DESKTOP_CARDINAL
     # _NET_WORKAREA_H
     # _NET_WORKAREA_W
     # _NET_WORKAREA_X
@@ -3280,6 +3381,7 @@ function _get_net_workarea_cardinal()
     # builtins:
     # (none)
     # read
+    # shift
 
     # NET:
     # - _NET_CURRENT_DESKTOP desktop, CARDINAL/32
@@ -3302,7 +3404,7 @@ function _get_net_workarea_cardinal()
 
     # - there are 4 fields for each desktop
     # - $((expression))
-    shift $(( $_NET_CURRENT_DESKTOP_CARDINAL * 4 ))
+    shift $(( $_NET_WM_DESKTOP_CARDINAL * 4 ))
 
     read $_OPTIONS_READ -- \
     _NET_WORKAREA_X \
@@ -3379,6 +3481,87 @@ function _get_net_workarea_cardinal()
   _sub_function $_NET_WORKAREA_CARDINAL
 
   _eko_iod "#- _get_net_workarea_cardinal -#"
+}
+
+function _get_window_list()
+{
+  _eko_iod "#+ _get_window_list +#"
+
+  # functions:
+  # _eko_iod
+  # _eko_pv
+  # _get_net_client_list_window
+  # _get_net_wm_desktop_cardinal
+  # _get_net_wm_name_utf8_string
+
+  # variables:
+  # _BOOLEAN_STDOUT
+  # _NET_CLIENT_LIST_WINDOW
+  # _NET_WM_DESKTOP_CARDINAL
+  # _NET_WM_NAME_UTF8_STRING
+  # _OPTION_WINDOW_ID
+  # _OUTPUT_XPROP_ID
+
+  # binaries:
+  # xprop
+
+  # builtins:
+#  # echo
+  # printf
+
+  _get_net_client_list_window
+
+#  if $_BOOLEAN_STDOUT
+#  then
+#    echo "  Desktop"
+#    echo "      Number  Window ID  Window Name"
+#  fi
+
+  for _OPTION_WINDOW_ID in $_NET_CLIENT_LIST_WINDOW
+  do
+    # - blank line for clarity
+    _eko_pv "" ""
+
+    # - the individual Window ID
+    _eko_pv \$_OPTION_WINDOW_ID: \""$_OPTION_WINDOW_ID\""
+
+    # - grab all of its properties
+    _OUTPUT_XPROP_ID=$(xprop -id $_OPTION_WINDOW_ID 2>/dev/null)
+
+    # - there is a non-zero chance that the identified window could vanish
+    #   between the time of its detection & the time of its use
+    # - throw an error or just ignore it? both routines are here. choose one
+    # ^ actually, the belt & suspenders approach seems to work. keeping them
+
+    # - "-z string" = true if the length of string is zero
+    if [[ -z $_OUTPUT_XPROP_ID ]]
+    then
+      _show_error "invalid Window ID \"$_OPTION_WINDOW_ID\" no longer exists"
+    fi
+
+    # - "-n string" = true if the length of string is non-zero
+    if [[ -n $_OUTPUT_XPROP_ID ]]
+    then
+      # - display which desktop it's on
+      _get_net_wm_desktop_cardinal
+
+      # - display its name
+      _get_net_wm_name_utf8_string
+
+      # - all the above is displayed in verbose mode
+      # - stdout mode is quiet right now. this simplifies things immensely
+
+      if $_BOOLEAN_STDOUT
+      then
+        printf "%12s%11s  %s\n" \
+        $_NET_WM_DESKTOP_CARDINAL \
+        $_OPTION_WINDOW_ID \
+        "$_NET_WM_NAME_UTF8_STRING"
+      fi
+    fi
+  done
+
+  _eko_iod "#- _get_window_list -#"
 }
 
 function _get_window_undecorated_geometry()
@@ -3474,7 +3657,6 @@ function _parse_parameters()
   # _eko_pv
   # _get_net_active_window_window
   # _get_net_client_list_stacking_window
-  # _get_net_client_list_window
   # _get_net_current_desktop_cardinal
   # _get_net_desktop_geometry_cardinal
   # _get_net_desktop_layout_cardinal
@@ -3504,6 +3686,7 @@ function _parse_parameters()
   # _get_net_wm_visible_name_utf8_string
   # _get_net_workarea_cardinal
   # _get_net_wm_window_type_atom
+  # _get_window_list
   # _get_window_undecorated_geometry
   # _pass_fail_by_window_id
   # _pass_fail_by_window_type
@@ -3520,6 +3703,7 @@ function _parse_parameters()
   # _BOOLEAN_DEBUG
   # _BOOLEAN_DRYRUN
   # _BOOLEAN_FORCE
+  # _BOOLEAN_LIST
   # _BOOLEAN_OVERALL
   # _BOOLEAN_PERMISSIVE
   # _BOOLEAN_QUIET
@@ -3529,13 +3713,18 @@ function _parse_parameters()
   # _BOOLEAN_VERBOSE
   # _OPTION_WINDOW_COORDINATES
   # _OPTION_WINDOW_ID
+  # _OPTION_WINDOW_NAME
   # _OUTPUT_XPROP_ROOT
 
   # binaries:
   # xprop
+  # (wmctrl indirectly)
 
   # builtins:
   # (none)
+  # false (_BOOLEAN_DEBUG _BOOLEAN_DRYRUN _BOOLEAN_FORCE _BOOLEAN_LIST _BOOLEAN_OVERALL _BOOLEAN_PERMISSIVE _BOOLEAN_QUIET _BOOLEAN_RAISE _BOOLEAN_STDOUT _BOOLEAN_UNUSED _BOOLEAN_VERBOSE)
+  # true  (_BINARY_WMCTRL _BOOLEAN_DEBUG _BOOLEAN_DRYRUN _BOOLEAN_FORCE _BOOLEAN_LIST _BOOLEAN_OVERALL _BOOLEAN_PERMISSIVE _BOOLEAN_QUIET _BOOLEAN_RAISE _BOOLEAN_STDOUT _BOOLEAN_UNUSED _BOOLEAN_VERBOSE)
+  # shift
 
   # NOTE:
   # - boolean variables are proper toggles
@@ -3568,6 +3757,7 @@ function _parse_parameters()
   _BOOLEAN_DEBUG=false      # display
   _BOOLEAN_DRYRUN=false     # control
   _BOOLEAN_FORCE=false      # action
+  _BOOLEAN_LIST=false       # display
   _BOOLEAN_OVERALL=false    # control
   _BOOLEAN_PERMISSIVE=false # control
   _BOOLEAN_QUIET=false      # display
@@ -3577,9 +3767,11 @@ function _parse_parameters()
   _BOOLEAN_VERBOSE=false    # display
   unset _OPTION_WINDOW_COORDINATES
   unset _OPTION_WINDOW_ID
+  unset _OPTION_WINDOW_NAME
 
   #- parameter defaults -#
 
+  # - "arg1 -gt arg2" = returns true if arg1 is greater than arg2
   while [[ $# -gt 0 ]]
   do
     case $1 in
@@ -3588,6 +3780,7 @@ function _parse_parameters()
         # - ${parameter:offset:length}
         # - "-z string" = true if the length of string is zero
         # - ${parameter:offset:length}
+        # - "!=" form must be used. not "-ne"
         if [[ ${2:0:1} == - ]] \
         || [[ -z $2 ]] \
         && [[ ${2:1:1} != [0-9] ]]
@@ -3633,7 +3826,8 @@ function _parse_parameters()
           _BOOLEAN_FORCE=true
         fi
       ;;
-      ( -id )
+      ( -id \
+      | --window-id )
         # - ${parameter:offset:length}
         # - "-z string" = true if the length of string is zero
         if [[ ${2:0:1} == - ]] \
@@ -3646,6 +3840,28 @@ function _parse_parameters()
           # - "function _pass_fail_by_window_type" thoroughly test this
           #    variable
           _OPTION_WINDOW_ID=$2
+        fi
+        shift
+      ;;
+      ( -l \
+      | --list )
+        if $_BOOLEAN_LIST
+        then
+          _BOOLEAN_LIST=false
+        else
+          _BOOLEAN_LIST=true
+        fi
+      ;;
+      ( -n \
+      | --window-name )
+        # - ${parameter:offset:length}
+        # - "-z string" = true if the length of string is zero
+        if [[ ${2:0:1} == - ]] \
+        || [[ -z $2 ]]
+        then
+          _show_error "Window Name not specified"
+        else
+          _OPTION_WINDOW_NAME=$2
         fi
         shift
       ;;
@@ -3768,6 +3984,7 @@ function _parse_parameters()
   _eko_pv \$_BOOLEAN_DEBUG: \""$_BOOLEAN_DEBUG\""
   _eko_pv \$_BOOLEAN_DRYRUN: \""$_BOOLEAN_DRYRUN\""
   _eko_pv \$_BOOLEAN_FORCE: \""$_BOOLEAN_FORCE\""
+  _eko_pv \$_BOOLEAN_LIST: \""$_BOOLEAN_LIST\""
   _eko_pv \$_BOOLEAN_OVERALL: \""$_BOOLEAN_OVERALL\""
   _eko_pv \$_BOOLEAN_PERMISSIVE: \""$_BOOLEAN_PERMISSIVE\""
   _eko_pv \$_BOOLEAN_QUIET: \""$_BOOLEAN_QUIET\""
@@ -3777,11 +3994,32 @@ function _parse_parameters()
   _eko_pv \$_BOOLEAN_VERBOSE: \""$_BOOLEAN_VERBOSE\""
   _eko_pv \$_OPTION_WINDOW_COORDINATES: \""$_OPTION_WINDOW_COORDINATES\""
   _eko_pv \$_OPTION_WINDOW_ID: \""$_OPTION_WINDOW_ID\""
+  _eko_pv \$_OPTION_WINDOW_NAME: \""$_OPTION_WINDOW_NAME\""
+
+  # NOTE:
+  # - first a bit of testing to weed out conflicting options:
+  # - "-id" & "-n" are mutually exclusive. error exit
+
+  # - "-id" & "-n" are mutually exclusive. error exit
+  # - "-n string" = true if the length of string is non-zero
+  if [[ -n $_OPTION_WINDOW_ID ]] \
+  && [[ -n $_OPTION_WINDOW_NAME ]]
+  then
+    _show_error \""-id, --window-id\" & \"-n, --window-name\" are mutually exclusive"
+  fi
 
   if $_BOOLEAN_QUIET
   then
     _BOOLEAN_DEBUG=false      # display
+    #_BOOLEAN_DRYRUN=false     # control
+    #_BOOLEAN_FORCE=false      # action
+    #_BOOLEAN_LIST=false       # display
+    #_BOOLEAN_OVERALL=false    # control
+    #_BOOLEAN_PERMISSIVE=false # control
+    #_BOOLEAN_QUIET=false      # display
+    #_BOOLEAN_RAISE=false      # action
     _BOOLEAN_STDOUT=false     # display
+    #_BOOLEAN_UNUSED=false     # control
     _BOOLEAN_VERBOSE=false    # display
   fi
 
@@ -3791,11 +4029,19 @@ function _parse_parameters()
   #   _get_net_* functions). just grab everything once
   _OUTPUT_XPROP_ROOT=$(xprop -root 2>&1)
 
-  # - "arg1 OP arg2" = returns true if arg1 is not equal to arg2
+  # - "arg1 -ne arg2" = returns true if arg1 is not equal to arg2
   if [[ $? -ne 0 ]]
   then
     _show_error "there was a problem calling \"xprop -root\""
   fi
+
+# TODO:
+# - figure out what to do with this one (in progress)
+# - _OPTION_WINDOW_NAME
+# - 3 possible states: 0 matches, 1 match, 1+ matches
+
+# - how to do the tests? if/then/elif/then/fi ?
+# - force & list are pretty much self contained. let's try that first
 
   # NOTE:
   # - "-f, --force" only needs the Window ID list & the desktop geometry. it
@@ -3804,6 +4050,9 @@ function _parse_parameters()
   if $_BOOLEAN_FORCE
   then
     _coordinates_force
+  elif $_BOOLEAN_LIST
+  then
+    _get_window_list
   else
     # - "-n string" = true if the length of string is non-zero
     if [[ -n $_OPTION_WINDOW_ID ]]
@@ -3823,16 +4072,24 @@ function _parse_parameters()
     # - pass/fail by window type
     _pass_fail_by_window_type
 
-    _get_net_current_desktop_cardinal
+    # precedes: "function _get_net_workarea_cardinal"
+    # precedes: "function _get_net_desktop_viewport_cardinal"
+    _get_net_wm_desktop_cardinal
 
+# placement of this one seems to be important
     _get_net_desktop_geometry_cardinal
 
+    # succeeds: "function _get_net_wm_desktop_cardinal"
     _get_net_workarea_cardinal
+
+    # succeeds: "function _get_net_wm_desktop_cardinal"
+    _get_net_desktop_names_utf8_string
 
     _get_net_frame_extents_cardinal
 
     _get_net_wm_state_atom
 
+    # precedes: "function _coordinates_kludge"
     _get_net_wm_name_utf8_string
 
     _get_window_undecorated_geometry
@@ -3844,11 +4101,9 @@ function _parse_parameters()
       # - from "xprop -root"
       _get_net_active_window_window
       _get_net_client_list_stacking_window
+      _get_net_current_desktop_cardinal
       _get_net_desktop_layout_cardinal
-      # succeeds: "function _get_net_current_desktop_cardinal"
-      _get_net_desktop_names_utf8_string
-      #    child: "function _sub_function"
-      # succeeds: "function _get_net_current_desktop_cardinal"
+      # succeeds: "function _get_net_wm_desktop_cardinal"
       _get_net_desktop_viewport_cardinal
       _get_net_number_of_desktops_cardinal
       _get_net_showing_desktop_cardinal
@@ -3859,7 +4114,6 @@ function _parse_parameters()
       # - from "xprop -id 0xdeadf00d"
       _get_net_wm_allowed_actions_atom
       _get_net_wm_bypass_compositor_cardinal
-      _get_net_wm_desktop_cardinal
       _get_net_wm_icon_geometry_cardinal
       _get_net_wm_icon_name_utf8_string
       _get_net_wm_opaque_region_cardinal
@@ -3878,6 +4132,7 @@ function _parse_parameters()
 
     _coordinates_validate
 
+    # succeeds: "function _get_net_wm_name_utf8_string"
     _coordinates_kludge
 
     _set_window_position
@@ -3948,6 +4203,7 @@ function _pass_fail_by_window_type()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -4104,6 +4360,7 @@ function _pass_fail_by_window_type_old()
 
   # binaries:
   # sed
+  # (xprop indirectly)
 
   # builtins:
   # echo
@@ -4276,11 +4533,13 @@ function _set_window_position()
   # _KLUDGE_Y
   # _NET_DESKTOP_GEOMETRY_H
   # _NET_DESKTOP_GEOMETRY_W
+  # _NET_DESKTOP_NAMES_UTF8_STRING
   # _NET_DESKTOP_NAME_UTF8_STRING
   # _NET_FRAME_EXTENTS_B
   # _NET_FRAME_EXTENTS_L
   # _NET_FRAME_EXTENTS_R
   # _NET_FRAME_EXTENTS_T
+  # _NET_WM_DESKTOP_CARDINAL
   # _NET_WM_NAME_UTF8_STRING
   # _NET_WM_STATE_ATOM
   # _NET_WM_WINDOW_TYPE_ATOM
@@ -4302,6 +4561,7 @@ function _set_window_position()
 
   # builtins:
   # (none)
+  # false (wmctrl substitute)
 
   # NET:
   # - several described elsewhere throughout the script, so no need to repeat
@@ -4497,11 +4757,20 @@ function _set_window_position()
   _eko_pv "window X,Y kludges:" \""$_KLUDGE_X,$_KLUDGE_Y\""
   _eko_ps "window maximized X,Y:" \""$_BOOLEAN_MAXIMIZED_X,$_BOOLEAN_MAXIMIZED_Y\""
   _eko_pv "window maximized X,Y:" \""$_BOOLEAN_MAXIMIZED_X,$_BOOLEAN_MAXIMIZED_Y\""
-  if $_BOOLEAN_UNUSED
+  _eko_ps "desktop number:" \""$_NET_WM_DESKTOP_CARDINAL\""
+  _eko_pv "desktop number:" \""$_NET_WM_DESKTOP_CARDINAL\""
+
+  # - 4294967295 = 0xFFFFFFFF = sticky = all desktops
+  # - "arg1 -eq arg2" = returns true if arg1 is equal to arg2
+  if [[ $_NET_WM_DESKTOP_CARDINAL -eq 4294967295 ]]
   then
-    _eko_ps "current desktop name:" \""$_NET_DESKTOP_NAME_UTF8_STRING\""
-    _eko_pv "current desktop name:" \""$_NET_DESKTOP_NAME_UTF8_STRING\""
+    _eko_ps "desktop names:" \""$_NET_DESKTOP_NAMES_UTF8_STRING\""
+    _eko_pv "desktop names:" \""$_NET_DESKTOP_NAMES_UTF8_STRING\""
+  else
+    _eko_ps "desktop name:" \""$_NET_DESKTOP_NAME_UTF8_STRING\""
+    _eko_pv "desktop name:" \""$_NET_DESKTOP_NAME_UTF8_STRING\""
   fi
+
   _eko_ps "desktop geometry:" \""$_NET_DESKTOP_GEOMETRY_W,$_NET_DESKTOP_GEOMETRY_H\""
   _eko_pv "desktop geometry:" \""$_NET_DESKTOP_GEOMETRY_W,$_NET_DESKTOP_GEOMETRY_H\""
   _eko_ps "desktop borders (L,R,T,B):" \""$_WORKAREA_BORDER_L,$_WORKAREA_BORDER_R,$_WORKAREA_BORDER_T,$_WORKAREA_BORDER_B\""
@@ -4586,7 +4855,11 @@ Mandatory parameter (Window Coordinates):
 Optional parameters:
   -D, --dry-run     Perform a trial run of the specified action
   -f, --force       Force windows to be least partially on the desktop
-  -id <Window ID>   Window ID (in lowercase hexadecimal format)
+  -id <Window ID>, --window-id <Window ID>
+                    Window ID (in lowercase hexadecimal format) to move
+  -l, --list        List all windows that can be moved
+  -n <Window Name>, --window-name <Window Name>
+                    Window Name (glob, regex, or simple substring?) to move
   -o, --overall     Use overall desktop X,Y for window placement calculations
   -p, --permissive  Permissive mode allows moving otherwise immovable windows
   -q, --quiet       Limit what's displayed to error messages & this help text
@@ -4670,6 +4943,7 @@ function _window_id_acquire()
 
 # builtins:
 # echo
+# false (wmctrl substitute)
 
 _parse_parameters "$@"
 

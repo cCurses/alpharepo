@@ -4947,7 +4947,8 @@ function _window_id_acquire()
 
 _parse_parameters "$@"
 
-if [[ $_BINARY_WMCTRL == false ]]
+if [[ $_BINARY_WMCTRL == false ]] \
+&& ! $_BOOLEAN_LIST
 then
   echo "binary \"wmctrl\" not found, faked it with \"false\" instead"
 fi

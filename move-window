@@ -80,6 +80,15 @@
 # - too many changes to document. I'm not in the mood to write a novel
 #   (possibly put brief notes of the major changes to have mercy on future-me)
 
+# - "function _get_net_wm_desktop_cardinal" is now used
+# - "function _get_net_current_desktop_cardinal" is now unused
+
+#<     shift $(( $_NET_CURRENT_DESKTOP_CARDINAL * 4 ))
+#>     shift $(( $_NET_WM_DESKTOP_CARDINAL * 4 ))
+
+#+ marker edit +#
+# 4294967295
+
 # 2019-11-18
 # - comment cleanup
 # - moved another large block of assorted notes to the very end of the script
@@ -2134,6 +2143,12 @@ function _get_net_desktop_viewport_cardinal()
     # - $((expression))
     shift $(( $_NET_WM_DESKTOP_CARDINAL * 2 ))
 
+  #+ marker edit +#
+  # 4294967295
+  # if [[ $_NET_WM_DESKTOP_CARDINAL -ne 4294967295 ]]
+#<     shift $(( $_NET_CURRENT_DESKTOP_CARDINAL * 2 ))
+#>     shift $(( $_NET_WM_DESKTOP_CARDINAL * 2 ))
+
     read $_OPTIONS_READ -- \
     _NET_DESKTOP_VIEWPORT_X \
     _NET_DESKTOP_VIEWPORT_Y \
@@ -3406,6 +3421,12 @@ function _get_net_workarea_cardinal()
     # - $((expression))
     shift $(( $_NET_WM_DESKTOP_CARDINAL * 4 ))
 
+  #+ marker edit +#
+  # 4294967295
+  # if [[ $_NET_WM_DESKTOP_CARDINAL -ne 4294967295 ]]
+#<     shift $(( $_NET_CURRENT_DESKTOP_CARDINAL * 4 ))
+#>     shift $(( $_NET_WM_DESKTOP_CARDINAL * 4 ))
+
     read $_OPTIONS_READ -- \
     _NET_WORKAREA_X \
     _NET_WORKAREA_Y \
@@ -4074,6 +4095,7 @@ function _parse_parameters()
 
     # precedes: "function _get_net_workarea_cardinal"
     # precedes: "function _get_net_desktop_viewport_cardinal"
+    # precedes: "function _get_net_desktop_names_utf8_string"
     _get_net_wm_desktop_cardinal
 
 # placement of this one seems to be important
@@ -4081,6 +4103,9 @@ function _parse_parameters()
 
     # succeeds: "function _get_net_wm_desktop_cardinal"
     _get_net_workarea_cardinal
+
+    # succeeds: "function _get_net_wm_desktop_cardinal"
+    _get_net_desktop_viewport_cardinal
 
     # succeeds: "function _get_net_wm_desktop_cardinal"
     _get_net_desktop_names_utf8_string
@@ -4103,8 +4128,6 @@ function _parse_parameters()
       _get_net_client_list_stacking_window
       _get_net_current_desktop_cardinal
       _get_net_desktop_layout_cardinal
-      # succeeds: "function _get_net_wm_desktop_cardinal"
-      _get_net_desktop_viewport_cardinal
       _get_net_number_of_desktops_cardinal
       _get_net_showing_desktop_cardinal
       _get_net_supported_atom
@@ -5223,10 +5246,10 @@ exit 0
 	# - "function _get_net_active_window_window"              (unused)
 	# - "function _get_net_client_list_stacking_window"       (unused)
 	# - "function _get_net_client_list_window"
-	# - "function _get_net_current_desktop_cardinal"
+	# - "function _get_net_current_desktop_cardinal"          (unused)
 	# - "function _get_net_desktop_geometry_cardinal"
 	# - "function _get_net_desktop_layout_cardinal"           (unused)
-	# - "function _get_net_desktop_names_utf8_string"         (unused)
+	# - "function _get_net_desktop_names_utf8_string"
 	# - "function _get_net_desktop_viewport_cardinal"         (unused)
 	# - "function _get_net_number_of_desktops_cardinal"       (unused)
 	# - "function _get_net_showing_desktop_cardinal"          (unused)
@@ -5240,7 +5263,7 @@ exit 0
 	## - "function _get_net_frame_extents_cardinal"
 	## - "function _get_net_wm_allowed_actions_atom"          (unused)
 	## - "function _get_net_wm_bypass_compositor_cardinal"    (unused)
-	## - "function _get_net_wm_desktop_cardinal"              (unused)
+	## - "function _get_net_wm_desktop_cardinal"
 	## - "function _get_net_wm_icon_geometry_cardinal"        (unused)
 	## - "function _get_net_wm_icon_name_utf8_string"         (unused)
 	## - "function _get_net_wm_name_utf8_string"

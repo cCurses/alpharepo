@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# concept:
+# - test code stub to traverse the entire list of Window IDs & identify
+#   anything that reports itself as:
+#   "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_DOCK"
+# - the search has been temporarily widened. report any & all windows where
+#   "_NET_WM_WINDOW_TYPE(ATOM)" is non-empty (reverted, but old code is still
+#   in place)
+
+# NOTE:
+# - copy-pasting a lot of stuff from "move-window" for simplicity
+
+  # variables:
+  # _NET_CLIENT_LIST_WINDOW
+  # _NET_WM_NAME_UTF8_STRING
+  # _NET_WM_WINDOW_TYPE_ATOM
+  # _OUTPUT_XPROP_ID
+  # _OUTPUT_XPROP_ROOT
+  # _OPTION_WINDOW_ID
+
+  # binaries:
+  # xprop
+  # (xprop indirectly)
+
+  _OUTPUT_XPROP_ROOT=$(xprop -root 2>&1)
+
+  _NET_CLIENT_LIST_WINDOW=$(echo "$_OUTPUT_XPROP_ROOT" | sed --expression='/^_NET_CLIENT_LIST(WINDOW): window id # /!d ; /\(.* # \|,\)/ s///g')
+  echo " \$_NET_CLIENT_LIST_WINDOW:" \""$_NET_CLIENT_LIST_WINDOW\""
+
+  for _OPTION_WINDOW_ID in $_NET_CLIENT_LIST_WINDOW
+  do
+    # - we're looking for this: _NET_WM_WINDOW_TYPE_DOCK
+
+    # - grab all of the current window's properties
+    _OUTPUT_XPROP_ID=$(xprop -id $_OPTION_WINDOW_ID 2>/dev/null)
+
+    # - some parsing fun
+    _NET_WM_WINDOW_TYPE_ATOM=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_WINDOW_TYPE(ATOM) = /!d ; /\(.* = \|,\)/ s///g')
+
+#    # - "-n string" = true if the length of string is non-zero
+#    if [[ -n $_NET_WM_WINDOW_TYPE_ATOM ]]
+    if [[ " $_NET_WM_WINDOW_TYPE_ATOM " =~ " _NET_WM_WINDOW_TYPE_DOCK " ]]
+    then
+      # - only grab the window's name when necessary
+      _NET_WM_NAME_UTF8_STRING=$(echo "$_OUTPUT_XPROP_ID" | sed --expression='/^_NET_WM_NAME(UTF8_STRING) = /!d ; /.* = / s///g')
+
+      echo
+      echo "       \$_OPTION_WINDOW_ID:" \""$_OPTION_WINDOW_ID\""
+      echo "\$_NET_WM_NAME_UTF8_STRING:" \""$_NET_WM_NAME_UTF8_STRING\""
+      echo "\$_NET_WM_WINDOW_TYPE_ATOM:" \""$_NET_WM_WINDOW_TYPE_ATOM\""
+    fi
+  done

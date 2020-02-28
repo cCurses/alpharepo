@@ -1,0 +1,142 @@
+#!/bin/bash
+
+# - for a cleaner stdout dump
+export TZ=UTC
+
+# - pay attention!
+# - "if [[ 1 == 1 ]]" enables the enclosed block of script
+# - "if [[ 0 == 1 ]]" disables the enclosed block of script
+
+if [[ 1 == 1 ]]
+then
+
+  echo new
+  # - pathnames may contain:
+  # > 0x20 (space)
+  # > 0x09 (tab)
+  # > 0x0a (linefeed)
+  # - pathnames may not contain:
+  #   0x00 (nul) (this one's simply not possible)
+  # - end result. everything goes almost perfectly..
+
+  # - where do the extra spaces (0x20) at the end of each line come from?
+  # - attempting to add support for 0x0a (linefeed) in pathnames
+  # - refer to stat(2) for details. the _SF_* variables are essentially what's
+  #   found in the manpage. every one of these are required
+  # - use of strong (') or weak (") quotes with read (below) does not matter
+
+  # - it would appear that the entirety of each line from find is being
+  #   stuffed into _SF_DEV. how & why?!?!? what am I misunderstanding?
+  # - and yet sort correctly picks the correct field upon which to sort. huh?
+
+  while IFS= read -d "" -r \
+  _SF_DEV \
+  _SF_INO \
+  _SF_MODE \
+  _SF_NLINK \
+  _SF_UID \
+  _SF_GID \
+  _SF_SIZE \
+  _SF_MTIM_YMD \
+  _SF_MTIM_HMS \
+  _SF_MTIM_UTC \
+  _SF_NAME
+  do
+
+    if [[ 0 == 1 ]]
+    then
+      # - 54 spaces in a single line following each pathname dumped to stdout
+      printf "%4s %10s %s %4s %4s %-3s %14s %s %s %s %s\n" \
+      $_SF_DEV $_SF_INO $_SF_MODE $_SF_NLINK $_SF_UID $_SF_GID \
+      $_SF_SIZE $_SF_MTIM_YMD $_SF_MTIM_HMS $_SF_MTIM_UTC \
+      "$_SF_NAME"
+
+      #echo \""$_SF_MODE\""
+      #echo \""$_SF_DEV\""
+
+    else
+
+      # - single space at the end of each line that should not be there
+      echo \
+      $_SF_DEV $_SF_INO $_SF_MODE $_SF_NLINK $_SF_UID $_SF_GID \
+      $_SF_SIZE $_SF_MTIM_YMD $_SF_MTIM_HMS $_SF_MTIM_UTC \
+      "$_SF_NAME"
+    fi
+
+  done \
+  < \
+  <(find "$@" \
+  -maxdepth 1 \
+  -printf "%D %i %M %n %U %G %s %TY-%Tm-%Td %TH:%TM:%TS %TZ %p\0" 2>/dev/null \
+  | sort --key=11 --zero-terminated)
+
+  # - to sort by file size
+  # - in this particular case, output with either option is identical
+  #| sort --key=7 --general-numeric-sort --zero-terminated)
+  #| sort --key=7 --numeric-sort --zero-terminated)
+
+  # - to sort by timestamp
+  #| sort --key=8 --zero-terminated)
+
+  # - to sort by pathname
+  #| sort --key=11 --zero-terminated)
+
+else
+
+  echo old
+  # - pathnames may contain:
+  # > 0x20 (space)
+  # > 0x09 (tab)
+  # - pathnames may not contain:
+  # > 0x0a (linefeed)
+  #   0x00 (nul) (this one's simply not possible)
+  # - end result. everything goes perfectly, but 0x0a is not supported
+
+  while read -r \
+  _SF_DEV \
+  _SF_INO \
+  _SF_MODE \
+  _SF_NLINK \
+  _SF_UID \
+  _SF_GID \
+  _SF_SIZE \
+  _SF_MTIM_YMD \
+  _SF_MTIM_HMS \
+  _SF_MTIM_UTC \
+  _SF_NAME
+  do
+
+    if [[ 1 == 1 ]]
+    then
+      printf "%4s %10s %s %4s %4s %-3s %14s %s %s %s %s\n" \
+      $_SF_DEV $_SF_INO $_SF_MODE $_SF_NLINK $_SF_UID $_SF_GID \
+      $_SF_SIZE $_SF_MTIM_YMD $_SF_MTIM_HMS $_SF_MTIM_UTC \
+      "$_SF_NAME"
+
+    else
+
+      echo \
+      $_SF_DEV $_SF_INO $_SF_MODE $_SF_NLINK $_SF_UID $_SF_GID \
+      $_SF_SIZE $_SF_MTIM_YMD $_SF_MTIM_HMS $_SF_MTIM_UTC \
+      "$_SF_NAME"
+    fi
+
+  done \
+  < \
+  <(find "$@" \
+  -maxdepth 1 \
+  -printf "%D %i %M %n %U %G %s %TY-%Tm-%Td %TH:%TM:%TS %TZ %p\n" 2>/dev/null \
+  | sort --key=11)
+
+  # - to sort by file size
+  # - in this particular case, output with either option is identical
+  #| sort --key=7 --general-numeric-sort)
+  #| sort --key=7 --numeric-sort)
+
+  # - to sort by timestamp
+  #| sort --key=8)
+
+  # - to sort by pathname
+  #| sort --key=11)
+
+fi
